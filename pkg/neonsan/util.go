@@ -30,7 +30,7 @@ var(
 )
 
 func execCommand(command string, args []string) ([]byte, error) {
-	glog.Info("execCommand: command = \"%s\", args = \"%v\"", command, args)
+	glog.Infof("execCommand: command = \"%s\", args = \"%v\"", command, args)
 	cmd := exec.Command(command, args...)
 	return cmd.CombinedOutput()
 }

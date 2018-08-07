@@ -3,7 +3,18 @@ package neonsan
 import (
 	"testing"
 	"reflect"
+	"flag"
+	"os"
 )
+
+func TestMain(m *testing.M) {
+	flag.Set("alsologtostderr", "true")
+	flag.Set("log_dir", "/tmp")
+	flag.Set("v", "3")
+	flag.Parse()
+	ret := m.Run()
+	os.Exit(ret)
+}
 
 func TestFindVolume(t *testing.T){
 	tests := []struct{
