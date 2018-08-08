@@ -28,3 +28,11 @@
 [prune]
   go-tests = true
   unused-packages = true
+
+[[constraint]]
+  name = "github.com/container-storage-interface/spec"
+  version = "0.3.0"
+
+[[constraint]]
+  name = "github.com/kubernetes-csi/drivers"
+  revision = "5fa2f162efc3c2e72c423cc355164b9621f1dda8"
