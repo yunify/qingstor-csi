@@ -122,7 +122,7 @@ func CreateVolume(volName string, volPool string, volSize64 int64, replicas int)
 func DeleteVolume(volName string, volPool string) (err error) {
 	args := []string{"delete_volume", "--volume", volName, "--pool", volPool, "-c", ConfigFilePath}
 	_, err = ExecCommand(CmdNeonsan, args)
-	return nil
+	return err
 }
 
 // 	ParseVolumeInfo parse a volume info
@@ -152,7 +152,7 @@ func parsePoolList(output string) (pools []string) {
 		if i == 0 {
 			cnt, err := readCountNumber(v)
 			if err != nil {
-				glog.Error(err.Error())
+				glog.Warningf(err.Error())
 				return nil
 			}
 			if cnt == 0 {

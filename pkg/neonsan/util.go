@@ -43,7 +43,7 @@ func ExecCommand(command string, args []string) ([]byte, error) {
 	cmd := exec.Command(command, args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil{
-		return nil, fmt.Errorf("%s: %s", err.Error(), output)
+		return nil, fmt.Errorf("code [%s]: message [%s]", err.Error(), output)
 	}
 	return output, nil
 }

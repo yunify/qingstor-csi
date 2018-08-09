@@ -1,6 +1,9 @@
 package neonsan
 
-import "testing"
+import (
+	"testing"
+	"strings"
+)
 
 func TestExecCommand(t *testing.T) {
 	tests := []struct {
@@ -19,17 +22,25 @@ func TestExecCommand(t *testing.T) {
 			name:   "error fake",
 			cmd:    "fake",
 			args:   nil,
-			errStr: "-bash: fake: command not found",
+			errStr: "command not found",
 		},
 		{
 			name:   "error pwd -as",
 			cmd:    "pwd",
 			args:   []string{"-as"},
-			errStr: "-bash: fake: command not found",
+			errStr: "pwd: invalid option -- 'a'",
 		},
 	}
 	for _, v := range tests {
-		bytes, err := ExecCommand(v.cmd, v.args)
-		t.Logf("name %s: output [%s], error string [%v]", v.name, bytes, err)
+		_, err := ExecCommand(v.cmd, v.args)
+		if v.errStr == "" && err == nil{
+			continue
+		}else if v.errStr != "" && err != nil{
+			if !strings.Contains(err.Error(), v.errStr){
+				t.Errorf("name %s: expect error [%s], but actually [%s]", v.name, v.errStr, err.Error())
+			}
+		}else{
+			t.Errorf("name %s: expect error [%s], but actually [%v]", v.name, v.errStr, err)
+		}
 	}
 }
