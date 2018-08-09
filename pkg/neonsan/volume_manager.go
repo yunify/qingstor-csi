@@ -65,8 +65,11 @@ func FindVolumeWithoutPool(volName string) (outVol *volumeInfo, err error) {
 			glog.Errorf("error find volume [%s] in pool [%s]", vol.name, vol.pool)
 			return nil, err
 		}
-		glog.Infof("found volume [%s] in pool [%s]", vol.name, vol.pool)
-		volInfos = append(volInfos, vol)
+		if vol != nil{
+			glog.Infof("found volume [%s] in pool [%s]", vol.name, vol.pool)
+			volInfos = append(volInfos, vol)
+		}
+
 	}
 	switch len(volInfos) {
 	case 0:
