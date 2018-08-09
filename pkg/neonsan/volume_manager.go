@@ -35,7 +35,7 @@ func FindVolume(volName string, volPool string) (outVol *volumeInfo, err error) 
 	args := []string{"list_volume", "--volume", volName, "--pool", volPool, "--detail", "-c", ConfigFilePath}
 	output, err := ExecCommand(CmdNeonsan, args)
 	if err != nil {
-		glog.Errorf("%s", output)
+		glog.Errorf("%s: [%s]", CmdNeonsan, output)
 		return nil, err
 	}
 	outVol = parseVolumeInfo(string(output))
@@ -91,7 +91,7 @@ func GetPoolNameList() (pools []string, err error) {
 	args := []string{"list_pool", "-c", ConfigFilePath}
 	output, err := ExecCommand(CmdNeonsan, args)
 	if err != nil {
-		glog.Error(output)
+		glog.Errorf("%s: [%s]", CmdNeonsan, output)
 		return nil, err
 	}
 	return parsePoolList(string(output)), nil
@@ -109,9 +109,8 @@ func CreateVolume(volName string, volPool string, volSize64 int64, replicas int)
 	// do create
 	args := []string{"create_volume", "--volume", volName, "--pool", volPool, "--size", strconv.FormatInt(volSize64, 10), "--repcount", strconv.Itoa(replicas), "-c", ConfigFilePath}
 	output, err := ExecCommand(CmdNeonsan, args)
-	glog.Info(output)
 	if err != nil {
-		glog.Error(output)
+		glog.Errorf("%s: [%s]", CmdNeonsan, output)
 		return nil, err
 	}
 	// get volume information
@@ -126,9 +125,8 @@ func CreateVolume(volName string, volPool string, volSize64 int64, replicas int)
 func DeleteVolume(volName string, volPool string) (err error) {
 	args := []string{"delete_volume", "--volume", volName, "--pool", volPool, "-c", ConfigFilePath}
 	output, err := ExecCommand(CmdNeonsan, args)
-	glog.Info(output)
 	if err != nil {
-		glog.Error(output)
+		glog.Errorf("%s: [%s]", CmdNeonsan, output)
 		return err
 	}
 	return err
