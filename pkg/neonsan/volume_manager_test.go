@@ -24,25 +24,45 @@ func TestCreateVolume(t *testing.T) {
 		volPool   string
 		volSize64 int64
 		replicas  int
-		nilInfo   bool
+		infoExist bool
 		errStr    string
 	}{
 		{
-			name:      "Create success",
+			name:      "Create succeed",
 			volName:   "foo",
 			volPool:   "csi",
 			volSize64: 2 * gib,
 			replicas:  1,
-			nilInfo:   false,
+			infoExist: true,
 			errStr:    "",
+		},
+		{
+			name:      "Create failed",
+			volName:   "foo",
+			volPool:   "csi",
+			volSize64: 2 * gib,
+			replicas:  1,
+			infoExist: false,
+			errStr:    "Volume already existed",
 		},
 	}
 	for _, v := range tests {
 		volInfo, err := CreateVolume(v.volName, v.volPool, v.volSize64, v.replicas)
-		if (err != nil && v.errStr == "") || (err == nil && v.errStr != "") {
-			t.Errorf("name %s: expect error string is \"%s\", but actually \"%s\"", v.name, v.errStr, err.Error())
-		} else if (volInfo == nil && !v.nilInfo) || (volInfo != nil && v.nilInfo) {
-			t.Errorf("name %s: expect volume pointer %t, but actually %v", v.name, v.nilInfo, volInfo)
+
+		// check volume info
+		if (v.infoExist == false && volInfo != nil) || (v.infoExist == true && volInfo == nil) {
+			t.Errorf("name %s:  volume info expect [%t], but actually [%t]", v.name, v.infoExist, volInfo == nil)
+		}
+
+		// check error
+		if v.errStr != "" && err != nil {
+			if !strings.Contains(err.Error(), v.errStr) {
+				t.Errorf("name %s: error expect [%s], but actually [%s]", v.name, v.errStr, err.Error())
+			}
+		} else if v.errStr == "" && err == nil {
+			continue
+		} else {
+			t.Errorf("name %s: error expect [%s], but actually [%v]", v.name, v.errStr, err)
 		}
 	}
 }
@@ -53,7 +73,6 @@ func TestFindVolume(t *testing.T) {
 		volName string
 		volPool string
 		info    *volumeInfo
-		errStr  string
 	}{
 		{
 			name:    "Found volume",
@@ -64,22 +83,25 @@ func TestFindVolume(t *testing.T) {
 				pool: "csi",
 				size: 2 * gib,
 			},
-			errStr: "",
 		},
 		{
 			name:    "Not found volume",
 			volName: "nofound",
 			volPool: "csi",
 			info:    nil,
-			errStr:  "",
 		},
 	}
 	for _, v := range tests {
 		volInfo, err := FindVolume(v.volName, v.volPool)
-		if (err != nil && v.errStr == "") || (err == nil && v.errStr != "") {
-			t.Errorf("name %s: expect error string is \"%s\", but actually \"%s\"", v.name, v.errStr, err.Error())
-		} else if (volInfo == nil && v.info != nil) || (volInfo != nil && v.info == nil) {
-			t.Errorf("name %s: expect volume %v, but actually %v", v.name, v.info, volInfo)
+		if err != nil {
+			t.Errorf("name %s: volume error [%s]", v.name, err.Error())
+		}
+
+		// check volume info
+		if v.info != nil && volInfo != nil {
+			if v.info.name != volInfo.name || v.info.pool != volInfo.pool {
+				t.Errorf("name %s: volume info expect [%v], but actually [%v]", v.name, v.info, volInfo)
+			}
 		}
 	}
 }
@@ -104,12 +126,16 @@ func TestFindVolumeWithoutPool(t *testing.T) {
 	for _, v := range tests {
 		ret, err := FindVolumeWithoutPool(v.volName)
 		if err != nil {
-			t.Errorf("name %s: %s", v.name, err.Error())
+			t.Errorf("name %s: volume error [%s]", v.name, err.Error())
 		}
-		if (v.volPool == "" && ret != nil) || (v.volPool != "" && ret == nil) {
-			t.Errorf("name %s: expect pool [%s], but actually [%v]", v.name, v.volPool, ret)
-		} else if ret != nil && ret.pool != v.volPool {
-			t.Errorf("name %s: expect pool [%s], but actually [%s]", v.name, v.volPool, ret.pool)
+		if v.volPool != "" && ret != nil {
+			if v.volPool != ret.pool {
+				t.Errorf("name %s: volume pool expect [%s], but actually [%s]", v.name, v.volPool, ret.pool)
+			}
+		} else if v.volPool == "" && ret == nil {
+			continue
+		} else {
+			t.Errorf("name %s: volume pool expect [%s], but actually [%v]", v.name, v.volPool, ret)
 		}
 	}
 }
@@ -136,12 +162,14 @@ func TestDeleteVolume(t *testing.T) {
 	}
 	for _, v := range tests {
 		err := DeleteVolume(v.volName, v.volPool)
-		if (err != nil && v.errStr == "") || (err == nil && v.errStr != "") {
-			t.Errorf("name %s: expect error string is \"%s\", but actually \"%s\"", v.name, v.errStr, err.Error())
-		} else if v.errStr != "" {
+		if v.errStr == "" && err == nil {
+			continue
+		} else if v.errStr != "" && err != nil {
 			if !strings.Contains(err.Error(), v.errStr) {
-				t.Errorf("name %s: expect error string is \"%s\", but actually \"%s\"", v.name, v.errStr, err.Error())
+				t.Errorf("name %s: error expect [%s], but actually [%s]", v.name, v.errStr, err.Error())
 			}
+		} else {
+			t.Errorf("name %s: error expect [%s], but actually [%v]", v.name, v.errStr, err)
 		}
 	}
 }

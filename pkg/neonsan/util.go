@@ -35,7 +35,10 @@ var (
 	ConfigFilePath string = "/etc/neonsan/qbd.conf"
 )
 
-func execCommand(command string, args []string) ([]byte, error) {
+// ExecCommand
+// Return cases:	normal output,	nil:	normal output
+//					error logs,		error:	command execute error
+func ExecCommand(command string, args []string) ([]byte, error) {
 	glog.Infof("execCommand: command = \"%s\", args = \"%v\"", command, args)
 	cmd := exec.Command(command, args...)
 	return cmd.CombinedOutput()
