@@ -115,27 +115,26 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	volumeName := req.GetVolumeId()
 
 	// Deleting block image
-	glog.Infof("deleting volume %s", volumeName)
+	glog.Infof("Deleting volume %s...", volumeName)
 
 	// For idempotent:
 	// MUST reply OK when volume does not exist
-	poolName, err := FindVolumePool(volumeName)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	volInfo, err := FindVolume(volumeName, poolName)
+	volInfo, err := FindVolumeWithoutPool(volumeName)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if volInfo == nil {
+		glog.Warningf("Volume [%s] in pool [%s] has been deleted.", volInfo.name, volInfo.pool)
 		return &csi.DeleteVolumeResponse{}, nil
 	}
 
 	// Do delete volume
-	glog.Infof("Deleting volume %s in pool %s...", volumeName, poolName)
-	err = DeleteVolume(volumeName, poolName)
+	glog.Infof("Deleting volume %s in pool %s...", volumeName, volInfo.pool)
+	err = DeleteVolume(volumeName, volInfo.pool)
 	if err != nil {
-		glog.Infof("Failed to delete NeonSan volume: [%s] in pool [%s] with error: [%v]", volumeName, poolName, err)
+		glog.Errorf("Failed to delete NeonSan volume: [%s] in pool [%s] with error: [%v].", volumeName, volInfo.pool, err)
+		return nil, status.Error(codes.Internal, err.Error())
 	}
+	glog.Infof("Succeed to delete NeonSan volume: [%s] in pool [%s]", volumeName, volInfo.pool)
 	return &csi.DeleteVolumeResponse{}, nil
 }

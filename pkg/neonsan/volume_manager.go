@@ -42,48 +42,40 @@ func FindVolume(volName string, volPool string) (outVol *volumeInfo, err error) 
 		return nil, nil
 	}
 	if outVol.name != volName {
-		return nil, fmt.Errorf("Mismatch volume name: expect %s, but actually %s", volName, outVol.name)
+		return nil, fmt.Errorf("mismatch volume name: expect %s, but actually %s", volName, outVol.name)
 	}
 	outVol.pool = volPool
 	return outVol, nil
 }
 
-//	FindVolumePool
-//	Description:	find volume pool name, volume name must be unique in all pools
+//	FindVolumeWithoutPool
+//	Description:	find volume without pool name, volume name must be unique in all pools
 //	Return cases:	pool,	nil:	found volume's pool
 //					"",		nil:	not found
 //					"",		error:	error
-func FindVolumePool(volName string) (volPool string, err error) {
+func FindVolumeWithoutPool(volName string) (outVol *volumeInfo, err error) {
 	pools, err := GetPoolNameList()
-	if err != nil {
-		return "", err
-	}
-	for _, p := range pools {
-		volumes, err := GetVolumeNameList(p)
-		if err != nil {
-			return "", err
-		}
-		for _, v := range volumes {
-			if v == volName {
-				return p, nil
-			}
-		}
-	}
-	return "", nil
-}
-
-//	GetVolumeNameList
-//	Description:	get volume list
-//	Return cases:	volumes,	nil:	found volume name list
-//					nil,		nil:	volume list not found
-//					nil,		nil:	error
-func GetVolumeNameList(volPool string) (volumes []string, err error) {
-	args := []string{"list_volume", "--pool", volPool, "-c", ConfigFilePath}
-	output, err := execCommand(CmdNeonsan, args)
 	if err != nil {
 		return nil, err
 	}
-	return parseVolumeList(string(output)), nil
+	var volInfos []*volumeInfo
+	for _, p := range pools {
+		vol, err := FindVolume(volName, p)
+		if err != nil {
+			glog.Errorf("error find volume [%s] in pool [%s]", vol.name, vol.pool)
+			return nil, err
+		}
+		glog.Infof("found volume [%s] in pool [%s]", vol.name, vol.pool)
+		volInfos = append(volInfos, vol)
+	}
+	switch len(volInfos) {
+	case 0:
+		return nil, nil
+	case 1:
+		return volInfos[0], nil
+	default:
+		return nil, fmt.Errorf("find duplicate volume [%s] in [%d] pools", volName, len(volInfos))
+	}
 }
 
 //	GetPoolList
@@ -152,6 +144,27 @@ func parseVolumeInfo(output string) (vol *volumeInfo) {
 	return vol
 }
 
+func parsePoolList(output string) (pools []string) {
+	out := strings.Trim(output, "\n")
+	lines := strings.Split(out, "\n")
+	for i, v := range lines {
+		if i == 0 {
+			cnt, err := readCountNumber(v)
+			if err != nil {
+				glog.Error(err.Error())
+				return nil
+			}
+			if cnt == 0 {
+				glog.Warningf("server has 0 pool")
+				return nil
+			}
+		} else if i >= 4 && v[0] != '+' {
+			pools = append(pools, readPoolName(v))
+		}
+	}
+	return pools
+}
+
 func readCountNumber(line string) (cnt int, err error) {
 	if !strings.Contains(line, "Count:") {
 		return cnt, fmt.Errorf("cannot found volume count")
@@ -199,60 +212,7 @@ func readVolumeInfoContent(line string) (ret *volumeInfo) {
 	return ret
 }
 
-func parsePoolList(output string) (pools []string) {
-	out := strings.Trim(output, "\n")
-	lines := strings.Split(out, "\n")
-	for i, v := range lines {
-		if i == 0 {
-			cnt, err := readCountNumber(v)
-			if err != nil {
-				glog.Error(err.Error())
-				return nil
-			}
-			if cnt == 0 {
-				glog.Warningf("server has 0 pool")
-				return nil
-			}
-		} else if i >= 4 && v[0] != '+' {
-			pools = append(pools, readPoolName(v))
-		}
-	}
-	return pools
-}
-
 func readPoolName(line string) (pool string) {
-	curLine := strings.Replace(line, " ", "", -1)
-	curLine = strings.Trim(curLine, "|")
-	fields := strings.Split(curLine, "|")
-	if len(fields) == 1 {
-		return fields[0]
-	}
-	return ""
-
-}
-
-func parseVolumeList(output string) (volumes []string) {
-	out := strings.Trim(output, "\n")
-	lines := strings.Split(out, "\n")
-	for i, v := range lines {
-		if i == 0 {
-			cnt, err := readCountNumber(v)
-			if err != nil {
-				glog.Errorf(err.Error())
-				return nil
-			}
-			if cnt == 0 {
-				glog.Warningf("server has 0 pool")
-				return nil
-			}
-		} else if i >= 4 && v[0] == '|' {
-			volumes = append(volumes, readVolumeName(v))
-		}
-	}
-	return volumes
-}
-
-func readVolumeName(line string) (volume string) {
 	curLine := strings.Replace(line, " ", "", -1)
 	curLine = strings.Trim(curLine, "|")
 	fields := strings.Split(curLine, "|")

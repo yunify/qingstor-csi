@@ -4,6 +4,7 @@ import (
 	"flag"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -65,6 +66,13 @@ func TestFindVolume(t *testing.T) {
 			},
 			errStr: "",
 		},
+		{
+			name:    "Not found volume",
+			volName: "nofound",
+			volPool: "csi",
+			info:    nil,
+			errStr:  "",
+		},
 	}
 	for _, v := range tests {
 		volInfo, err := FindVolume(v.volName, v.volPool)
@@ -76,7 +84,7 @@ func TestFindVolume(t *testing.T) {
 	}
 }
 
-func TestFindVolumePool(t *testing.T) {
+func TestFindVolumeWithoutPool(t *testing.T) {
 	tests := []struct {
 		name    string
 		volName string
@@ -94,12 +102,14 @@ func TestFindVolumePool(t *testing.T) {
 		},
 	}
 	for _, v := range tests {
-		retPool, err := FindVolumePool(v.volName)
+		ret, err := FindVolumeWithoutPool(v.volName)
 		if err != nil {
 			t.Errorf("name %s: %s", v.name, err.Error())
 		}
-		if retPool != v.volPool {
-			t.Errorf("name %s: expect pool [%s], but actually [%s]", v.name, retPool, v.volPool)
+		if (v.volPool == "" && ret != nil) || (v.volPool != "" && ret == nil) {
+			t.Errorf("name %s: expect pool [%s], but actually [%v]", v.name, v.volPool, ret)
+		} else if ret != nil && ret.pool != v.volPool {
+			t.Errorf("name %s: expect pool [%s], but actually [%s]", v.name, v.volPool, ret.pool)
 		}
 	}
 }
@@ -117,11 +127,21 @@ func TestDeleteVolume(t *testing.T) {
 			volPool: "csi",
 			errStr:  "",
 		},
+		{
+			name:    "Delete failed",
+			volName: "nofound",
+			volPool: "csi",
+			errStr:  "Volume not exists",
+		},
 	}
 	for _, v := range tests {
 		err := DeleteVolume(v.volName, v.volPool)
 		if (err != nil && v.errStr == "") || (err == nil && v.errStr != "") {
 			t.Errorf("name %s: expect error string is \"%s\", but actually \"%s\"", v.name, v.errStr, err.Error())
+		} else if v.errStr != "" {
+			if !strings.Contains(err.Error(), v.errStr) {
+				t.Errorf("name %s: expect error string is \"%s\", but actually \"%s\"", v.name, v.errStr, err.Error())
+			}
 		}
 	}
 }
@@ -203,50 +223,6 @@ func TestParsePoolList(t *testing.T) {
 			for i, _ := range v.pools {
 				if v.pools[i] != exPools[i] {
 					t.Errorf("name %s: expect pools %v, but actually %v", v.name, v.pools, exPools)
-				}
-			}
-		}
-	}
-}
-
-func TestParseVolumeList(t *testing.T) {
-	tests := []struct {
-		name    string
-		output  string
-		volumes []string
-	}{
-		{
-			name: "Csi volumes",
-			output: `Volume Count:  3
-+------+
-| NAME |
-+------+
-| foo1 |
-| foo2 |
-| foo4 |
-+------+
-`,
-			volumes: []string{"foo1", "foo2", "foo4"},
-		},
-		{
-			name:    "Not found volume list",
-			output:  `Volume Count:  0`,
-			volumes: []string{},
-		},
-		{
-			name:    "Wrong output",
-			output:  `+-------+`,
-			volumes: []string{},
-		},
-	}
-	for _, v := range tests {
-		exVol := parseVolumeList(v.output)
-		if len(exVol) != len(v.volumes) {
-			t.Errorf("name %s: expect volume len %d, but actually %d", v.name, len(v.volumes), len(exVol))
-		} else {
-			for i, _ := range v.volumes {
-				if v.volumes[i] != exVol[i] {
-					t.Errorf("name %s: expect volumes %v, but actually %v", v.name, v.volumes, exVol)
 				}
 			}
 		}
