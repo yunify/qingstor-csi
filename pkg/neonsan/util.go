@@ -41,7 +41,11 @@ var (
 func ExecCommand(command string, args []string) ([]byte, error) {
 	glog.Infof("execCommand: command = \"%s\", args = \"%v\"", command, args)
 	cmd := exec.Command(command, args...)
-	return cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
+	if err != nil{
+		return nil, fmt.Errorf("%s: %s", err.Error(), output)
+	}
+	return output, nil
 }
 
 // ContainsVolumeCapability
