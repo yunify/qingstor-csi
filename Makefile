@@ -14,19 +14,20 @@
 # | limitations under the License.
 # +-------------------------------------------------------------------------
 
-.PHONY: all neonsan-plugin
+.PHONY: all neonsan
 
 NEONSAN_IMAGE_NAME=dockerhub.qingcloud.com/csiplugin/csi-neonsan
 NEONSAN_IMAGE_VERSION=v0.3.0
 NEONSAN_PLUGIN_NAME=neonsan-plugin
 
-neonsan-plugin:
+neonsan:
 	if [ ! -d ./vendor ]; then dep ensure; fi
-	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o  _output/${NEONSAN_PLUGIN_NAME} ./cmd/block
+	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o  _output/${NEONSAN_PLUGIN_NAME} ./cmd/neonsan
 
-neonsan-plugin-container: neonsan-plugin
-	cp _output/${BLOCK_PLUGIN_NAME} deploy/block/docker
-	docker build -t $(NEONSAN_IMAGE_NAME):$(NEONSAN_IMAGE_VERSION) deploy/block/docker
+neonsan-container: neonsan
+	cp _output/${NEONSAN_PLUGIN_NAME} deploy/neonsan/docker
+	docker build -t $(NEONSAN_IMAGE_NAME):latest deploy/neonsan/docker
+	docker tag  $(NEONSAN_IMAGE_NAME):latest $(NEONSAN_IMAGE_NAME):$(NEONSAN_IMAGE_VERSION)
 
 clean:
 	go clean -r -x

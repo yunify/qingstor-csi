@@ -42,7 +42,7 @@ func ExecCommand(command string, args []string) ([]byte, error) {
 	glog.Infof("execCommand: command = \"%s\", args = \"%v\"", command, args)
 	cmd := exec.Command(command, args...)
 	output, err := cmd.CombinedOutput()
-	if err != nil{
+	if err != nil {
 		return nil, fmt.Errorf("code [%s]: message [%s]", err.Error(), output)
 	}
 	return output, nil
