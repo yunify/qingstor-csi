@@ -104,12 +104,12 @@ spec:
               fieldPath: spec.nodeName
         - name: CSI_ENDPOINT
           value: unix://var/lib/csi/sockets/pluginproxy/csi.sock
-        imagePullPolicy: "Always"
+        imagePullPolicy: "IfNotPresent"
         volumeMounts:
         - name: socket-dir
           mountPath: /var/lib/csi/sockets/pluginproxy
         - name: server-config
-          mountPath: /etc/config
+          mountPath: /etc/neonsan
         - name: neonsan-cmd
           mountPath: /usr/bin
         - name: lib

@@ -20,7 +20,7 @@ LABEL maintainers="Yunify"
 LABEL description="Neonsan CSI plugin"
 
 RUN apt-get update && \
-    apt-get install -y ca-certificates ca-certificates-java	    apt-get install -y ca-certificates ca-certificates-java && \
+    apt-get install -y ca-certificates ca-certificates-java && \
     apt-get install -y xfsprogs
 
 COPY neonsan-plugin /neonsan-plugin
