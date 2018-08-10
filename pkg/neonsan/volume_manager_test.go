@@ -248,7 +248,7 @@ func TestParsePoolList(t *testing.T) {
 		if len(exPools) != len(v.pools) {
 			t.Errorf("name %s: expect pools len %d, but actually len %d", v.name, len(v.pools), len(exPools))
 		} else {
-			for i, _ := range v.pools {
+			for i := range v.pools {
 				if v.pools[i] != exPools[i] {
 					t.Errorf("name %s: expect pools %v, but actually %v", v.name, v.pools, exPools)
 				}

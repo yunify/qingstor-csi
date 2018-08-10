@@ -172,7 +172,7 @@ func readCountNumber(line string) (cnt int, err error) {
 	}
 	line = strings.Replace(line, " ", "", -1)
 	lines := strings.Split(line, ":")
-	for i, _ := range lines {
+	for i := range lines {
 		if i == 1 {
 			return strconv.Atoi(lines[i])
 		}

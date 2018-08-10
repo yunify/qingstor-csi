@@ -1,8 +1,27 @@
 language: go
+
+sudo: required
+
 go: 
   - "1.10"
+
+services:
+  - docker
+
+before_install:
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+  - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+  - sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+  - sudo apt-get update
+  - sudo apt-get -y install docker-ce
+  - dep ensure -v
+
 install:
   - go get -u github.com/golang/dep/cmd/dep
   - dep ensure -vendor-only
+
+before_script:
+  - docker --version
+
 script:
-  - make
+  - make neonsan-container
