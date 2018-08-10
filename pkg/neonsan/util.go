@@ -75,8 +75,9 @@ func FormatVolumeSize(inputSize int64, step int64) int64 {
 	if inputSize <= gib || step < 0 {
 		return gib
 	}
-	if inputSize%step != 0 {
-		return inputSize + gib
+	remainder := inputSize%step
+	if remainder != 0 {
+		return inputSize - remainder + step
 	}
 	return inputSize
 }
