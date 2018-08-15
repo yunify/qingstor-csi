@@ -1,13 +1,10 @@
 package neonsan
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/golang/glog"
-	"os"
 	"os/exec"
-	"path"
 )
 
 const (
@@ -95,63 +92,4 @@ func IsValidFileSystemType(fs string) bool {
 	default:
 		return false
 	}
-}
-
-//	CreatePersistentStorage create path to save volume info files
-func CreatePersistentStorage(persistentStoragePath string) error {
-	if _, err := os.Stat(persistentStoragePath); os.IsNotExist(err) {
-		if err := os.MkdirAll(persistentStoragePath, os.FileMode(0755)); err != nil {
-			return err
-		}
-	} else {
-	}
-	return nil
-}
-
-//	PersistVolInfo save volume info
-func PersistVolInfo(image string, persistentStoragePath string, volInfo *volumeInfo) error {
-	file := path.Join(persistentStoragePath, image+".json")
-	fp, err := os.Create(file)
-	if err != nil {
-		glog.Errorf("failed to create persistent storage file %s with error: %v\n", file, err)
-		return fmt.Errorf("rbd: create err %s/%s", file, err)
-	}
-	defer fp.Close()
-	encoder := json.NewEncoder(fp)
-	if err = encoder.Encode(volInfo); err != nil {
-		glog.Errorf("failed to encode volInfo: %+v for file: %s with error: %v\n", volInfo, file, err)
-		return fmt.Errorf("encode err: %v", err)
-	}
-	glog.Infof("successfully saved volInfo: %+v into file: %s\n", volInfo, file)
-	return nil
-}
-
-//	LoadVolInfo load volume info
-func LoadVolInfo(image string, persistentStoragePath string, volInfo *volumeInfo) error {
-	file := path.Join(persistentStoragePath, image+".json")
-	fp, err := os.Open(file)
-	if err != nil {
-		return fmt.Errorf("open err %s/%s", file, err)
-	}
-	defer fp.Close()
-
-	decoder := json.NewDecoder(fp)
-	if err = decoder.Decode(volInfo); err != nil {
-		return fmt.Errorf("decode err: %v", err)
-	}
-
-	return nil
-}
-
-//	DeleteVolInfo delete volume info
-func DeleteVolInfo(image string, persistentStoragePath string) error {
-	file := path.Join(persistentStoragePath, image+".json")
-	glog.Infof("deleting file for Volume: %s at: %s resulting path: %+v\n", image, persistentStoragePath, file)
-	err := os.Remove(file)
-	if err != nil {
-		if err != os.ErrNotExist {
-			return fmt.Errorf("error removing file: %s/%s", file, err)
-		}
-	}
-	return nil
 }

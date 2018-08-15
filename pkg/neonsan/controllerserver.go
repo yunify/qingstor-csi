@@ -58,6 +58,8 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, status.Error(codes.OutOfRange, "Unsupport capacity range")
 	}
 
+	// Add pool in volume name
+	volumeName += "-" + sc.Pool
 	// Find exist volume name
 	exVol, err := FindVolume(volumeName, sc.Pool)
 	if err != nil {
@@ -112,29 +114,77 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, status.Error(codes.InvalidArgument, "Volume id missing in request")
 	}
 	// For now the image get unconditionally deleted, but here retention policy can be checked
-	volumeName := req.GetVolumeId()
+	volumeid := req.GetVolumeId()
 
 	// Deleting block image
-	glog.Infof("Deleting volume %s...", volumeName)
+	glog.Infof("Deleting volume %s...", volumeid)
 
 	// For idempotent:
 	// MUST reply OK when volume does not exist
-	volInfo, err := FindVolumeWithoutPool(volumeName)
+	volInfo, err := FindVolumeWithoutPool(volumeid)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if volInfo == nil {
-		glog.Warningf("Volume [%s] in pool [%s] has been deleted.", volInfo.name, volInfo.pool)
+		glog.Warningf("Volume [%s] has been deleted.", volumeid)
 		return &csi.DeleteVolumeResponse{}, nil
 	}
 
 	// Do delete volume
-	glog.Infof("Deleting volume %s in pool %s...", volumeName, volInfo.pool)
-	err = DeleteVolume(volumeName, volInfo.pool)
+	glog.Infof("Deleting volume %s in pool %s...", volumeid, volInfo.pool)
+	err = DeleteVolume(volumeid, volInfo.pool)
 	if err != nil {
-		glog.Errorf("Failed to delete NeonSan volume: [%s] in pool [%s] with error: [%v].", volumeName, volInfo.pool, err)
+		glog.Errorf("Failed to delete NeonSan volume: [%s] in pool [%s] with error: [%v].", volumeid, volInfo.pool, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	glog.Infof("Succeed to delete NeonSan volume: [%s] in pool [%s]", volumeName, volInfo.pool)
+	glog.Infof("Succeed to delete NeonSan volume: [%s] in pool [%s]", volumeid, volInfo.pool)
 	return &csi.DeleteVolumeResponse{}, nil
+}
+
+// This operation MUST be idempotent
+// csi.ValidateVolumeCapabilitiesRequest: 	volume id 			+ Required
+// 											volume capability 	+ Required
+func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
+	glog.Info("----- Start ValidateVolumeCapabilities -----")
+	defer glog.Info("===== End ValidateVolumeCapabilities =====")
+
+	// require volume id parameter
+	if len(req.GetVolumeId()) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "No volume id is provided")
+	}
+
+	// require capability parameter
+	if len(req.GetVolumeCapabilities()) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "No volume capabilities are provided")
+	}
+
+	// check volume exist
+	volumeId := req.GetVolumeId()
+	outVol, err := FindVolumeWithoutPool(volumeId)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if outVol == nil {
+		return nil, status.Errorf(codes.NotFound, "Volume %s does not exist", volumeId)
+	}
+
+	// check capability
+	for _, c := range req.GetVolumeCapabilities() {
+		found := false
+		for _, c1 := range cs.Driver.GetVolumeCapabilityAccessModes() {
+			if c1.GetMode() == c.GetAccessMode().GetMode() {
+				found = true
+			}
+		}
+		if !found {
+			return &csi.ValidateVolumeCapabilitiesResponse{
+				Supported: false,
+				Message:   "Driver does not support mode:" + c.GetAccessMode().GetMode().String(),
+			}, nil
+		}
+	}
+
+	return &csi.ValidateVolumeCapabilitiesResponse{
+		Supported: true,
+	}, nil
 }

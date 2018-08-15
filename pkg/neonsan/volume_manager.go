@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"strconv"
-	"strings"
 )
 
 type volumeInfo struct {
@@ -24,6 +23,14 @@ const (
 	VolumeStatusDegraded        = "DEGRADED"
 )
 
+type VolumeManager interface {
+	FindVolume(volName string, volPool string) (outVol *volumeInfo, err error)
+	FindVolumeWithoutPool(volName string) (outVol *volumeInfo, err error)
+	GetPoolNameList() (pools []string, err error)
+	CreateVolume(volName string, volPool string, volSize64 int64, replicas int) (outVol *volumeInfo, err error)
+	DeleteVolume(volName string, volPool string) (err error)
+}
+
 // 	FindVolume
 // 	Description:	get volume detail information
 //	Input:	volume name:	string
@@ -37,7 +44,7 @@ func FindVolume(volName string, volPool string) (outVol *volumeInfo, err error) 
 	if err != nil {
 		return nil, err
 	}
-	outVol = parseVolumeInfo(string(output))
+	outVol = ParseVolumeInfo(string(output))
 	if outVol == nil {
 		return nil, nil
 	}
@@ -92,7 +99,7 @@ func GetPoolNameList() (pools []string, err error) {
 	if err != nil {
 		return nil, err
 	}
-	return parsePoolList(string(output)), nil
+	return ParsePoolList(string(output)), nil
 }
 
 // 	CreateVolume
@@ -125,100 +132,5 @@ func DeleteVolume(volName string, volPool string) (err error) {
 	return err
 }
 
-// 	ParseVolumeInfo parse a volume info
-//	Input arguments:	string to be parsed:	string
-// 	Return Values:	vol: 	1. not nil: found one volume info	2. nil:	volume not found
-func parseVolumeInfo(output string) (vol *volumeInfo) {
-	out := strings.Trim(output, "\n")
-	lines := strings.Split(out, "\n")
-	for i, v := range lines {
-		switch i {
-		case 0:
-			cnt, err := readCountNumber(v)
-			if err != nil || cnt != 1 {
-				return nil
-			}
-		case 4:
-			vol = readVolumeInfoContent(v)
-		}
-	}
-	return vol
-}
-
-func parsePoolList(output string) (pools []string) {
-	out := strings.Trim(output, "\n")
-	lines := strings.Split(out, "\n")
-	for i, v := range lines {
-		if i == 0 {
-			cnt, err := readCountNumber(v)
-			if err != nil {
-				glog.Warningf(err.Error())
-				return nil
-			}
-			if cnt == 0 {
-				glog.Warningf("server has 0 pool")
-				return nil
-			}
-		} else if i >= 4 && v[0] != '+' {
-			pools = append(pools, readPoolName(v))
-		}
-	}
-	return pools
-}
-
-func readCountNumber(line string) (cnt int, err error) {
-	if !strings.Contains(line, "Count:") {
-		return cnt, fmt.Errorf("cannot found volume count")
-	}
-	line = strings.Replace(line, " ", "", -1)
-	lines := strings.Split(line, ":")
-	for i := range lines {
-		if i == 1 {
-			return strconv.Atoi(lines[i])
-		}
-	}
-	return cnt, fmt.Errorf("cannot found volume count")
-}
-
-func readVolumeInfoContent(line string) (ret *volumeInfo) {
-	curLine := strings.Replace(line, " ", "", -1)
-	curLine = strings.Trim(curLine, "|")
-	fields := strings.Split(curLine, "|")
-	volInfo := volumeInfo{}
-	for i, v := range fields {
-		switch i {
-		case 0:
-			volInfo.id = v
-		case 1:
-			volInfo.name = v
-		case 2:
-			size64, err := strconv.ParseInt(v, 10, 64)
-			if err != nil {
-				glog.Errorf("parse int64 [%d] error in string [%s]", v, line)
-				return nil
-			}
-			volInfo.size = size64
-		case 3:
-			rep, err := strconv.Atoi(v)
-			if err != nil {
-				glog.Errorf("parse int [%d] error in string [%s]", v, line)
-				return nil
-			}
-			volInfo.replicas = rep
-		case 5:
-			volInfo.status = v
-		}
-	}
-	ret = &volInfo
-	return ret
-}
-
-func readPoolName(line string) (pool string) {
-	curLine := strings.Replace(line, " ", "", -1)
-	curLine = strings.Trim(curLine, "|")
-	fields := strings.Split(curLine, "|")
-	if len(fields) == 1 {
-		return fields[0]
-	}
-	return ""
-}
+//	AttachVolume
+//func AttachVolume(volName string, )
