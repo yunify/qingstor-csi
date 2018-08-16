@@ -3,6 +3,7 @@ package neonsan
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 const (
@@ -204,7 +205,7 @@ func TestFindAttachedVolumeWithoutPool(t *testing.T) {
 		},
 	}
 	for _, v := range tests {
-		info, err := FindAttachedVolumeWithoutPool(v.name)
+		info, err := FindAttachedVolumeWithoutPool(v.volume)
 		if err != nil && v.errStr != "" {
 			if !strings.Contains(err.Error(), v.errStr) {
 				t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.errStr, err)
@@ -225,6 +226,7 @@ func TestFindAttachedVolumeWithoutPool(t *testing.T) {
 }
 
 func TestDetachVolume(t *testing.T) {
+	time.Sleep(3*time.Second)
 	tests := []struct {
 		name   string
 		volume string
