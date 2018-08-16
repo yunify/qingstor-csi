@@ -145,7 +145,7 @@ func AttachVolume(volName string, poolName string) (err error) {
 	if volName == "" || poolName == "" {
 		return fmt.Errorf("invalid input arguments")
 	}
-	args := []string{"-m", volName, "/", poolName, "-c", ConfigFilePath}
+	args := []string{"-m",  fmt.Sprintf("%s/%s", poolName, volName) , "-c", ConfigFilePath}
 	_, err = ExecCommand(CmdQbd, args)
 	return err
 }
@@ -155,7 +155,7 @@ func DetachVolume(volName string, poolName string) (err error) {
 	if volName == "" || poolName == "" {
 		return fmt.Errorf("invalid input arguments")
 	}
-	args := []string{"-u", poolName, "/", volName}
+	args := []string{"-u", fmt.Sprintf("%s/%s", poolName, volName)}
 	_, err = ExecCommand(CmdQbd, args)
 	return err
 }
