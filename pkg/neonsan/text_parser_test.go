@@ -130,6 +130,56 @@ func TestParsePoolInfo(t *testing.T) {
 	}
 }
 
+func TestParseAttachedVolumeList(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		infos []attachInfo
+	}{
+		{
+			name: "Two attached volume",
+			input: `dev_id  vol_id  device  volume  config  read_bps    write_bps   read_iops   write_iops
+0   0x3ff7000000    qbd0    csi/foo1    /etc/neonsan/qbd.conf   0   0   0   0
+1   0x3a7c000000    qbd1    csi/foo /etc/neonsan/qbd.conf   0   0   0   0
+
+`,
+			infos: []attachInfo{
+				attachInfo{
+					id:        "274726912000",
+					name:      "foo1",
+					device:    "/dev/qbd0",
+					pool:      "csi",
+					readBps:   0,
+					writeBps:  0,
+					readIops:  0,
+					writeIops: 0,
+				},
+				attachInfo{
+					id:        "251188477952",
+					name:      "foo",
+					device:    "/dev/qbd1",
+					pool:      "csi",
+					readBps:   0,
+					writeBps:  0,
+					readIops:  0,
+					writeIops: 0,
+				},
+			},
+		},
+	}
+
+	for _, v := range tests {
+		ret := ParseAttachVolumeList(v.input)
+		if len(v.infos) != len(ret) {
+			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.infos, ret)
+		} else {
+			if !reflect.DeepEqual(v.infos, ret) {
+				t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.infos, ret)
+			}
+		}
+	}
+}
+
 func TestReadCountNumber(t *testing.T) {
 	tests := []struct {
 		name   string

@@ -3,6 +3,7 @@ package neonsan
 import (
 	"fmt"
 	"github.com/golang/glog"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -66,6 +67,21 @@ func ParsePoolInfo(input string) (pool *poolInfo) {
 		}
 	}
 	return pool
+}
+
+//	ParseAttachedVolume
+func ParseAttachVolumeList(input string) (infoArr []attachInfo) {
+	in := strings.Trim(input, "\n")
+	lines := strings.Split(in, "\n")
+	for i, v := range lines {
+		if i > 0 {
+			info := readAttachVolumeInfo(v)
+			if info != nil {
+				infoArr = append(infoArr, *info)
+			}
+		}
+	}
+	return infoArr
 }
 
 func readCountNumber(line string) (cnt int, err error) {
@@ -161,4 +177,54 @@ func readPoolInfoContent(line string) (ret *poolInfo) {
 	}
 	ret = &poolInfo
 	return ret
+}
+
+func readAttachVolumeInfo(line string) (ret *attachInfo) {
+	fields := regexp.MustCompile("\\s+").Split(line, -1)
+	info := attachInfo{}
+	for i, v := range fields {
+		switch i {
+		case 1:
+			info.id = ParseIntToDec(v)
+		case 2:
+			info.device = "/dev/" + v
+		case 3:
+			args := strings.Split(v, "/")
+			if len(args) != 2 {
+				glog.Error("expect pool/volume, but actually [%s]", v)
+				return nil
+			}
+			info.pool = args[0]
+			info.name = args[1]
+		case 5:
+			num, err := strconv.ParseInt(v, 0, 64)
+			if err != nil {
+				glog.Error(err.Error())
+				return nil
+			}
+			info.readBps = num
+		case 6:
+			num, err := strconv.ParseInt(v, 0, 64)
+			if err != nil {
+				glog.Error(err.Error())
+				return nil
+			}
+			info.writeBps = num
+		case 7:
+			num, err := strconv.ParseInt(v, 0, 64)
+			if err != nil {
+				glog.Error(err.Error())
+				return nil
+			}
+			info.readIops = num
+		case 8:
+			num, err := strconv.ParseInt(v, 0, 64)
+			if err != nil {
+				glog.Error(err.Error())
+				return nil
+			}
+			info.writeIops = num
+		}
+	}
+	return &info
 }

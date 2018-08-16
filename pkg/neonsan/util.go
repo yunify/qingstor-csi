@@ -5,11 +5,13 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/golang/glog"
 	"os/exec"
+	"strconv"
 )
 
 const (
-	Int64Max     = int64(^uint64(0) >> 1)
-	PluginFolder = "/var/lib/kubelet/plugins/"
+	Int64Max        int64  = int64(^uint64(0) >> 1)
+	PluginFolder    string = "/var/lib/kubelet/plugins/"
+	DefaultPoolName string = "kube"
 )
 
 const (
@@ -25,7 +27,7 @@ const (
 	FileSystemExt3    string = "ext3"
 	FileSystemExt4    string = "ext4"
 	FileSystemXfs     string = "xfs"
-	FileSystemDefault string = FileSystemExt4
+	DefaultFileSystem string = FileSystemExt4
 )
 
 var (
@@ -92,4 +94,13 @@ func IsValidFileSystemType(fs string) bool {
 	default:
 		return false
 	}
+}
+
+//	ParseIntToDec convert number string to decimal number string
+func ParseIntToDec(hex string) (dec string) {
+	i64, err := strconv.ParseInt(hex, 0, 64)
+	if err != nil {
+		return ""
+	}
+	return strconv.FormatInt(i64, 10)
 }

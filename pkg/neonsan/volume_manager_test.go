@@ -7,6 +7,10 @@ import (
 	"testing"
 )
 
+const (
+	TestPoolName = "csi"
+)
+
 func TestMain(m *testing.M) {
 	flag.Set("alsologtostderr", "true")
 	flag.Set("log_dir", "/tmp")
@@ -27,18 +31,18 @@ func TestCreateVolume(t *testing.T) {
 		errStr    string
 	}{
 		{
-			name:      "Create succeed",
+			name:      "create succeed",
 			volName:   "foo",
-			volPool:   "csi",
+			volPool:   TestPoolName,
 			volSize64: 2 * gib,
 			replicas:  1,
 			infoExist: true,
 			errStr:    "",
 		},
 		{
-			name:      "Create failed",
+			name:      "create failed",
 			volName:   "foo",
-			volPool:   "csi",
+			volPool:   TestPoolName,
 			volSize64: 2 * gib,
 			replicas:  1,
 			infoExist: false,
@@ -74,19 +78,19 @@ func TestFindVolume(t *testing.T) {
 		info    *volumeInfo
 	}{
 		{
-			name:    "Found volume",
+			name:    "found volume",
 			volName: "foo",
-			volPool: "csi",
+			volPool: TestPoolName,
 			info: &volumeInfo{
 				name: "foo",
-				pool: "csi",
+				pool: TestPoolName,
 				size: 2 * gib,
 			},
 		},
 		{
-			name:    "Not found volume",
+			name:    "not found volume",
 			volName: "nofound",
-			volPool: "csi",
+			volPool: TestPoolName,
 			info:    nil,
 		},
 	}
@@ -112,12 +116,12 @@ func TestFindVolumeWithoutPool(t *testing.T) {
 		volPool string
 	}{
 		{
-			name:    "Find volume foo in pool csi",
+			name:    "found volume in pool",
 			volName: "foo",
-			volPool: "csi",
+			volPool: TestPoolName,
 		},
 		{
-			name:    "Find volume nofound in pool csi",
+			name:    "not found volume in pool",
 			volName: "nofound",
 			volPool: "",
 		},
@@ -139,6 +143,86 @@ func TestFindVolumeWithoutPool(t *testing.T) {
 	}
 }
 
+func TestAttachVolume(t *testing.T) {
+	tests := []struct {
+		name   string
+		volume string
+		pool   string
+		errStr string
+	}{
+		{
+			name:   "attach foo image",
+			volume: "foo",
+			pool:   TestPoolName,
+			errStr: "",
+		},
+		{
+			name:   "reattach foo image",
+			volume: "foo",
+			pool:   TestPoolName,
+			errStr: "error",
+		},
+		{
+			name:   "attach not exists image",
+			volume: "nofound",
+			pool:   TestPoolName,
+			errStr: "error",
+		},
+	}
+	for _, v := range tests {
+		err := AttachVolume(v.volume, v.pool)
+		if err == nil && v.errStr == "" {
+			continue
+		} else if err != nil && v.errStr != "" {
+			if !strings.Contains(err.Error(), v.errStr) {
+				t.Errorf("name [%s]: expect contains [%s], but actually [%s]", v.name, v.errStr, err.Error())
+			}
+		} else {
+			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.errStr, err)
+		}
+	}
+}
+
+func TestDetachVolume(t *testing.T) {
+	tests := []struct {
+		name   string
+		volume string
+		pool   string
+		errStr string
+	}{
+		{
+			name:   "detach foo image",
+			volume: "foo",
+			pool:   TestPoolName,
+			errStr: "",
+		},
+		{
+			name:   "re-detach foo image",
+			volume: "foo",
+			pool:   TestPoolName,
+			errStr: "error",
+		},
+		{
+			name:   "detach not exists image",
+			volume: "nofound",
+			pool:   TestPoolName,
+			errStr: "error",
+		},
+	}
+	for _, v := range tests {
+		err := DetachVolume(v.volume, v.pool)
+		if err == nil && v.errStr == "" {
+			continue
+		} else if err != nil && v.errStr != "" {
+			if !strings.Contains(err.Error(), v.errStr) {
+				t.Errorf("name [%s]: expect contains [%s], but actually [%s]", v.name, v.errStr, err.Error())
+			}
+		} else {
+			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.errStr, err)
+		}
+	}
+}
+
 func TestDeleteVolume(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -147,15 +231,15 @@ func TestDeleteVolume(t *testing.T) {
 		errStr  string
 	}{
 		{
-			name:    "Delete success",
+			name:    "delete success",
 			volName: "foo",
-			volPool: "csi",
+			volPool: TestPoolName,
 			errStr:  "",
 		},
 		{
-			name:    "Delete failed",
+			name:    "delete failed",
 			volName: "nofound",
-			volPool: "csi",
+			volPool: TestPoolName,
 			errStr:  "Volume not exists",
 		},
 	}

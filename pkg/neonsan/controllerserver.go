@@ -58,8 +58,6 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, status.Error(codes.OutOfRange, "Unsupport capacity range")
 	}
 
-	// Add pool in volume name
-	volumeName += "-" + sc.Pool
 	// Find exist volume name
 	exVol, err := FindVolume(volumeName, sc.Pool)
 	if err != nil {
@@ -114,30 +112,30 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, status.Error(codes.InvalidArgument, "Volume id missing in request")
 	}
 	// For now the image get unconditionally deleted, but here retention policy can be checked
-	volumeid := req.GetVolumeId()
+	volumeId := req.GetVolumeId()
 
 	// Deleting block image
-	glog.Infof("Deleting volume %s...", volumeid)
+	glog.Infof("Deleting volume %s...", volumeId)
 
 	// For idempotent:
 	// MUST reply OK when volume does not exist
-	volInfo, err := FindVolumeWithoutPool(volumeid)
+	volInfo, err := FindVolumeWithoutPool(volumeId)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if volInfo == nil {
-		glog.Warningf("Volume [%s] has been deleted.", volumeid)
+		glog.Warningf("Volume [%s] has been deleted.", volumeId)
 		return &csi.DeleteVolumeResponse{}, nil
 	}
 
 	// Do delete volume
-	glog.Infof("Deleting volume %s in pool %s...", volumeid, volInfo.pool)
-	err = DeleteVolume(volumeid, volInfo.pool)
+	glog.Infof("Deleting volume %s in pool %s...", volumeId, volInfo.pool)
+	err = DeleteVolume(volumeId, volInfo.pool)
 	if err != nil {
-		glog.Errorf("Failed to delete NeonSan volume: [%s] in pool [%s] with error: [%v].", volumeid, volInfo.pool, err)
+		glog.Errorf("Failed to delete NeonSan volume: [%s] in pool [%s] with error: [%v].", volumeId, volInfo.pool, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	glog.Infof("Succeed to delete NeonSan volume: [%s] in pool [%s]", volumeid, volInfo.pool)
+	glog.Infof("Succeed to delete NeonSan volume: [%s] in pool [%s]", volumeId, volInfo.pool)
 	return &csi.DeleteVolumeResponse{}, nil
 }
 

@@ -17,8 +17,8 @@ func NewDefaulNeonsanStorageClass() *neonsanStorageClass {
 	return &neonsanStorageClass{
 		Replicas:     1,
 		StepSize:     1,
-		Pool:         "csi",
-		VolumeFsType: FileSystemDefault,
+		Pool:         DefaultPoolName,
+		VolumeFsType: DefaultFileSystem,
 	}
 }
 

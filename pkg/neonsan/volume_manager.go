@@ -15,21 +15,24 @@ type volumeInfo struct {
 	pool     string
 }
 
+type attachInfo struct {
+	id        string
+	name      string
+	device    string
+	pool      string
+	readBps   int64
+	writeBps  int64
+	readIops  int64
+	writeIops int64
+}
+
 const (
 	CmdQbd               string = "qbd"
 	CmdNeonsan           string = "neonsan"
-	VolumeStatusOk              = "OK"
-	VolumeStatusError           = "ERROR"
-	VolumeStatusDegraded        = "DEGRADED"
+	VolumeStatusOk       string = "OK"
+	VolumeStatusError    string = "ERROR"
+	VolumeStatusDegraded string = "DEGRADED"
 )
-
-type VolumeManager interface {
-	FindVolume(volName string, volPool string) (outVol *volumeInfo, err error)
-	FindVolumeWithoutPool(volName string) (outVol *volumeInfo, err error)
-	GetPoolNameList() (pools []string, err error)
-	CreateVolume(volName string, volPool string, volSize64 int64, replicas int) (outVol *volumeInfo, err error)
-	DeleteVolume(volName string, volPool string) (err error)
-}
 
 // 	FindVolume
 // 	Description:	get volume detail information
@@ -56,27 +59,26 @@ func FindVolume(volName string, volPool string) (outVol *volumeInfo, err error) 
 }
 
 //	FindVolumeWithoutPool
-//	Description:	find volume without pool name, volume name must be unique in all pools
-//	Return cases:	pool,	nil:	found volume's pool
-//					"",		nil:	not found
-//					"",		error:	error
-func FindVolumeWithoutPool(volName string) (outVol *volumeInfo, err error) {
+//	Description:	find volume info in all pools
+//	Return cases:	volumes,	nil:	found volumes
+//					nil,		nil:	not found
+//					nil,		error:	error
+func FindVolumeWithoutPool(volName string) (volInfo *volumeInfo, err error) {
 	pools, err := GetPoolNameList()
 	if err != nil {
 		return nil, err
 	}
 	var volInfos []*volumeInfo
-	for _, p := range pools {
-		vol, err := FindVolume(volName, p)
+	for _, pool := range pools {
+		vol, err := FindVolume(volName, pool)
 		if err != nil {
-			glog.Errorf("error find volume [%s] in pool [%s]", vol.name, vol.pool)
+			glog.Errorf("error find volume [%s] in pool [%s]", volName, pool)
 			return nil, err
 		}
 		if vol != nil {
 			glog.Infof("found volume [%s] in pool [%s]", vol.name, vol.pool)
 			volInfos = append(volInfos, vol)
 		}
-
 	}
 	switch len(volInfos) {
 	case 0:
@@ -110,15 +112,18 @@ func GetPoolNameList() (pools []string, err error) {
 //			replica count:	int
 //	Return:	volume information pointer:	*volumeInfo
 //			error:	error
-func CreateVolume(volName string, volPool string, volSize64 int64, replicas int) (outVol *volumeInfo, err error) {
+func CreateVolume(volName string, poolName string, volSize64 int64, replicas int) (outVol *volumeInfo, err error) {
+	if volName == "" || poolName == "" || volSize64 == 0 {
+		return nil, fmt.Errorf("invalid input arguments")
+	}
 	// do create
-	args := []string{"create_volume", "--volume", volName, "--pool", volPool, "--size", strconv.FormatInt(volSize64, 10), "--repcount", strconv.Itoa(replicas), "-c", ConfigFilePath}
+	args := []string{"create_volume", "--volume", volName, "--pool", poolName, "--size", strconv.FormatInt(volSize64, 10), "--repcount", strconv.Itoa(replicas), "-c", ConfigFilePath}
 	_, err = ExecCommand(CmdNeonsan, args)
 	if err != nil {
 		return nil, err
 	}
 	// get volume information
-	return FindVolume(volName, volPool)
+	return FindVolume(volName, poolName)
 }
 
 // 	DeleteVolume
@@ -126,11 +131,61 @@ func CreateVolume(volName string, volPool string, volSize64 int64, replicas int)
 //	Input:	volume name:	string
 //			volume pool:	string
 //	Return:	error:	1. not nil: delete volume failed	2. nil: delete volume success
-func DeleteVolume(volName string, volPool string) (err error) {
-	args := []string{"delete_volume", "--volume", volName, "--pool", volPool, "-c", ConfigFilePath}
+func DeleteVolume(volName string, poolName string) (err error) {
+	if volName == "" || poolName == "" {
+		return fmt.Errorf("invalid input arguments")
+	}
+	args := []string{"delete_volume", "--volume", volName, "--pool", poolName, "-c", ConfigFilePath}
 	_, err = ExecCommand(CmdNeonsan, args)
 	return err
 }
 
 //	AttachVolume
-//func AttachVolume(volName string, )
+func AttachVolume(volName string, poolName string) (err error) {
+	if volName == "" || poolName == "" {
+		return fmt.Errorf("invalid input arguments")
+	}
+	args := []string{"-m", volName, "/", poolName, "-c", ConfigFilePath}
+	_, err = ExecCommand(CmdQbd, args)
+	return err
+}
+
+//	DetachVolume
+func DetachVolume(volName string, poolName string) (err error) {
+	if volName == "" || poolName == "" {
+		return fmt.Errorf("invalid input arguments")
+	}
+	args := []string{"-u", poolName, "/", volName}
+	_, err = ExecCommand(CmdQbd, args)
+	return err
+}
+
+// FindAttachedVolumeWithoutPool
+// Description:	get attachment volume info
+// Input:	volume name:	string
+//	Return cases:	info,	nil:	found attached volume
+//					nil,	nil:	attached volume not found
+//					nil,	err:	return error
+func FindAttachedVolumeWithoutPool(volName string) (info *attachInfo, err error) {
+	args := []string{"-l"}
+	output, err := ExecCommand(CmdQbd, args)
+	if err != nil {
+		glog.Infof("list attached volume failed")
+		return nil, err
+	}
+	infoArr := ParseAttachVolumeList(string(output))
+	var infoArrWithName []*attachInfo
+	for i, _ := range infoArr {
+		if infoArr[i].name == volName {
+			infoArrWithName = append(infoArrWithName, &infoArr[i])
+		}
+	}
+	switch len(infoArrWithName) {
+	case 0:
+		return nil, nil
+	case 1:
+		return infoArrWithName[0], nil
+	default:
+		return nil, fmt.Errorf("find duplicate volume [%v]", infoArrWithName)
+	}
+}
