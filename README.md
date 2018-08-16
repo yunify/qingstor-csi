@@ -62,7 +62,7 @@ parameters:
 reclaimPolicy: Delete
 ```
 
-- `pool`: NeonSAN pool. Default is `csi`.
+- `pool`: NeonSAN pool. Default is `kube`.
 
 - `replicas`: number of volume replicas. Default is `1`.
 
