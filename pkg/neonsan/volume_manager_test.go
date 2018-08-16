@@ -1,24 +1,24 @@
 package neonsan
 
 import (
-	"flag"
-	"os"
 	"strings"
 	"testing"
 )
 
 const (
-	TestPoolName = "csi"
+	TestPoolName           = "csi"
+	TestNormalVolumeName   = "foo"
+	TestNotFoundVolumeName = "nofound"
 )
 
-func TestMain(m *testing.M) {
-	flag.Set("alsologtostderr", "true")
-	flag.Set("log_dir", "/tmp")
-	flag.Set("v", "3")
-	flag.Parse()
-	ret := m.Run()
-	os.Exit(ret)
-}
+//func TestMain(m *testing.M) {
+//	flag.Set("alsologtostderr", "true")
+//	flag.Set("log_dir", "/tmp")
+//	flag.Set("v", "3")
+//	flag.Parse()
+//	ret := m.Run()
+//	os.Exit(ret)
+//}
 
 func TestCreateVolume(t *testing.T) {
 	tests := []struct {
@@ -32,7 +32,7 @@ func TestCreateVolume(t *testing.T) {
 	}{
 		{
 			name:      "create succeed",
-			volName:   "foo",
+			volName:   TestNormalVolumeName,
 			volPool:   TestPoolName,
 			volSize64: 2 * gib,
 			replicas:  1,
@@ -41,7 +41,7 @@ func TestCreateVolume(t *testing.T) {
 		},
 		{
 			name:      "create failed",
-			volName:   "foo",
+			volName:   TestNormalVolumeName,
 			volPool:   TestPoolName,
 			volSize64: 2 * gib,
 			replicas:  1,
@@ -79,7 +79,7 @@ func TestFindVolume(t *testing.T) {
 	}{
 		{
 			name:    "found volume",
-			volName: "foo",
+			volName: TestNormalVolumeName,
 			volPool: TestPoolName,
 			info: &volumeInfo{
 				name: "foo",
@@ -89,7 +89,7 @@ func TestFindVolume(t *testing.T) {
 		},
 		{
 			name:    "not found volume",
-			volName: "nofound",
+			volName: TestNotFoundVolumeName,
 			volPool: TestPoolName,
 			info:    nil,
 		},
@@ -117,12 +117,12 @@ func TestFindVolumeWithoutPool(t *testing.T) {
 	}{
 		{
 			name:    "found volume in pool",
-			volName: "foo",
+			volName: TestNormalVolumeName,
 			volPool: TestPoolName,
 		},
 		{
 			name:    "not found volume in pool",
-			volName: "nofound",
+			volName: TestNotFoundVolumeName,
 			volPool: "",
 		},
 	}
@@ -152,21 +152,21 @@ func TestAttachVolume(t *testing.T) {
 	}{
 		{
 			name:   "attach foo image",
-			volume: "foo",
+			volume: TestNormalVolumeName,
 			pool:   TestPoolName,
 			errStr: "",
 		},
 		{
 			name:   "reattach foo image",
-			volume: "foo",
+			volume: TestNormalVolumeName,
 			pool:   TestPoolName,
-			errStr: "error",
+			errStr: "exit status 17",
 		},
 		{
 			name:   "attach not exists image",
-			volume: "nofound",
+			volume: TestNotFoundVolumeName,
 			pool:   TestPoolName,
-			errStr: "error",
+			errStr: "exit status 154",
 		},
 	}
 	for _, v := range tests {
@@ -179,6 +179,47 @@ func TestAttachVolume(t *testing.T) {
 			}
 		} else {
 			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.errStr, err)
+		}
+	}
+}
+
+func TestFindAttachedVolumeWithoutPool(t *testing.T) {
+	tests := []struct {
+		name   string
+		volume string
+		pool   string
+		errStr string
+	}{
+		{
+			name:   "attach info",
+			volume: TestNormalVolumeName,
+			pool:   TestPoolName,
+			errStr: "",
+		},
+		{
+			name:   "nil attach info",
+			volume: TestNotFoundVolumeName,
+			pool:   "",
+			errStr: "",
+		},
+	}
+	for _, v := range tests {
+		info, err := FindAttachedVolumeWithoutPool(v.name)
+		if err != nil && v.errStr != "" {
+			if !strings.Contains(err.Error(), v.errStr) {
+				t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.errStr, err)
+			}
+		} else if !(err == nil && v.errStr == "") {
+			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.errStr, err)
+		}
+		if v.pool == "" && info == nil {
+			continue
+		} else if v.pool != "" && info != nil {
+			if v.pool != info.pool {
+				t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.pool, info)
+			}
+		} else {
+			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.pool, info)
 		}
 	}
 }
@@ -200,13 +241,13 @@ func TestDetachVolume(t *testing.T) {
 			name:   "re-detach foo image",
 			volume: "foo",
 			pool:   TestPoolName,
-			errStr: "error",
+			errStr: "exit status 25",
 		},
 		{
 			name:   "detach not exists image",
 			volume: "nofound",
 			pool:   TestPoolName,
-			errStr: "error",
+			errStr: "exit status 25",
 		},
 	}
 	for _, v := range tests {
