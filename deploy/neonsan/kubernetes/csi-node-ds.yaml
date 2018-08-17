@@ -71,7 +71,7 @@ spec:
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=5"
             - "--drivername=csi-neonsan"
-            - "--config=/etc/config/config.yaml"
+            - "--config=/etc/config/qbd.conf"
           env:
             - name: NODE_ID
               valueFrom:
@@ -91,6 +91,14 @@ spec:
               mountPropagation: "HostToContainer"
             - name: server-config
               mountPath: /etc/config
+            - name: neonsan-cmd
+              mountPath: /usr/bin
+            - name: qbd-cmd
+              mountPath: /usr/sbin
+            - name: lib
+              mountPath: /lib
+            - name: usrlib
+              mountPath: /usr/lib
       volumes:
         # make sure mount propagate feature gate is enabled
         - name: mount-dir
@@ -107,3 +115,17 @@ spec:
         - name: server-config
           configMap:
             name: csi-neonsan
+        - name: neonsan-cmd
+          hostPath:
+            path: /usr/bin
+            type: DirectoryOrCreate
+        - name: qbd-cmd
+          hostPath:
+            path: /usr/sbin
+            type: DirectoryOrCreate
+        - name: lib
+          hostPath:
+            path: /lib
+        - name: usrlib
+          hostPath:
+            path: /usr/lib

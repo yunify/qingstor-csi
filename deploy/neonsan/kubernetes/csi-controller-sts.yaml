@@ -104,7 +104,7 @@ spec:
               fieldPath: spec.nodeName
         - name: CSI_ENDPOINT
           value: unix://var/lib/csi/sockets/pluginproxy/csi.sock
-        imagePullPolicy: "IfNotPresent"
+        imagePullPolicy: "Always"
         volumeMounts:
         - name: socket-dir
           mountPath: /var/lib/csi/sockets/pluginproxy
