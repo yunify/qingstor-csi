@@ -53,7 +53,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	// check volume range
 	if requiredFormatByte > limitByte {
-		glog.Errorf("Request capacity range [%d, %d] bytes, format required size: %d gb",
+		glog.Errorf("Request capacity range [%d, %d] bytes, format required size: [%d] gb",
 			requiredByte, limitByte, requiredFormatByte)
 		return nil, status.Error(codes.OutOfRange, "Unsupport capacity range")
 	}
@@ -64,9 +64,9 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if exVol != nil {
-		glog.Infof("Request volume name: %s, size: %d, capacity range [%d,%d] bytes, pool: %s, replicas: %d",
+		glog.Infof("Request volume name: [%s], size: [%d], capacity range [%d,%d] bytes, pool: [%s], replicas: [%d]",
 			volumeName, requiredFormatByte, requiredByte, limitByte, sc.Pool, sc.Replicas)
-		glog.Infof("Exist volume name: %s, id: %s, capacity: %d bytes, pool: %s, replicas: %d, ",
+		glog.Infof("Exist volume name: [%s], id: [%s], capacity: [%d] bytes, pool: [%s], replicas: [%d], ",
 			exVol.name, exVol.id, exVol.size, exVol.pool, exVol.replicas)
 		if exVol.size >= requiredByte && exVol.size <= limitByte && exVol.replicas == sc.Replicas {
 			// exisiting volume is compatible with new request and should be reused.
@@ -79,11 +79,11 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			}, nil
 		}
 		return nil, status.Error(codes.AlreadyExists,
-			fmt.Sprintf("Volume %s already exsit but is incompatible", volumeName))
+			fmt.Sprintf("Volume [%s] already exsit but is incompatible", volumeName))
 	}
 
 	// do create volume
-	glog.Infof("Creating volume %s with %d bytes in pool %s...", volumeName, requiredFormatByte, sc.Pool)
+	glog.Infof("Creating volume [%s] with [%d] bytes in pool [%s]...", volumeName, requiredFormatByte, sc.Pool)
 	volumeInfo, err := CreateVolume(volumeName, sc.Pool, requiredFormatByte, sc.Replicas)
 	if err != nil {
 		return nil, err
@@ -115,7 +115,7 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	volumeId := req.GetVolumeId()
 
 	// Deleting block image
-	glog.Infof("Deleting volume %s...", volumeId)
+	glog.Infof("Deleting volume [%s]...", volumeId)
 
 	// For idempotent:
 	// MUST reply OK when volume does not exist
@@ -129,7 +129,7 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 
 	// Do delete volume
-	glog.Infof("Deleting volume %s in pool %s...", volumeId, volInfo.pool)
+	glog.Infof("Deleting volume [%s] in pool [%s]...", volumeId, volInfo.pool)
 	err = DeleteVolume(volumeId, volInfo.pool)
 	if err != nil {
 		glog.Errorf("Failed to delete NeonSan volume: [%s] in pool [%s] with error: [%v].", volumeId, volInfo.pool, err)

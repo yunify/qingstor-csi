@@ -6,6 +6,7 @@ import (
 	"github.com/golang/glog"
 	"os/exec"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -67,6 +68,17 @@ func ContainsVolumeCapabilities(accessModes []*csi.VolumeCapability_AccessMode, 
 		}
 	}
 	return true
+}
+
+// ContainsNodeServiceCapability
+// Does array of NodeServiceCapability contain node service capability of subCap
+func ContainsNodeServiceCapability(nodeCaps []*csi.NodeServiceCapability, subCap csi.NodeServiceCapability_RPC_Type) bool {
+	for _, v := range nodeCaps {
+		if strings.Contains(v.String(), subCap.String()) {
+			return true
+		}
+	}
+	return false
 }
 
 // FormatVolumeSize convert volume size properly
