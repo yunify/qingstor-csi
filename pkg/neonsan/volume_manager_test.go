@@ -226,7 +226,7 @@ func TestFindAttachedVolumeWithoutPool(t *testing.T) {
 }
 
 func TestDetachVolume(t *testing.T) {
-	time.Sleep(3*time.Second)
+	time.Sleep(3 * time.Second)
 	tests := []struct {
 		name   string
 		volume string

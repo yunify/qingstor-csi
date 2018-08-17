@@ -144,7 +144,7 @@ func TestParseAttachedVolumeList(t *testing.T) {
 
 `,
 			infos: []attachInfo{
-				attachInfo{
+				{
 					id:        "274726912000",
 					name:      "foo1",
 					device:    "/dev/qbd0",
@@ -154,7 +154,7 @@ func TestParseAttachedVolumeList(t *testing.T) {
 					readIops:  0,
 					writeIops: 0,
 				},
-				attachInfo{
+				{
 					id:        "251188477952",
 					name:      "foo",
 					device:    "/dev/qbd1",

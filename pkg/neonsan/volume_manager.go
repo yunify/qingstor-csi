@@ -175,7 +175,7 @@ func FindAttachedVolumeWithoutPool(volName string) (info *attachInfo, err error)
 	}
 	infoArr := ParseAttachVolumeList(string(output))
 	var infoArrWithName []*attachInfo
-	for i, _ := range infoArr {
+	for i := range infoArr {
 		if infoArr[i].name == volName {
 			infoArrWithName = append(infoArrWithName, &infoArr[i])
 		}
