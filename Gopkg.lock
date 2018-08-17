@@ -111,9 +111,32 @@
   revision = "32fb0ac620c32ba40a4626ddf94d90d12cce3455"
   version = "v1.14.0"
 
+[[projects]]
+  branch = "master"
+  name = "k8s.io/apimachinery"
+  packages = ["pkg/util/sets"]
+  revision = "ef51ab160544f9d05b68e132a4af0b0fab459954"
+
+[[projects]]
+  name = "k8s.io/kubernetes"
+  packages = [
+    "pkg/util/file",
+    "pkg/util/io",
+    "pkg/util/mount",
+    "pkg/util/nsenter"
+  ]
+  revision = "bb9ffb1654d4a729bb4cec18ff088eacc153c239"
+  version = "v1.11.2"
+
+[[projects]]
+  branch = "master"
+  name = "k8s.io/utils"
+  packages = ["exec"]
+  revision = "045dc31ee5c40e8240241ce28dc24d7b56130373"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "2b4096fac3ac1c8485923316f1ddb6897125acf6fece6e2ac3b30c603103676f"
+  inputs-digest = "6f3e8eff88d8ba8e559f75a8c2c60896eab7aa53dda39ba5d7508d8f5d4f1f27"
   solver-name = "gps-cdcl"
   solver-version = 1
