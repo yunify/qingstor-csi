@@ -274,6 +274,7 @@ func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 	}
 
 	// check argument
+	glog.Info("Check input arguments")
 	if len(req.GetVolumeId()) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
 	}
@@ -286,6 +287,7 @@ func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 	targetPath := req.GetStagingTargetPath()
 
 	// check volume exist
+	glog.Info("Get volume info")
 	volInfo, err := FindVolumeWithoutPool(volumeId)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -301,31 +303,33 @@ func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	if notMnt {
-		return &csi.NodeUnstageVolumeResponse{}, nil
-	}
+	if !notMnt {
+		glog.Warningf("Not mount point at target path [%s]", targetPath)
 
-	// count mount point
-	_, cnt, err := mount.GetDeviceNameFromMount(mounter, targetPath)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
+		// count mount point
+		_, cnt, err := mount.GetDeviceNameFromMount(mounter, targetPath)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
 
-	// do unmount
-	err = mounter.Unmount(targetPath)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	glog.Infof("Volume [%s] has been unmounted.", volumeId)
-	cnt--
-	glog.Infof("Mount count: [%d]", cnt)
-	if cnt > 0 {
-		glog.Errorf("Volume [%s] still mounted current node", volumeId)
-		return nil, status.Error(codes.Internal, "Unmount failed")
+		// do unmount
+		glog.Infof("Unmount target path [%s]", targetPath)
+		err = mounter.Unmount(targetPath)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		glog.Infof("Volume [%s] has been unmounted.", volumeId)
+		cnt--
+		glog.Infof("Mount count: [%d]", cnt)
+		if cnt > 0 {
+			glog.Errorf("Volume [%s] still mounted current node", volumeId)
+			return nil, status.Error(codes.Internal, "Unmount failed")
+		}
 	}
 
 	// Unmap
 	// check map status
+	glog.Infof("Get attached volume [%s] info.", volumeId)
 	attInfo, err := FindAttachedVolumeWithoutPool(volumeId)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())

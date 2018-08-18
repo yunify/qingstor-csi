@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const (
@@ -39,6 +40,7 @@ var (
 // Return cases:	normal output,	nil:	normal output
 //					error logs,		error:	command execute error
 func ExecCommand(command string, args []string) ([]byte, error) {
+	time.Sleep(time.Second * 3)
 	glog.Infof("execCommand: command = \"%s\", args = \"%v\"", command, args)
 	cmd := exec.Command(command, args...)
 	output, err := cmd.CombinedOutput()
