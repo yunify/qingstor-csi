@@ -155,8 +155,8 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 // csi.ValidateVolumeCapabilitiesRequest: 	volume id 			+ Required
 // 											volume capability 	+ Required
 func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
-	glog.Info("----- Start ValidateVolumeCapabilities -----")
-	defer glog.Info("===== End ValidateVolumeCapabilities =====")
+	glog.Info("*************** Start ValidateVolumeCapabilities ***************")
+	defer glog.Info("=============== End ValidateVolumeCapabilities ===============")
 
 	glog.Info("Validate input arguments.")
 	// require volume id parameter

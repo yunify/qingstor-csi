@@ -103,7 +103,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	// For idempotent:
 	// If the volume corresponding to the volume id has already been published at the specified target path,
 	// and is compatible with the specified volume capability and readonly flag, the plugin MUST reply 0 OK.
-	glog.Infof("If target path [%s] is mounted: [%t].", targetPath, !notMnt)
+	glog.Infof("Is target path [%s] mounted: [%t].", targetPath, !notMnt)
 	if !notMnt {
 		glog.Warningf("Volume [%s] has been mounted at [%s].", volumeId, targetPath)
 		return &csi.NodePublishVolumeResponse{}, nil
@@ -160,7 +160,7 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	glog.Infof("If target path [%s] is mounted: [%t].", targetPath, !notMnt)
+	glog.Infof("Is target path [%s] mounted: [%t].", targetPath, !notMnt)
 	if notMnt {
 		glog.Warningf("Volume [%s] does not has not mount point.", volumeId)
 		return &csi.NodeUnpublishVolumeResponse{}, nil
@@ -270,7 +270,7 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	}
 
 	// already mount
-	glog.Infof("If target path [%s] is mounted: [%t].", targetPath, !notMnt)
+	glog.Infof("Is target path [%s] mounted: [%t].", targetPath, !notMnt)
 	if !notMnt {
 		glog.Warningf("Target path [%s] has been mounted.", targetPath)
 		return &csi.NodeStageVolumeResponse{}, nil
@@ -334,7 +334,7 @@ func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	glog.Infof("If target path [%s] is mounted: [%t].", targetPath, !notMnt)
+	glog.Infof("Is target path [%s] mounted: [%t].", targetPath, !notMnt)
 	if !notMnt {
 		glog.Infof("Target path [%s] has been mounted.", targetPath)
 
