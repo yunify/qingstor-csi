@@ -27,12 +27,6 @@ func (ids *identityServer) Probe(ctx context.Context, req *csi.ProbeRequest) (*c
 	}
 	glog.Info("Succeed to execute Neonsan command.")
 
-	if err := ProbeQbdCommand(); err != nil {
-		glog.Error("Missing required dependency [qbd]")
-		return nil, status.Error(codes.FailedPrecondition, err.Error())
-	}
-	glog.Info("Succeed to execute Qbd command.")
-
 	// verify configuration
 	glog.Info("Verify configuration")
 	if _, err := os.Stat(ConfigFilePath); err != nil {
