@@ -299,3 +299,39 @@ func TestDeleteVolume(t *testing.T) {
 		}
 	}
 }
+
+func TestProbeNeonsanCommand(t *testing.T) {
+	tests := []struct {
+		name   string
+		nilErr bool
+	}{
+		{
+			name:   "Probe Neonsan",
+			nilErr: true,
+		},
+	}
+	for _, v := range tests {
+		err := ProbeNeonsanCommand()
+		if (err == nil) != v.nilErr {
+			t.Errorf("name %s: expect %t, but actually %t, error [%v].", v.name, v.nilErr, err == nil, err)
+		}
+	}
+}
+
+func TestProbeQbdCommand(t *testing.T) {
+	tests := []struct {
+		name   string
+		nilErr bool
+	}{
+		{
+			name:   "Probe Qbd",
+			nilErr: true,
+		},
+	}
+	for _, v := range tests {
+		err := ProbeQbdCommand()
+		if (err == nil) != v.nilErr {
+			t.Errorf("name %s: expect %t, but actually %t, error [%v].", v.name, v.nilErr, err == nil, err)
+		}
+	}
+}

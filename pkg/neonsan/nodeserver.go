@@ -83,6 +83,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	}
+	glog.Infof("Succeed to find target path [%s].", targetPath)
 
 	// check targetPath is mounted
 	glog.Infof("Check target path [%s] mounted status.", targetPath)
@@ -102,6 +103,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	// For idempotent:
 	// If the volume corresponding to the volume id has already been published at the specified target path,
 	// and is compatible with the specified volume capability and readonly flag, the plugin MUST reply 0 OK.
+	glog.Infof("If target path [%s] is mounted: [%t].", targetPath, !notMnt)
 	if !notMnt {
 		glog.Warningf("Volume [%s] has been mounted at [%s].", volumeId, targetPath)
 		return &csi.NodePublishVolumeResponse{}, nil
@@ -145,6 +147,7 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	glog.Infof("Found volume [%s] info [%v].", volumeId, volInfo)
 	if volInfo == nil {
 		return nil, status.Errorf(codes.NotFound, "Volume [%s] does not exist.", volumeId)
 	}
@@ -157,6 +160,7 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	glog.Infof("If target path [%s] is mounted: [%t].", targetPath, !notMnt)
 	if notMnt {
 		glog.Warningf("Volume [%s] does not has not mount point.", volumeId)
 		return &csi.NodeUnpublishVolumeResponse{}, nil
@@ -214,8 +218,10 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if volInfo == nil {
+		glog.Errorf("Not found volume [%s] in pool [%s].", volumeId, sc.Pool)
 		return nil, status.Errorf(codes.NotFound, "Volume [%s] does not exist", volumeId)
 	}
+	glog.Infof("Found volume [%s] in pool [%s] info [%v]", volumeId, sc.Pool, volInfo)
 
 	// Attach volume
 	// map volume
@@ -224,6 +230,7 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	glog.Infof("Succeed to map volume [%s].", volumeId)
 
 	// find volume device path
 	glog.Infof("Find volume [%s] mapping info.", volumeId)
@@ -233,16 +240,19 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
-		if attInfo == nil {
-			glog.Warningf("Cannot find attached volume [%s], retry for [%d] times...", volumeId, i)
-			time.Sleep(time.Duration(i) * time.Second)
-		} else if attInfo.pool != sc.Pool {
-			return nil, status.Errorf(codes.Internal, "Volume [%s] pool mismatch: expect pool [%s], "+
-				"but actually [%s].", volumeId, sc.Pool, attInfo.pool)
+		if attInfo != nil {
+			break
 		}
+		glog.Warningf("Cannot find attached volume [%s], retry for [%d] times...", volumeId, i)
+		time.Sleep(time.Duration(i) * time.Second)
 	}
+
+	glog.Infof("Found volume [%s] attached info [%v]", volumeId, attInfo)
 	if attInfo == nil {
 		return nil, status.Errorf(codes.Internal, "Cannot find attached volume [%s].", volumeId)
+	} else if attInfo.pool != sc.Pool {
+		return nil, status.Errorf(codes.Internal, "Volume [%s] pool mismatch: expect pool [%s], "+
+			"but actually [%s].", volumeId, sc.Pool, attInfo.pool)
 	}
 
 	// if volume already mounted
@@ -260,10 +270,12 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	}
 
 	// already mount
+	glog.Infof("If target path [%s] is mounted: [%t].", targetPath, !notMnt)
 	if !notMnt {
-		glog.Infof("Target path [%s] has been mounted.", targetPath)
+		glog.Warningf("Target path [%s] has been mounted.", targetPath)
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
+	glog.Infof("Target path [%s] has not been mounted yet.", targetPath)
 
 	// do mount
 	devicePath := attInfo.device
@@ -316,14 +328,15 @@ func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 
 	// Unmount
 	// get target path mount status
-	glog.Infof("Check targetPath [%s] mount info.", targetPath)
+	glog.Infof("Check target path [%s] mount info.", targetPath)
 	mounter := mount.New("")
 	notMnt, err := mounter.IsLikelyNotMountPoint(targetPath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	glog.Infof("If target path [%s] is mounted: [%t].", targetPath, !notMnt)
 	if !notMnt {
-		glog.Warningf("Not mount point at target path [%s].", targetPath)
+		glog.Infof("Target path [%s] has been mounted.", targetPath)
 
 		// count mount point
 		_, cnt, err := mount.GetDeviceNameFromMount(mounter, targetPath)
@@ -345,6 +358,7 @@ func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 			return nil, status.Error(codes.Internal, "Un-mount failed")
 		}
 	}
+	glog.Warningf("Target path [%s] has not been mounted yet.", targetPath)
 
 	// Unmap
 	// check map status
@@ -361,6 +375,7 @@ func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 		return nil, status.Errorf(codes.Internal, "Find duplicate volume [%s] in pool [%s] and [%s].", volumeId,
 			volInfo.pool, attInfo.pool)
 	}
+	glog.Infof("Attached volume [%s] info [%v]", volumeId, attInfo)
 
 	// do unmap
 	pool := volInfo.pool

@@ -189,3 +189,25 @@ func FindAttachedVolumeWithoutPool(volName string) (info *attachInfo, err error)
 		return nil, fmt.Errorf("find duplicate volume [%v]", infoArrWithName)
 	}
 }
+
+// Probe Qbd command
+func ProbeQbdCommand() (err error) {
+	args := []string{"-h"}
+	_, err = ExecCommand(CmdQbd, args)
+	if err != nil {
+		glog.Error("Probe Qbd command failed.")
+		return err
+	}
+	return nil
+}
+
+// Probe Neonsan command
+func ProbeNeonsanCommand() (err error) {
+	args := []string{"-h"}
+	_, err = ExecCommand(CmdNeonsan, args)
+	if err != nil {
+		glog.Error("Probe Neonsan command failed.")
+		return err
+	}
+	return nil
+}

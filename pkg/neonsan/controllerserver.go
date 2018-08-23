@@ -86,6 +86,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		}
 		return nil, status.Errorf(codes.AlreadyExists, "Volume [%s] already exists but is incompatible.", volumeName)
 	}
+	glog.Infof("Not Found duplicate volume name [%s].", volumeName)
 
 	// do create volume
 	glog.Infof("Creating volume [%s] with [%d] bytes in pool [%s]...", volumeName, requiredFormatByte, sc.Pool)
@@ -95,7 +96,8 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			requiredFormatByte, sc.Pool, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	glog.Info("Succeed to create volume [%s] with [%d] bytes in pool [%s].", volumeName, requiredFormatByte, sc.Pool)
+	glog.Infof("Succeed to create volume [%s] with [%d] bytes in pool [%s].", volumeName, requiredFormatByte,
+		sc.Pool)
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
 			Id:            volumeInfo.name,
@@ -133,9 +135,10 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if volInfo == nil {
-		glog.Warningf("Volume [%s] has been deleted.", volumeId)
+		glog.Warningf("Not found volume [%s].", volumeId)
 		return &csi.DeleteVolumeResponse{}, nil
 	}
+	glog.Infof("Found volume [%s].", volumeId)
 
 	// Do delete volume
 	glog.Infof("Deleting volume [%s] in pool [%s]...", volumeId, volInfo.pool)
@@ -181,8 +184,10 @@ func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if outVol == nil {
+		glog.Errorf("Not found volume [%s] in pool [%s].", volumeId, sc.Pool)
 		return nil, status.Errorf(codes.NotFound, "Volume %s does not exist.", volumeId)
 	}
+	glog.Infof("Found volume [%s] in pool [%s].", volumeId, sc.Pool)
 
 	// check capability
 	glog.Info("Check capability.")
