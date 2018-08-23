@@ -2,6 +2,8 @@ package neonsan
 
 import "fmt"
 
+// poolInfo: stats pool
+// total, free, used: pool size in bytes
 type poolInfo struct {
 	id    string
 	name  string

@@ -210,3 +210,31 @@ func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 		Supported: true,
 	}, nil
 }
+
+// GetCapacity: allow the CO to query the capacity of the storage pool from which the controller provisions volumes.
+func (cs *controllerServer) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (*csi.GetCapacityResponse, error) {
+	// Create StorageClass object
+	glog.Info("Create StorageClass object.")
+	sc, err := NewNeonsanStorageClassFromMap(req.GetParameters())
+	if err != nil {
+		glog.Info("Failed to create StorageClass object.")
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	glog.Info("Succeed to create StorageClass object.")
+
+	// Find pool information
+	poolInfo, err := FindPool(sc.Pool)
+	if err != nil{
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if poolInfo == nil{
+		glog.Infof("Cannot find pool [%s].", sc.Pool)
+		return nil, status.Error(codes.NotFound, err.Error())
+	}
+
+	glog.Infof("Succeed to find pool name [%s], id [%s], total [%d] bytes, free [%d] bytes, used [%d] bytes.",
+		poolInfo.name, poolInfo.id, poolInfo.total, poolInfo.free, poolInfo.used)
+	return &csi.GetCapacityResponse{
+		AvailableCapacity: poolInfo.free,
+	}, nil
+}

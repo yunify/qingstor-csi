@@ -12,15 +12,6 @@ const (
 	TestNotFoundVolumeName = "nofound"
 )
 
-//func TestMain(m *testing.M) {
-//	flag.Set("alsologtostderr", "true")
-//	flag.Set("log_dir", "/tmp")
-//	flag.Set("v", "3")
-//	flag.Parse()
-//	ret := m.Run()
-//	os.Exit(ret)
-//}
-
 func TestCreateVolume(t *testing.T) {
 	tests := []struct {
 		name      string
