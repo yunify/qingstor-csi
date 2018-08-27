@@ -224,10 +224,10 @@ func (cs *controllerServer) GetCapacity(ctx context.Context, req *csi.GetCapacit
 
 	// Find pool information
 	poolInfo, err := FindPool(sc.Pool)
-	if err != nil{
+	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	if poolInfo == nil{
+	if poolInfo == nil {
 		glog.Infof("Cannot find pool [%s].", sc.Pool)
 		return nil, status.Error(codes.NotFound, err.Error())
 	}

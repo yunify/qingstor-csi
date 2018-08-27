@@ -58,7 +58,7 @@ func (neons *neonsan) Run(driverName, nodeId, endpoint string) {
 	}
 	neons.driver.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
-		csi.ControllerServiceCapability_RPC_GET_CAPACITY,})
+		csi.ControllerServiceCapability_RPC_GET_CAPACITY})
 	neons.driver.AddVolumeCapabilityAccessModes([]csi.VolumeCapability_AccessMode_Mode{
 		csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER})
 	// Create GRPC servers
