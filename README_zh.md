@@ -71,7 +71,7 @@ $ kubectl apply -f ./csi-node-rbac.yaml
 
 ### 部署 CSI 插件
 
-> 注：如果Kubernetes集群的Kubelet设置了 `--root-dir` 选项（默认为 *"/var/lib/kubelet"*），请将 `csi-node.ds.yaml` 文件 `spec.template.spec.containers[name=csi-neonsan].volumeMounts[name=mount-dir].mountPath` 和 `spec.template.spec.volumes[name=mount-dir].hostPath.path` 的值 *"/var/lib/kubelet"* 替换为 `--root-dir` 选项的值。
+> 注：如果Kubernetes集群的Kubelet设置了 `--root-dir` 选项（默认为 *"/var/lib/kubelet"*），请将 `csi-node-ds.yaml` 文件 `spec.template.spec.containers[name=csi-neonsan].volumeMounts[name=mount-dir].mountPath` 和 `spec.template.spec.volumes[name=mount-dir].hostPath.path` 的值 *"/var/lib/kubelet"* 替换为 `--root-dir` 选项的值。
 
 ```
 $ kubectl apply -f ./csi-controller-sts.yaml

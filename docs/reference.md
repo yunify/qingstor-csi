@@ -2,14 +2,14 @@
 
 ## Dependency
 
-| Storage Type| Plugin Version | Branch| CSI Version | Kubernetes Version | Sanity Test | NeonSAN Version|
+| Storage Type| Plugin Version | Branch| CSI Version | Kubernetes Version | Sanity Test | NeonSAN Version|
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 |NeonSAN|v0.3.0-alpha.1|Master| v0.3.0| v1.11.0|v0.3.0-1 | client: dev  |
 
 ## Feature
 
 | Plugin Version   | Create & Delete Volume  | Mount & Unmount Volume on Workload | Create & Delete Snapshot | Create Volume from Snapshot | Sanity Test |
-|:---:|:---:|:-------------------------:|:----------:|:---------:|:--------:|:-------:|
+|:---:|:---:|:-------------------------:|:----------:|:---------:|:--------:|
 | v0.3.0-alpha.1|✓|✓|-|-|✓|
 
 > - `✓`: Supported
