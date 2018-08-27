@@ -3,6 +3,7 @@
 [![Build Status](https://travis-ci.org/yunify/qingstor-csi.svg?branch=master)](https://travis-ci.org/yunify/qingstor-csi)
 [![Go Report Card](https://goreportcard.com/badge/github.com/yunify/qingstor-csi)](https://goreportcard.com/report/github.com/yunify/qingstor-csi)
 
+> English | [中文](README_zh.md)
 ## Description
 QingStor CSI plugin implements an interface between Container Storage Interface ([CSI](https://github.com/container-storage-interface/)) enabled Container Orchestrator (CO) and the storage of QingStor. Currently, QingCloud CSI plugin is tested in Kubernetes v1.11+ environment.
 
@@ -96,4 +97,4 @@ reclaimPolicy: Delete
 - `fsType`: `ext3`, `ext4`, `xfs`. Default `ext4`.
 
 ## Support
-If you have any qustions or suggestions, please submit an issue at [qingstor-csi](https://github.com/yunify/qingstor-csi/issues)
+If you have any qustions or suggestions, please submit an issue at [qingstor-csi](https://github.com/yunify/qingstor-csi/issues).
