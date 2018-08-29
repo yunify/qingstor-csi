@@ -1,3 +1,19 @@
+/*
+Copyright 2018 Yunify, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package neonsan
 
 import (
@@ -175,7 +191,7 @@ func FindAttachedVolumeWithoutPool(volName string) (info *attachInfo, err error)
 	}
 	infoArr := ParseAttachVolumeList(string(output))
 	var infoArrWithName []*attachInfo
-	for i, _ := range infoArr {
+	for i := range infoArr {
 		if infoArr[i].name == volName {
 			infoArrWithName = append(infoArrWithName, &infoArr[i])
 		}
@@ -188,4 +204,26 @@ func FindAttachedVolumeWithoutPool(volName string) (info *attachInfo, err error)
 	default:
 		return nil, fmt.Errorf("find duplicate volume [%v]", infoArrWithName)
 	}
+}
+
+// Probe Qbd command
+func ProbeQbdCommand() (err error) {
+	args := []string{"-h"}
+	_, err = ExecCommand(CmdQbd, args)
+	if err != nil {
+		glog.Error("Probe Qbd command failed.")
+		return err
+	}
+	return nil
+}
+
+// Probe Neonsan command
+func ProbeNeonsanCommand() (err error) {
+	args := []string{"-h"}
+	_, err = ExecCommand(CmdNeonsan, args)
+	if err != nil {
+		glog.Error("Probe Neonsan command failed.")
+		return err
+	}
+	return nil
 }

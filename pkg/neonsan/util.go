@@ -1,3 +1,19 @@
+/*
+Copyright 2018 Yunify, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package neonsan
 
 import (
@@ -6,6 +22,8 @@ import (
 	"github.com/golang/glog"
 	"os/exec"
 	"strconv"
+	"strings"
+	"time"
 )
 
 const (
@@ -39,6 +57,7 @@ var (
 //					error logs,		error:	command execute error
 func ExecCommand(command string, args []string) ([]byte, error) {
 	glog.Infof("execCommand: command = \"%s\", args = \"%v\"", command, args)
+	time.Sleep(time.Second)
 	cmd := exec.Command(command, args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -67,6 +86,17 @@ func ContainsVolumeCapabilities(accessModes []*csi.VolumeCapability_AccessMode, 
 		}
 	}
 	return true
+}
+
+// ContainsNodeServiceCapability
+// Does array of NodeServiceCapability contain node service capability of subCap
+func ContainsNodeServiceCapability(nodeCaps []*csi.NodeServiceCapability, subCap csi.NodeServiceCapability_RPC_Type) bool {
+	for _, v := range nodeCaps {
+		if strings.Contains(v.String(), subCap.String()) {
+			return true
+		}
+	}
+	return false
 }
 
 // FormatVolumeSize convert volume size properly

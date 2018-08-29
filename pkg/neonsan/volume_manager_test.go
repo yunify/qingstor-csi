@@ -1,3 +1,19 @@
+/*
+Copyright 2018 Yunify, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package neonsan
 
 import (
@@ -11,15 +27,6 @@ const (
 	TestNormalVolumeName   = "foo"
 	TestNotFoundVolumeName = "nofound"
 )
-
-//func TestMain(m *testing.M) {
-//	flag.Set("alsologtostderr", "true")
-//	flag.Set("log_dir", "/tmp")
-//	flag.Set("v", "3")
-//	flag.Parse()
-//	ret := m.Run()
-//	os.Exit(ret)
-//}
 
 func TestCreateVolume(t *testing.T) {
 	tests := []struct {
@@ -226,7 +233,7 @@ func TestFindAttachedVolumeWithoutPool(t *testing.T) {
 }
 
 func TestDetachVolume(t *testing.T) {
-	time.Sleep(3*time.Second)
+	time.Sleep(3 * time.Second)
 	tests := []struct {
 		name   string
 		volume string
@@ -296,6 +303,42 @@ func TestDeleteVolume(t *testing.T) {
 			}
 		} else {
 			t.Errorf("name %s: error expect [%s], but actually [%v]", v.name, v.errStr, err)
+		}
+	}
+}
+
+func TestProbeNeonsanCommand(t *testing.T) {
+	tests := []struct {
+		name   string
+		nilErr bool
+	}{
+		{
+			name:   "Probe Neonsan",
+			nilErr: true,
+		},
+	}
+	for _, v := range tests {
+		err := ProbeNeonsanCommand()
+		if (err == nil) != v.nilErr {
+			t.Errorf("name %s: expect %t, but actually %t, error [%v].", v.name, v.nilErr, err == nil, err)
+		}
+	}
+}
+
+func TestProbeQbdCommand(t *testing.T) {
+	tests := []struct {
+		name   string
+		nilErr bool
+	}{
+		{
+			name:   "Probe Qbd",
+			nilErr: true,
+		},
+	}
+	for _, v := range tests {
+		err := ProbeQbdCommand()
+		if (err == nil) != v.nilErr {
+			t.Errorf("name %s: expect %t, but actually %t, error [%v].", v.name, v.nilErr, err == nil, err)
 		}
 	}
 }
