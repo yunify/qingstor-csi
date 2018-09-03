@@ -21,6 +21,43 @@ import (
 	"testing"
 )
 
+func TestParseNeonsanListr(t *testing.T) {
+	tests := []struct {
+		name   string
+		output string
+		fun    func(string) interface{}
+		vol    []interface{}
+	}{
+		{
+			name: "Parse volume list",
+			output: `Volume Count:  1
++--------------+------+-------------+-----------+---------------+--------+---------------------+---------------------+
+|      ID      | NAME |    SIZE     | REP COUNT | MIN REP COUNT | STATUS |     STATUS TIME     |    CREATED TIME     |
++--------------+------+-------------+-----------+---------------+--------+---------------------+---------------------+
+| 251188477952 | foo  | 10737418240 |         1 |             1 | OK     | 2018-07-09 12:18:34 | 2018-07-09 12:18:34 |
++--------------+------+-------------+-----------+---------------+--------+---------------------+---------------------+`,
+			fun: readVolumeListLine,
+			vol: []interface{}{
+				&volumeInfo{
+					id:       "251188477952",
+					name:     "foo",
+					size:     10737418240,
+					status:   VolumeStatusOk,
+					replicas: 1,
+				},
+			},
+		},
+	}
+	for _, v := range tests {
+		lists := ParseNeonsanList(v.output, v.fun)
+
+		if !reflect.DeepEqual(interface{}(v.vol), lists) {
+			t.Errorf("name %s: expect %v, but actually %v", v.name, v.vol, lists)
+		}
+	}
+}
+
+/*
 func TestParseVolumeInfo(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -29,11 +66,11 @@ func TestParseVolumeInfo(t *testing.T) {
 	}{
 		{
 			name: "Found volume",
-			output: `Volume Count:  1 
-+--------------+------+-------------+-----------+---------------+--------+---------------------+---------------------+ 
-|      ID      | NAME |    SIZE     | REP COUNT | MIN REP COUNT | STATUS |     STATUS TIME     |    CREATED TIME     | 
-+--------------+------+-------------+-----------+---------------+--------+---------------------+---------------------+ 
-| 251188477952 | foo  | 10737418240 |         1 |             1 | OK     | 2018-07-09 12:18:34 | 2018-07-09 12:18:34 | 
+			output: `Volume Count:  1
++--------------+------+-------------+-----------+---------------+--------+---------------------+---------------------+
+|      ID      | NAME |    SIZE     | REP COUNT | MIN REP COUNT | STATUS |     STATUS TIME     |    CREATED TIME     |
++--------------+------+-------------+-----------+---------------+--------+---------------------+---------------------+
+| 251188477952 | foo  | 10737418240 |         1 |             1 | OK     | 2018-07-09 12:18:34 | 2018-07-09 12:18:34 |
 +--------------+------+-------------+-----------+---------------+--------+---------------------+---------------------+`,
 			vol: &volumeInfo{
 				id:       "251188477952",
@@ -45,7 +82,7 @@ func TestParseVolumeInfo(t *testing.T) {
 		},
 	}
 	for _, v := range tests {
-		exVol := ParseVolumeInfo(v.output)
+		exVol := ParseVolumeList(v.output)
 		if (v.vol == nil && exVol != nil) || (v.vol != nil && exVol == nil) {
 			t.Errorf("name %s: parse error, expect %v, but actually %v", v.name, v.vol, exVol)
 		} else if !reflect.DeepEqual(*v.vol, *exVol) {
@@ -53,7 +90,7 @@ func TestParseVolumeInfo(t *testing.T) {
 		}
 	}
 }
-
+/*
 func TestParsePoolList(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -246,3 +283,4 @@ func TestReadCountNumber(t *testing.T) {
 		}
 	}
 }
+*/

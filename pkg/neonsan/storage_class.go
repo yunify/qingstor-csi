@@ -26,6 +26,7 @@ type neonsanStorageClass struct {
 	VolumeFsType string `json:"fsType"`
 	Pool         string `json:"pool"`
 	StepSize     int    `json:"stepSize"`
+	Protocol     string `json: "protocol"`
 }
 
 // NewDefaulNeonsanStorageClass create default neonsanStorageClass object
@@ -34,7 +35,8 @@ func NewDefaulNeonsanStorageClass() *neonsanStorageClass {
 		Replicas:     1,
 		StepSize:     1,
 		Pool:         DefaultPoolName,
-		VolumeFsType: DefaultFileSystem,
+		VolumeFsType: FileSystemDefault,
+		Protocol:     ProtocolDefault,
 	}
 }
 

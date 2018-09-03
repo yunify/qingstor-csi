@@ -17,6 +17,7 @@ limitations under the License.
 package neonsan
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -147,6 +148,42 @@ func TestFindVolumeWithoutPool(t *testing.T) {
 			continue
 		} else {
 			t.Errorf("name %s: volume pool expect [%s], but actually [%v]", v.name, v.volPool, ret)
+		}
+	}
+}
+
+func TestListVolumeByPool(t *testing.T) {
+	tests := []struct {
+		name    string
+		volName string
+		volPool string
+		info    []*volumeInfo
+	}{
+		{
+			name:    "found volume",
+			volPool: TestPoolName,
+			info: []*volumeInfo{
+				{
+					name: TestNormalVolumeName,
+					pool: TestPoolName,
+					size: 2 * gib,
+				},
+			},
+		},
+		{
+			name:    "not found volume",
+			volName: TestNotFoundVolumeName,
+			volPool: TestPoolName,
+			info:    nil,
+		},
+	}
+	for _, v := range tests {
+		volList, err := ListVolumeByPool(v.volPool)
+		if err != nil {
+			t.Errorf("name %s: volume error [%s]", v.name, err.Error())
+		}
+		if !reflect.DeepEqual(v.info, volList) {
+			t.Errorf("name %s: expect %v, but actually %v", v.name, v.info, volList)
 		}
 	}
 }

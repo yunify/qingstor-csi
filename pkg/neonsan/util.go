@@ -30,6 +30,7 @@ const (
 	Int64Max        int64  = int64(^uint64(0) >> 1)
 	PluginFolder    string = "/var/lib/kubelet/plugins/"
 	DefaultPoolName string = "kube"
+	TimeLayout      string = "2006-01-02T15:04:05+08:00"
 )
 
 const (
@@ -45,11 +46,18 @@ const (
 	FileSystemExt3    string = "ext3"
 	FileSystemExt4    string = "ext4"
 	FileSystemXfs     string = "xfs"
-	DefaultFileSystem string = FileSystemExt4
+	FileSystemDefault string = FileSystemExt4
+)
+
+const (
+	ProtocolRDMA    string = "RDMA"
+	ProtocolTCP     string = "TCP"
+	ProtocolDefault string = ProtocolRDMA
 )
 
 var (
-	ConfigFilePath string = "/etc/neonsan/qbd.conf"
+	ConfigFilePath  string = "/etc/neonsan/qbd.conf"
+	TempSnapshotDir string = "/tmp"
 )
 
 // ExecCommand

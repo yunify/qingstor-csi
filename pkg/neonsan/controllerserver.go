@@ -91,7 +91,8 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		glog.Infof("Exist volume name: [%s], id: [%s], capacity: [%d] Bytes, pool: [%s], replicas: [%d].",
 			exVol.name, exVol.id, exVol.size, exVol.pool, exVol.replicas)
 		if exVol.size >= requiredByte && exVol.size <= limitByte && exVol.replicas == sc.Replicas {
-			// exisiting volume is compatible with new request and should be reused.
+			// exisiting volume is compatible with new request and should be
+			// reused.
 			return &csi.CreateVolumeResponse{
 				Volume: &csi.Volume{
 					Id:            exVol.name,
@@ -140,7 +141,8 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	if len(req.GetVolumeId()) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume id missing in request.")
 	}
-	// For now the image get unconditionally deleted, but here retention policy can be checked
+	// For now the image get unconditionally deleted, but here retention
+	// policy can be checked
 	volumeId := req.GetVolumeId()
 
 	// For idempotent:
@@ -227,7 +229,8 @@ func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 	}, nil
 }
 
-// GetCapacity: allow the CO to query the capacity of the storage pool from which the controller provisions volumes.
+// GetCapacity: allow the CO to query the capacity of the storage pool from
+// which the controller provisions volumes.
 func (cs *controllerServer) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (*csi.GetCapacityResponse, error) {
 	// Create StorageClass object
 	glog.Info("Create StorageClass object.")
@@ -253,4 +256,128 @@ func (cs *controllerServer) GetCapacity(ctx context.Context, req *csi.GetCapacit
 	return &csi.GetCapacityResponse{
 		AvailableCapacity: poolInfo.free,
 	}, nil
+}
+
+// CreateSnapshot
+// Idempotent: If a snapshot corresponding to the specified snapshot name
+// is already successfully cut and uploaded and is compatible with the
+// specified source volume id and parameters in the CreateSnapshotRequest.
+func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
+	glog.Info("*************** Start CreateSnapshot ***************")
+	defer glog.Info("=============== End CreateSnapshot ===============")
+
+	// 1. Check input arguments
+	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
+		glog.Warningf("Invalid create snapshot req: [%v].", req)
+		return nil, err
+	}
+	if len(req.GetName()) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Snapshot Name cannot be empty.")
+	}
+	if len(req.GetSourceVolumeId()) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Source Volume ID cannot be empty.")
+	}
+
+	// 2. Check if the snapshot already exists.
+	// get storage class
+	sc, err := NewNeonsanStorageClassFromMap(req.GetParameters())
+	if err != nil {
+		glog.Info("Failed to create StorageClass object.")
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	// for idempotency
+	exSnap, err := FindSnapshot(req.GetName(), sc.Pool, req.GetSourceVolumeId())
+	if err != nil {
+		glog.Errorf("Failed to find snapshot [%s], [%s], error: [%s].", req.GetName(), sc.Pool, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	// Volume id in Kubernetes is equal to NeonSAN's volume name.
+	if req.GetSourceVolumeId() == exSnap.sourceVolumeName {
+		// return snapshot already exists.
+		glog.Warningf("Snapshot [%v] already exist. return this.", exSnap)
+		return &csi.CreateSnapshotResponse{
+			Snapshot: &csi.Snapshot{
+				SizeBytes:      exSnap.sizeByte,
+				Id:             exSnap.snapName,
+				SourceVolumeId: exSnap.sourceVolumeName,
+				CreatedAt:      exSnap.createdTime,
+				Status: &csi.SnapshotStatus{
+					Type: csi.SnapshotStatus_READY,
+				},
+			},
+		}, nil
+	} else {
+		// snapshot already exists but is incompatible.
+		glog.Errorf("Snapshot [%v] already exist. but not compatible with request [%v].", exSnap, req)
+		return nil, status.Errorf(codes.AlreadyExists,
+			"Snapshot [%s] already exists but is incompatible with the specified volume id [%v].", req.GetName(),
+			req.GetSourceVolumeId())
+	}
+
+	// 3. do create snapshot
+	glog.Infof("Create snapshot [%s] in pool [%s] from volume [%s]...", req.GetName(), sc.Pool, req.GetSourceVolumeId())
+	snapInfo, err := CreateSnapshot(req.GetName(), sc.Pool, req.GetSourceVolumeId())
+	if err != nil {
+		glog.Errorf("Failed to create snapshot with error [%s].", err.Error())
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+	glog.Infof("Succeed to create snapshot [%v].", snapInfo)
+	return &csi.CreateSnapshotResponse{
+		Snapshot: &csi.Snapshot{
+			SizeBytes:      snapInfo.sizeByte,
+			Id:             snapInfo.snapName,
+			SourceVolumeId: snapInfo.sourceVolumeName,
+			CreatedAt:      snapInfo.createdTime,
+			Status: &csi.SnapshotStatus{
+				Type: csi.SnapshotStatus_READY,
+			},
+		},
+	}, nil
+}
+
+// DeleteSnapshot must release the storage space associated with the snapshot
+// Idempotent: If a snapshot corresponding to the specified snapshot id does
+// not exist, the plugin MUST reply OK.
+// csi.DeleteSnapshotRequest: snapshot id is required.
+func (cs *controllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
+	glog.Info("*************** Start DeleteSnapshot ***************")
+	defer glog.Info("=============== End DeleteSnapshot ===============")
+
+	// 1. Check input arguments
+	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
+		glog.Warningf("Invalid delete snapshot req: %v.", req)
+		return nil, err
+	}
+	if len(req.GetSnapshotId()) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Snapshot ID cannot be empty.")
+	}
+
+	// 2. Find snapshot by id
+	exSnap, err := FindSnapshotWithoutPool(req.GetSnapshotId())
+	if err != nil {
+		glog.Errorf("Failed to find snapshot [%s], error [%s].", req.GetSnapshotId(), err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if exSnap == nil {
+		glog.Warningf("Snapshot [%s] does not exist.", req.GetSnapshotId())
+		return &csi.DeleteSnapshotResponse{}, nil
+	}
+
+	// 3. Do delete snapshot
+	glog.Infof("Delete snapshot [%v]...", exSnap)
+	err = DeleteSnapshot(exSnap.snapName, exSnap.pool, exSnap.sourceVolumeName)
+	if err != nil {
+		glog.Errorf("Failed to delete snapshot [%v].", exSnap)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	glog.Infof("Succeed to delete snapshot [%v].", exSnap)
+	return &csi.DeleteSnapshotResponse{}, nil
+}
+
+// Source Volume ID:
+// Snapshot ID:
+func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "")
 }

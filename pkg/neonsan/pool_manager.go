@@ -16,7 +16,10 @@ limitations under the License.
 
 package neonsan
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/golang/glog"
+)
 
 // poolInfo: stats pool
 // total, free, used: pool size in bytes
@@ -28,24 +31,37 @@ type poolInfo struct {
 	used  int64
 }
 
-//	FindPool
-// 	Description:	get pool detail information
-//	Input:	pool name:	string
-//	Return cases:	pool,	nil:	found pool
-//					nil,	nil:	pool not found
-//					nil,	err:	error
+// FindPool
+// Description: get pool detail information
+// Input: pool name: string
+// Return cases:
+//   pool, nil: found pool
+//   nil, nil: pool not found
+//   nil, err: error
 func FindPool(poolName string) (outPool *poolInfo, err error) {
 	args := []string{"stats_pool", "-pool", poolName, "-c", ConfigFilePath}
 	output, err := ExecCommand(CmdNeonsan, args)
 	if err != nil {
 		return nil, err
 	}
-	outPool = ParsePoolInfo(string(output))
-	if outPool == nil {
+	poolList := ParsePoolList(string(output))
+	glog.Infof("Found [%d] pool.", len(poolList))
+	switch len(poolList) {
+	case 0:
 		return nil, nil
+	case 1:
+		return poolList[0], nil
+	default:
+		return nil, fmt.Errorf("found duplicated pools [%s]", poolName)
 	}
-	if outPool.name != poolName {
-		return nil, fmt.Errorf("mismatch pool name: expect %s, but actually %s", poolName, outPool.name)
+}
+
+func ListPoolName() (pools []string, err error) {
+	args := []string{"list_pool", "--detail", "-c", ConfigFilePath}
+	output, err := ExecCommand(CmdNeonsan, args)
+	if err != nil {
+		return nil, err
 	}
-	return outPool, nil
+	pools = ParsePoolNameList(string(output))
+	return pools, nil
 }
