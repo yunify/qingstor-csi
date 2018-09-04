@@ -225,7 +225,7 @@ func TestListSnapshotByVolume(t *testing.T) {
 				t.Errorf("name %s: error expect %d, but actually %d", v.name, len(v.output), len(snapList))
 			}
 			for i:=range v.output{
-				if v.output[i].snapName == snapList[i].snapName && v.output[i].pool == snapList[i].pool{
+				if v.output[i].snapName != snapList[i].snapName || v.output[i].pool != snapList[i].pool{
 					t.Errorf("name %s: expect %v, but actually %v", v.name, v.output, snapList)
 					break
 				}

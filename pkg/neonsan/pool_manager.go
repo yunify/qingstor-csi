@@ -43,6 +43,11 @@ func FindPool(poolName string) (outPool *poolInfo, err error) {
 	return poolInfo, err
 }
 
+// ListPoolName list pool name array
+// Return cases:
+//   pool list, nil: found pools
+//   nil, nil: no found pools
+//   nil, err: error
 func ListPoolName() (pools []string, err error) {
 	args := []string{"list_pool",  "-c", ConfigFilePath}
 	output, err := ExecCommand(CmdNeonsan, args)

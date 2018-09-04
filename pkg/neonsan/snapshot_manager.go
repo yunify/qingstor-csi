@@ -73,6 +73,7 @@ func FindSnapshot(snapName, srcVolName, pool string) (outSnap *snapshotInfo, err
 }
 
 // FindSnapshotWithoutPool gets snapshot information in all pools
+// CAUTION: the execution time is extremely long.
 // Return case:
 //   snap, nil: find a snapshot
 //   nil, nil: cannot find snapshot
