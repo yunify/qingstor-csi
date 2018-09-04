@@ -115,7 +115,7 @@ func ListSnapshotByVolume(srcVolName, pool string) (snaps []*snapshotInfo, err e
 	}
 	for i := range snaps {
 		snaps[i].pool = pool
-		snaps[i].snapName = srcVolName
+		snaps[i].sourceVolumeName = srcVolName
 	}
 	return snaps, nil
 }

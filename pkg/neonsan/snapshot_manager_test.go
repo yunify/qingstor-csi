@@ -119,10 +119,14 @@ func TestFindSnapshot(t *testing.T) {
 		if (v.err != nil && err == nil)||(v.err == nil && err != nil){
 			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.err, err)
 		}
-		if v.snapInfo != nil && snapInfo != nil{
+		if v.snapInfo == nil && snapInfo == nil{
+			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.snapInfo, snapInfo)
+		}else if v.snapInfo != nil && snapInfo != nil{
 			if v.snapInfo.snapName != snapInfo.snapName{
 				t.Errorf("name %s: error expect %v, but actually %v", v.name, v.snapInfo, snapInfo)
 			}
+		}else{
+			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.snapInfo, snapInfo)
 		}
 	}
 }
