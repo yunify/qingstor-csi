@@ -78,6 +78,44 @@ func TestCreateSnapshot(t *testing.T) {
 	}
 }
 
+func TestFindSnapshot(t *testing.T) {
+	tests := []struct {
+		name     string
+		snapInfo *snapshotInfo
+		err      error
+	}{
+		{
+			name: "Succeed to find snapshot",
+			snapInfo: &snapshotInfo{
+				snapName:         SnapTestSnapshotName,
+				pool:             SnapTestPoolName,
+				sourceVolumeName: SnapTestVolumeName,
+			},
+			err: nil,
+		},
+		{
+			name: "Not found snapshot",
+			snapInfo: &snapshotInfo{
+				snapName:         SnapTestSnapshotName,
+				pool:             SnapTestPoolName,
+				sourceVolumeName: SnapTestFakeVolumeName,
+			},
+			err: fmt.Errorf("Raise error"),
+		},
+	}
+	for _, v:=range tests{
+		snapInfo, err := FindSnapshot(v.snapInfo.snapName, v.snapInfo.sourceVolumeName, v.snapInfo.pool)
+		if (v.err != nil && err == nil)||(v.err == nil && err != nil){
+			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.err, err)
+		}
+		if v.snapInfo != nil && snapInfo != nil{
+			if v.snapInfo.snapName != snapInfo.snapName{
+				t.Errorf("name %s: error expect %v, but actually %v", v.name, v.snapInfo, snapInfo)
+			}
+		}
+	}
+}
+
 func TestDeleteSnapshot(t *testing.T) {
 	tests := []struct {
 		name     string
