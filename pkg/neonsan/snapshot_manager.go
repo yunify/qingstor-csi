@@ -52,6 +52,7 @@ var SnapshotStatusType = map[string]string{
 }
 
 // FindSnapshot gets snapshot information in specified pool
+// srcVolName must be a valid volume name
 // Return case:
 //   snap, nil: succeed to find a snapshot
 //   nil, nil: cannot find snapshot

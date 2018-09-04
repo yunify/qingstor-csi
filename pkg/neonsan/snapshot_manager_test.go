@@ -125,16 +125,6 @@ func TestFindSnapshot(t *testing.T) {
 			},
 			err: nil,
 		},
-		{
-			name: "Not found snapshot",
-			input: &snapshotInfo{
-				snapName:         SnapTestSnapshotName,
-				pool:             SnapTestPoolName,
-				sourceVolumeName: SnapTestFakeVolumeName,
-			},
-			output: nil,
-			err: fmt.Errorf("Not found"),
-		},
 	}
 	for _, v:=range tests{
 		snapInfo, err := FindSnapshot(v.input.snapName, v.input.sourceVolumeName, v.input.pool)
