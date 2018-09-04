@@ -167,7 +167,7 @@ func TestFindSnapshotWithoutPool(t *testing.T) {
 		{
 			name: "Not found snapshot",
 			input: &snapshotInfo{
-				snapName:         SnapTestSnapshotName,
+				snapName:         SnapTestFakeSnapshotName,
 			},
 			output: nil,
 			err: nil,
