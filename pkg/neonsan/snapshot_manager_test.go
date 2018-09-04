@@ -90,15 +90,16 @@ func TestCreateSnapshot(t *testing.T) {
 		snapInfo, err := CreateSnapshot(v.input.snapName, v.input.sourceVolumeName, v.input.pool)
 		if (v.err != nil && err == nil) || (v.err == nil && err != nil) {
 			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.err, err)
-		}
-		if v.output == nil && snapInfo == nil{
-			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.output, snapInfo)
-		}else if v.output != nil && snapInfo != nil{
-			if v.output.snapName != snapInfo.snapName{
+		}else if v.err == nil && err == nil{
+			if v.output == nil && snapInfo == nil{
+				t.Errorf("name %s: error expect %v, but actually %v", v.name, v.output, snapInfo)
+			}else if v.output != nil && snapInfo != nil{
+				if v.output.snapName != snapInfo.snapName{
+					t.Errorf("name %s: error expect %v, but actually %v", v.name, v.output, snapInfo)
+				}
+			}else{
 				t.Errorf("name %s: error expect %v, but actually %v", v.name, v.output, snapInfo)
 			}
-		}else{
-			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.output, snapInfo)
 		}
 	}
 }
@@ -132,7 +133,7 @@ func TestFindSnapshot(t *testing.T) {
 				sourceVolumeName: SnapTestFakeVolumeName,
 			},
 			output: nil,
-			err: nil,
+			err: fmt.Errorf("Not found"),
 		},
 	}
 	for _, v:=range tests{
@@ -140,14 +141,16 @@ func TestFindSnapshot(t *testing.T) {
 		if (v.err != nil && err == nil)||(v.err == nil && err != nil){
 			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.err, err)
 		}
-		if v.output == nil && snapInfo == nil{
-			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.output, snapInfo)
-		}else if v.output != nil && snapInfo != nil{
-			if v.output.snapName != snapInfo.snapName{
+		if v.err == nil && err == nil{
+			if v.output == nil && snapInfo == nil{
+				t.Errorf("name %s: error expect %v, but actually %v", v.name, v.output, snapInfo)
+			}else if v.output != nil && snapInfo != nil{
+				if v.output.snapName != snapInfo.snapName{
+					t.Errorf("name %s: error expect %v, but actually %v", v.name, v.output, snapInfo)
+				}
+			}else{
 				t.Errorf("name %s: error expect %v, but actually %v", v.name, v.output, snapInfo)
 			}
-		}else{
-			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.output, snapInfo)
 		}
 	}
 }
