@@ -138,7 +138,9 @@ func ParseAttachVolumeList(input string) (infoArr []attachInfo) {
 }
 
 func readCountNumber(line string) (cnt int, err error) {
-	if !strings.Contains(line, "Count:") {
+	// Because print "count" when list snapshot in lower case and
+	// output "Count" when list volume and list pool in upper case.
+	if !strings.Contains(line, "ount:") {
 		return cnt, fmt.Errorf("cannot found volume count")
 	}
 	line = strings.Replace(line, " ", "", -1)
@@ -148,7 +150,7 @@ func readCountNumber(line string) (cnt int, err error) {
 			return strconv.Atoi(lines[i])
 		}
 	}
-	return cnt, fmt.Errorf("cannot found volume count")
+	return cnt, fmt.Errorf("cannot found count")
 }
 
 func readVolumeInfoContent(line string) (ret *volumeInfo) {
