@@ -81,7 +81,9 @@ func FindSnapshotWithoutPool(snapName string) (outSnap *snapshotInfo, err error)
 	if err != nil {
 		return nil, err
 	}
+	glog.Infof("pools [%v]", poolNames)
 	for _, poolName := range poolNames {
+		glog.Infof("pool [%s]", poolName)
 		volInfo, err := ListVolumeByPool(poolName)
 		if err != nil {
 			return nil, err
