@@ -19,6 +19,7 @@ package neonsan
 import (
 	"fmt"
 	"github.com/golang/glog"
+	"time"
 )
 
 type snapshotInfo struct {
@@ -62,6 +63,7 @@ func FindSnapshot(snapName, srcVolName, pool string) (outSnap *snapshotInfo, err
 		return nil, err
 	}
 	for i := range snapList {
+		glog.Infof("snapList[%d]=[%v], %s,%s", i, snapList[i], snapList[i].snapName, snapName)
 		if snapList[i].snapName == snapName {
 			return snapList[i], nil
 		}
@@ -101,7 +103,7 @@ func FindSnapshotWithoutPool(snapName string) (outSnap *snapshotInfo, err error)
 //   nil, nil: find no snapshots in specific volume
 //   nil, err: find snapshot error
 func ListSnapshotByVolume(srcVolName, pool string) (snaps []*snapshotInfo, err error) {
-	args := []string{"list_snapshot", "--volume", srcVolName, "--pool", pool}
+	args := []string{"list_snapshot", "--volume", srcVolName, "--pool", pool, "-c", ConfigFilePath}
 	output, err := ExecCommand(CmdNeonsan, args)
 	if err != nil {
 		glog.Errorf("Failed to find snapshot, args [%v].", args)
@@ -131,6 +133,7 @@ func CreateSnapshot(snapName, srcVolName, pool string) (outSnap *snapshotInfo, e
 		return nil, err
 	}
 	glog.Infof("Succeed to create snapshot, args [%v].", args)
+	time.Sleep(time.Second*2)
 	snapInfo, err := FindSnapshot(snapName, srcVolName, pool)
 	if err != nil {
 		glog.Errorf("Failed to find snapshot [%s] src volume [%s] pool [%s], error: [%s]", snapName, srcVolName, pool,
@@ -165,7 +168,7 @@ func DeleteSnapshot(snapName, srcVolName, pool string) (err error) {
 // Return case:
 //   nil: succeed to export snapshot
 //   err: failed to export snapshot
-func ExportSnapshot(snapName string, snapPool string, volName string) (err error) {
+func ExportSnapshot(snapName, volName,snapPool string) (err error) {
 	return nil
 }
 
@@ -173,6 +176,6 @@ func ExportSnapshot(snapName string, snapPool string, volName string) (err error
 // Return case:
 //   nil: succeed to import snapshot
 //   err: failed to import snapshot
-func ImportSnapshot(volName string, volPool string) (err error) {
+func ImportSnapshot(volName, volPool string) (err error) {
 	return nil
 }

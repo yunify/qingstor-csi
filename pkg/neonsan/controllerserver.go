@@ -287,7 +287,7 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	}
 
 	// for idempotency
-	exSnap, err := FindSnapshot(req.GetName(), sc.Pool, req.GetSourceVolumeId())
+	exSnap, err := FindSnapshot(req.GetName(), req.GetSourceVolumeId(),sc.Pool)
 	if err != nil {
 		glog.Errorf("Failed to find snapshot [%s], [%s], error: [%s].", req.GetName(), sc.Pool, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
@@ -318,7 +318,7 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 
 	// 3. do create snapshot
 	glog.Infof("Create snapshot [%s] in pool [%s] from volume [%s]...", req.GetName(), sc.Pool, req.GetSourceVolumeId())
-	snapInfo, err := CreateSnapshot(req.GetName(), sc.Pool, req.GetSourceVolumeId())
+	snapInfo, err := CreateSnapshot(req.GetName(), req.GetSourceVolumeId(),sc.Pool)
 	if err != nil {
 		glog.Errorf("Failed to create snapshot with error [%s].", err.Error())
 		return nil, status.Errorf(codes.Internal, err.Error())
@@ -367,7 +367,7 @@ func (cs *controllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 
 	// 3. Do delete snapshot
 	glog.Infof("Delete snapshot [%v]...", exSnap)
-	err = DeleteSnapshot(exSnap.snapName, exSnap.pool, exSnap.sourceVolumeName)
+	err = DeleteSnapshot(exSnap.snapName,  exSnap.sourceVolumeName,exSnap.pool)
 	if err != nil {
 		glog.Errorf("Failed to delete snapshot [%v].", exSnap)
 		return nil, status.Error(codes.Internal, err.Error())

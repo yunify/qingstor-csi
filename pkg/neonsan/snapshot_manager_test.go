@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+	"flag"
+	"os"
 )
 
 const (
@@ -29,6 +31,15 @@ const (
 	SnapTestVolumeName       = "foo"
 	SnapTestFakeVolumeName   = "fake"
 )
+
+func TestMain(m *testing.M) {
+	flag.Set("alsologtostderr", "true")
+	flag.Set("log_dir", "/tmp")
+	flag.Set("v", "3")
+	flag.Parse()
+	ret := m.Run()
+	os.Exit(ret)
+}
 
 func TestPreparation(t *testing.T){
 	CreateVolume(SnapTestVolumeName, SnapTestPoolName, gib,1)
@@ -54,7 +65,7 @@ func TestCreateSnapshot(t *testing.T) {
 			snapInfo: &snapshotInfo{
 				snapName:         SnapTestSnapshotName,
 				pool:             SnapTestPoolName,
-				sourceVolumeName: SnapTestFakeVolumeName,
+				sourceVolumeName: SnapTestVolumeName,
 			},
 			err: fmt.Errorf("Raise error"),
 		},
