@@ -170,7 +170,7 @@ func TestFindSnapshotWithoutPool(t *testing.T) {
 				snapName:         SnapTestSnapshotName,
 			},
 			output: nil,
-			err: fmt.Errorf("Not found"),
+			err: nil,
 		},
 	}
 	for _, v:=range tests{
