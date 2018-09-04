@@ -18,7 +18,6 @@ package neonsan
 
 import (
 	"fmt"
-	"reflect"
 	"testing"
 	"flag"
 	"os"
@@ -83,7 +82,14 @@ func TestCreateSnapshot(t *testing.T) {
 		snapInfo, err := CreateSnapshot(v.snapInfo.snapName, v.snapInfo.sourceVolumeName, v.snapInfo.pool)
 		if (v.err != nil && err == nil) || (v.err == nil && err != nil) {
 			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.err, err)
-		} else if !reflect.DeepEqual(v.snapInfo, snapInfo) {
+		}
+		if v.snapInfo == nil && snapInfo == nil{
+			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.snapInfo, snapInfo)
+		}else if v.snapInfo != nil && snapInfo != nil{
+			if v.snapInfo.snapName != snapInfo.snapName{
+				t.Errorf("name %s: error expect %v, but actually %v", v.name, v.snapInfo, snapInfo)
+			}
+		}else{
 			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.snapInfo, snapInfo)
 		}
 	}
@@ -93,11 +99,17 @@ func TestFindSnapshot(t *testing.T) {
 	tests := []struct {
 		name     string
 		snapInfo *snapshotInfo
+		ret *snapshotInfo
 		err      error
 	}{
 		{
 			name: "Succeed to find snapshot",
 			snapInfo: &snapshotInfo{
+				snapName:         SnapTestSnapshotName,
+				pool:             SnapTestPoolName,
+				sourceVolumeName: SnapTestVolumeName,
+			},
+			ret: &snapshotInfo{
 				snapName:         SnapTestSnapshotName,
 				pool:             SnapTestPoolName,
 				sourceVolumeName: SnapTestVolumeName,
@@ -111,7 +123,8 @@ func TestFindSnapshot(t *testing.T) {
 				pool:             SnapTestPoolName,
 				sourceVolumeName: SnapTestFakeVolumeName,
 			},
-			err: fmt.Errorf("Raise error"),
+			ret: nil,
+			err: nil,
 		},
 	}
 	for _, v:=range tests{
