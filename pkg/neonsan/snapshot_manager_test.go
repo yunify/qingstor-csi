@@ -30,6 +30,10 @@ const (
 	SnapTestFakeVolumeName   = "fake"
 )
 
+func TestPreparation(t *testing.T){
+	CreateVolume(SnapTestVolumeName, SnapTestPoolName, gib,1)
+}
+
 func TestCreateSnapshot(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -70,6 +74,48 @@ func TestCreateSnapshot(t *testing.T) {
 			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.err, err)
 		} else if !reflect.DeepEqual(v.snapInfo, snapInfo) {
 			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.snapInfo, snapInfo)
+		}
+	}
+}
+
+func TestDeleteSnapshot(t *testing.T) {
+	tests := []struct {
+		name     string
+		snapInfo *snapshotInfo
+		err      error
+	}{
+		{
+			name: "Succeed to create snapshot",
+			snapInfo: &snapshotInfo{
+				snapName:         SnapTestSnapshotName,
+				pool:             SnapTestPoolName,
+				sourceVolumeName: SnapTestVolumeName,
+			},
+			err: nil,
+		},
+		{
+			name: "Recreate snapshot",
+			snapInfo: &snapshotInfo{
+				snapName:         SnapTestSnapshotName,
+				pool:             SnapTestPoolName,
+				sourceVolumeName: SnapTestFakeVolumeName,
+			},
+			err: fmt.Errorf("Raise error"),
+		},
+		{
+			name: "Failed to create snapshot",
+			snapInfo: &snapshotInfo{
+				snapName:         SnapTestSnapshotName,
+				pool:             SnapTestPoolName,
+				sourceVolumeName: SnapTestFakeVolumeName,
+			},
+			err: fmt.Errorf("Raise error"),
+		},
+	}
+	for _, v := range tests {
+		err := DeleteSnapshot(v.snapInfo.snapName, v.snapInfo.sourceVolumeName, v.snapInfo.pool)
+		if (v.err != nil && err == nil) || (v.err == nil && err != nil) {
+			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.err, err)
 		}
 	}
 }

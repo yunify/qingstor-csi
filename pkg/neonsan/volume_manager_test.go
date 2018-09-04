@@ -186,7 +186,7 @@ func TestListVolumeByPool(t *testing.T) {
 		}
 		// verify array
 		if len(v.info) != len(volList) {
-			t.Errorf("name %s: expect [%d], but actually [%d]", len(v.info), len(volList))
+			t.Errorf("name %s: expect [%d], but actually [%d]", v.name, len(v.info), len(volList))
 		}
 		// check each array element
 		for i := range v.info {
