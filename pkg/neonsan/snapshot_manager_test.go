@@ -179,14 +179,14 @@ func TestFindSnapshotWithoutPool(t *testing.T) {
 			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.err, err)
 		}
 		if v.err == nil && err == nil{
-			if v.output == nil && snapInfo == nil{
-				t.Errorf("name %s: error expect %v, but actually %v", v.name, v.output, snapInfo)
-			}else if v.output != nil && snapInfo != nil{
+			if v.output == nil && snapInfo == nil {
+				continue
+			} else if v.output != nil && snapInfo != nil{
 				if v.output.snapName != snapInfo.snapName || v.output.pool != snapInfo.pool{
-					t.Errorf("name %s: error expect %v, but actually %v", v.name, v.output, snapInfo)
+					t.Errorf("name %s: expect %v, but actually %v", v.name, v.output, snapInfo)
 				}
 			}else{
-				t.Errorf("name %s: error expect %v, but actually %v", v.name, v.output, snapInfo)
+				t.Errorf("name %s: expect %v, but actually %v", v.name, v.output, snapInfo)
 			}
 		}
 	}
