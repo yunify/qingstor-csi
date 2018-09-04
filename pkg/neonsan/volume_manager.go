@@ -64,7 +64,10 @@ func FindVolume(volName string, volPool string) (outVol *volumeInfo, err error) 
 	if err != nil {
 		return nil, err
 	}
-	volList := ParseVolumeList(string(output))
+	volList, err := ParseVolumeList(string(output))
+	if err != nil {
+		return outVol, err
+	}
 	glog.Infof("Found [%d] volume in [%v].", len(volList), args)
 	switch len(volList) {
 	case 0:
@@ -108,25 +111,23 @@ func FindVolumeWithoutPool(volName string) (volInfo *volumeInfo, err error) {
 	}
 }
 
+// ListVolumeByPool list volume in specific pool
+// Return case:
+//   volList, nil: found volumes
+//   nil, nil: not found volume
+//   nil, err: error
 func ListVolumeByPool(pool string) (volList []*volumeInfo, err error) {
 	args := []string{"list_volume", "--pool", pool, "--detail", "-c", ConfigFilePath}
 	output, err := ExecCommand(CmdNeonsan, args)
 	if err != nil {
 		return nil, err
 	}
-	iList := ParseNeonsanList(string(output), readVolumeListLine)
-	for i := range iList {
-		if v, ok := iList[i].(*volumeInfo); ok {
-			volList = append(volList, v)
-		}
+	volList, err = ParseVolumeList(string(output))
+	if err != nil {
+		return nil, err
 	}
 	glog.Infof("Found [%d] volume in [%v].", len(volList), args)
-	switch len(volList) {
-	case 0:
-		return nil, nil
-	default:
-		return volList, nil
-	}
+	return volList, nil
 }
 
 // CreateVolume create volume through NeonSAN client commandline tool and return volume information

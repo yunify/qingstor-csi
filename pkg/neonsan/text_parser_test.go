@@ -17,28 +17,28 @@ limitations under the License.
 package neonsan
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 )
 
-func TestParseNeonsanListr(t *testing.T) {
+func TestParseVolumeList(t *testing.T) {
 	tests := []struct {
 		name   string
 		output string
-		fun    func(string) interface{}
-		vol    []interface{}
+		list   []*volumeInfo
+		err    error
 	}{
 		{
-			name: "Parse volume list",
+			name: "One volume list",
 			output: `Volume Count:  1
 +--------------+------+-------------+-----------+---------------+--------+---------------------+---------------------+
 |      ID      | NAME |    SIZE     | REP COUNT | MIN REP COUNT | STATUS |     STATUS TIME     |    CREATED TIME     |
 +--------------+------+-------------+-----------+---------------+--------+---------------------+---------------------+
 | 251188477952 | foo  | 10737418240 |         1 |             1 | OK     | 2018-07-09 12:18:34 | 2018-07-09 12:18:34 |
 +--------------+------+-------------+-----------+---------------+--------+---------------------+---------------------+`,
-			fun: readVolumeListLine,
-			vol: []interface{}{
-				&volumeInfo{
+			list: []*volumeInfo{
+				{
 					id:       "251188477952",
 					name:     "foo",
 					size:     10737418240,
@@ -46,56 +46,161 @@ func TestParseNeonsanListr(t *testing.T) {
 					replicas: 1,
 				},
 			},
+			err: nil,
+		},
+		{
+			name: "Two volumes list",
+			output: `Volume Count:  2
++--------------+-------------------------+------------+-----------+---------------+--------+---------------------+---------------------+
+|      ID      |          NAME           |    SIZE    | REP COUNT | MIN REP COUNT | STATUS |     STATUS TIME     |    CREATED TIME     |
++--------------+-------------------------+------------+-----------+---------------+--------+---------------------+---------------------+
+| 395069882368 | foo                     | 2147483648 |         1 |             1 | OK     | 2018-09-03 20:49:46 | 2018-09-03 20:49:46 |
+| 395589976064 | pre-provisioning-volume | 5368709120 |         1 |             1 | OK     | 2018-09-03 22:50:03 | 2018-09-03 22:50:03 |
++--------------+-------------------------+------------+-----------+---------------+--------+---------------------+---------------------+
+`,
+			list: []*volumeInfo{
+				{
+					id:       "395069882368",
+					name:     "foo",
+					size:     2147483648,
+					status:   VolumeStatusOk,
+					replicas: 1,
+				},
+				{
+					id:       "395589976064",
+					name:     "pre-provisioning-volume",
+					size:     5368709120,
+					status:   VolumeStatusOk,
+					replicas: 1,
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "No volume list",
+			output: `Volume Count:0
+`,
+			list: nil,
+			err:  nil,
 		},
 	}
 	for _, v := range tests {
-		lists := ParseNeonsanList(v.output, v.fun)
-
-		if !reflect.DeepEqual(interface{}(v.vol), lists) {
-			t.Errorf("name %s: expect %v, but actually %v", v.name, v.vol, lists)
+		volList, err := ParseVolumeList(v.output)
+		if (v.err == nil && err != nil) || (v.err != nil && err == nil) {
+			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.err, err)
+		}
+		if !reflect.DeepEqual(v.list, volList) {
+			t.Errorf("name %s: expect %v, but actually %v", v.name, v.list, volList)
 		}
 	}
 }
 
-/*
-func TestParseVolumeInfo(t *testing.T) {
+func TestParseSnapshotList(t *testing.T) {
 	tests := []struct {
 		name   string
 		output string
-		vol    *volumeInfo
+		list   []*snapshotInfo
+		err    error
 	}{
 		{
-			name: "Found volume",
-			output: `Volume Count:  1
-+--------------+------+-------------+-----------+---------------+--------+---------------------+---------------------+
-|      ID      | NAME |    SIZE     | REP COUNT | MIN REP COUNT | STATUS |     STATUS TIME     |    CREATED TIME     |
-+--------------+------+-------------+-----------+---------------+--------+---------------------+---------------------+
-| 251188477952 | foo  | 10737418240 |         1 |             1 | OK     | 2018-07-09 12:18:34 | 2018-07-09 12:18:34 |
-+--------------+------+-------------+-----------+---------------+--------+---------------------+---------------------+`,
-			vol: &volumeInfo{
-				id:       "251188477952",
-				name:     "foo",
-				size:     10737418240,
-				status:   VolumeStatusOk,
-				replicas: 1,
+			name: "Two snapshot list",
+			output: `Snapshot Count:  2
++--------------+-------------+---------------+---------------+---------------------------+--------+
+|  VOLUME ID   | SNAPSHOT ID | SNAPSHOT NAME | SNAPSHOT SIZE |        CREATE TIME        | STATUS |
++--------------+-------------+---------------+---------------+---------------------------+--------+
+| 274726912000 |       25463 | snapshot      |    2147483648 | 2018-08-23T11:38:19+08:00 | OK     |
+| 274726912000 |       25464 | snapshot2     |    2147483648 | 2018-08-23T11:39:39+08:00 | OK     |
++--------------+-------------+---------------+---------------+---------------------------+--------+
+`,
+			list: []*snapshotInfo{
+				{
+					snapName:         "snapshot",
+					snapID:           "25463",
+					sizeByte:         2147483648,
+					status:           SnapshotStatusOk,
+					createdTime:      1535024299,
+					sourceVolumeName: "274726912000",
+				},
+				{
+					snapName:         "snapshot2",
+					snapID:           "25464",
+					sizeByte:         2147483648,
+					status:           SnapshotStatusOk,
+					createdTime:      1535024379,
+					sourceVolumeName: "274726912000",
+				},
 			},
+			err: nil,
+		},
+		{
+			name: "No volume list",
+			output: `Volume Count:0
+`,
+			list: nil,
+			err:  nil,
 		},
 	}
 	for _, v := range tests {
-		exVol := ParseVolumeList(v.output)
-		if (v.vol == nil && exVol != nil) || (v.vol != nil && exVol == nil) {
-			t.Errorf("name %s: parse error, expect %v, but actually %v", v.name, v.vol, exVol)
-		} else if !reflect.DeepEqual(*v.vol, *exVol) {
-			t.Errorf("name %s: parse error, expect %v, but actually %v", v.name, v.vol, exVol)
+		snapList, err := ParseSnapshotList(v.output)
+		if (v.err == nil && err != nil) || (v.err != nil && err == nil) {
+			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.err, err)
+		}
+		if !reflect.DeepEqual(v.list, snapList) {
+			t.Errorf("name %s: expect %v, but actually %v", v.name, v.list, snapList)
+		}
+	}
+
+}
+
+func TestParsePoolInfo(t *testing.T) {
+	tests := []struct {
+		name   string
+		output string
+		pools  *poolInfo
+		err    error
+	}{
+		{
+			name: "Find csi pool",
+			output: `+----------+-----------+-------+------+------+
+| POOL ID  | POOL NAME | TOTAL | FREE | USED |
++----------+-----------+-------+------+------+
+| 67108864 | csi       |  2982 | 1222 | 1759 |
++----------+-----------+-------+------+------+
+
+`,
+			pools: &poolInfo{
+				id:    "67108864",
+				name:  "csi",
+				total: 2982 * gib,
+				free:  1222 * gib,
+				used:  1759 * gib,
+			},
+			err: nil,
+		},
+		{
+			name:   "Pool not found",
+			output: `Pool Count:  0`,
+			pools:  nil,
+			err:    nil,
+		},
+	}
+	for _, v := range tests {
+		poolNames, err := ParsePoolInfo(v.output)
+		if (v.err == nil && err != nil) || (v.err != nil && err == nil) {
+			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.err, err)
+		}
+		if !reflect.DeepEqual(v.pools, poolNames) {
+			t.Errorf("name %s: expect %v, but actually %v", v.name, v.pools, poolNames)
 		}
 	}
 }
-/*
-func TestParsePoolList(t *testing.T) {
+
+func TestParsePoolNameList(t *testing.T) {
 	tests := []struct {
 		name   string
 		output string
 		pools  []string
+		err    error
 	}{
 		{
 			name: "Find csi pool",
@@ -115,70 +220,28 @@ func TestParsePoolList(t *testing.T) {
 				"neonpool",
 				"csi",
 			},
+			err: nil,
 		},
 		{
 			name:   "Pool not found",
 			output: `Pool Count:  0`,
-			pools:  []string{},
+			pools:  nil,
+			err:    nil,
 		},
 		{
 			name:   "Wrong output",
 			output: `wrong output`,
-			pools:  []string{},
+			pools:  nil,
+			err:    fmt.Errorf("wrong output"),
 		},
 	}
 	for _, v := range tests {
-		exPools := ParsePoolList(v.output)
-		if len(exPools) != len(v.pools) {
-			t.Errorf("name %s: expect pools len %d, but actually len %d", v.name, len(v.pools), len(exPools))
-		} else {
-			for i := range v.pools {
-				if v.pools[i] != exPools[i] {
-					t.Errorf("name %s: expect pools %v, but actually %v", v.name, v.pools, exPools)
-				}
-			}
+		poolNames, err := ParsePoolNameList(v.output)
+		if (v.err == nil && err != nil) || (v.err != nil && err == nil) {
+			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.err, err)
 		}
-	}
-}
-
-func TestParsePoolInfo(t *testing.T) {
-	tests := []struct {
-		name  string
-		input string
-		info  *poolInfo
-	}{
-		{
-			name: "CSI pool info",
-			input: `+----------+-----------+-------+------+------+
-| POOL ID  | POOL NAME | TOTAL | FREE | USED |
-+----------+-----------+-------+------+------+
-| 67108864 | csi       |  2982 | 2767 |  214 |
-+----------+-----------+-------+------+------+
-`,
-			info: &poolInfo{
-				id:    "67108864",
-				name:  "csi",
-				total: gib * 2982,
-				free:  gib * 2767,
-				used:  gib * 214,
-			},
-		},
-		{
-			name:  "nil pool info",
-			input: ``,
-			info:  nil,
-		},
-	}
-	for _, v := range tests {
-		ret := ParsePoolInfo(v.input)
-		if v.info == nil && ret == nil {
-			continue
-		} else if v.info != nil && ret != nil {
-			if !reflect.DeepEqual(*v.info, *ret) {
-				t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.info, ret)
-			}
-		} else {
-			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.info, ret)
+		if !reflect.DeepEqual(v.pools, poolNames) {
+			t.Errorf("name %s: expect %v, but actually %v", v.name, v.pools, poolNames)
 		}
 	}
 }
@@ -283,4 +346,3 @@ func TestReadCountNumber(t *testing.T) {
 		}
 	}
 }
-*/

@@ -16,11 +16,6 @@ limitations under the License.
 
 package neonsan
 
-import (
-	"fmt"
-	"github.com/golang/glog"
-)
-
 // poolInfo: stats pool
 // total, free, used: pool size in bytes
 type poolInfo struct {
@@ -44,16 +39,8 @@ func FindPool(poolName string) (outPool *poolInfo, err error) {
 	if err != nil {
 		return nil, err
 	}
-	poolList := ParsePoolList(string(output))
-	glog.Infof("Found [%d] pool.", len(poolList))
-	switch len(poolList) {
-	case 0:
-		return nil, nil
-	case 1:
-		return poolList[0], nil
-	default:
-		return nil, fmt.Errorf("found duplicated pools [%s]", poolName)
-	}
+	poolInfo, err := ParsePoolInfo(string(output))
+	return poolInfo, err
 }
 
 func ListPoolName() (pools []string, err error) {
@@ -62,6 +49,6 @@ func ListPoolName() (pools []string, err error) {
 	if err != nil {
 		return nil, err
 	}
-	pools = ParsePoolNameList(string(output))
-	return pools, nil
+	pools, err = ParsePoolNameList(string(output))
+	return pools, err
 }

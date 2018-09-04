@@ -17,7 +17,6 @@ limitations under the License.
 package neonsan
 
 import (
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -91,9 +90,11 @@ func TestFindVolume(t *testing.T) {
 			volName: TestNormalVolumeName,
 			volPool: TestPoolName,
 			info: &volumeInfo{
-				name: "foo",
-				pool: TestPoolName,
-				size: 2 * gib,
+				name:     "foo",
+				pool:     TestPoolName,
+				size:     2 * gib,
+				status:   VolumeStatusOk,
+				replicas: 1,
 			},
 		},
 		{
@@ -177,13 +178,21 @@ func TestListVolumeByPool(t *testing.T) {
 			info:    nil,
 		},
 	}
+
 	for _, v := range tests {
 		volList, err := ListVolumeByPool(v.volPool)
 		if err != nil {
 			t.Errorf("name %s: volume error [%s]", v.name, err.Error())
 		}
-		if !reflect.DeepEqual(v.info, volList) {
-			t.Errorf("name %s: expect %v, but actually %v", v.name, v.info, volList)
+		// verify array
+		if len(v.info) != len(volList) {
+			t.Errorf("name %s: expect [%d], but actually [%d]", len(v.info), len(volList))
+		}
+		// check each array element
+		for i := range v.info {
+			if v.info[i].name != volList[i].name || v.info[i].pool != volList[i].pool {
+				t.Errorf("name %s: index [%d] expect [%v], but actually [%v]", v.name, i, v.info[i], volList[i])
+			}
 		}
 	}
 }

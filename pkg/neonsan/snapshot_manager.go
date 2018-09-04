@@ -42,8 +42,12 @@ type snapshotInfo struct {
 	sourceVolumeName string
 }
 
+const (
+	SnapshotStatusOk string = "OK"
+)
+
 var SnapshotStatusType = map[string]string{
-	"OK": "OK",
+	SnapshotStatusOk: SnapshotStatusOk,
 }
 
 // FindSnapshot gets snapshot information in specified pool
@@ -103,7 +107,10 @@ func ListSnapshotByVolume(srcVolName, pool string) (snaps []*snapshotInfo, err e
 		glog.Errorf("Failed to find snapshot, args [%v].", args)
 		return nil, err
 	}
-	snaps = ParseSnapshotList(string(output))
+	snaps, err = ParseSnapshotList(string(output))
+	if err != nil {
+		return nil, err
+	}
 	for i := range snaps {
 		snaps[i].pool = pool
 		snaps[i].snapName = srcVolName
