@@ -42,12 +42,12 @@ func TestMain(m *testing.M) {
 	os.Exit(ret)
 }
 
-func TestPreparation(t *testing.T) {
+func TestSnapshotPrepare(t *testing.T) {
 	CreateVolume(SnapTestVolumeName, SnapTestPoolName, gib, 1)
 	CreateVolume(SnapTestVolumeNameNoSnap, SnapTestPoolName, gib, 1)
 }
 
-func TestCleaner(t *testing.T){
+func TestSnapshotCleaner(t *testing.T){
 	DeleteVolume(SnapTestVolumeName, SnapTestPoolName)
 	DeleteVolume(SnapTestVolumeNameNoSnap, SnapTestPoolName)
 }
