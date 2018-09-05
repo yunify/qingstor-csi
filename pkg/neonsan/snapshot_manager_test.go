@@ -47,6 +47,15 @@ func TestSnapshotPrepare(t *testing.T) {
 	CreateVolume(SnapTestVolumeNameNoSnap, SnapTestPoolName, gib, 1)
 }
 
+func TestSnapshotCheck(t *testing.T){
+	if vol, err := FindVolume(SnapTestVolumeName, SnapTestPoolName); err != nil || vol == nil{
+		t.Errorf("Not found volume [%s]", SnapTestVolumeName)
+	}
+	if vol, err := FindVolume(SnapTestVolumeNameNoSnap, SnapTestPoolName); err != nil || vol == nil{
+		t.Errorf("Not found volume [%s]", SnapTestVolumeNameNoSnap)
+	}
+}
+
 func TestSnapshotCleaner(t *testing.T){
 	DeleteVolume(SnapTestVolumeName, SnapTestPoolName)
 	DeleteVolume(SnapTestVolumeNameNoSnap, SnapTestPoolName)
