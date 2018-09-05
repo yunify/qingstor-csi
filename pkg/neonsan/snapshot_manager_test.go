@@ -18,9 +18,9 @@ package neonsan
 
 import (
 	"flag"
-	"github.com/pkg/errors"
 	"os"
 	"testing"
+	"errors"
 )
 
 const (
@@ -171,7 +171,7 @@ func TestFindSnapshot(t *testing.T) {
 				sourceVolumeName: SnapTestFakeVolumeName,
 			},
 			output: nil,
-			err:    errors.Errorf("raise error"),
+			err:    errors.New("raise error"),
 		},
 		{
 			name: "fake pool name",
@@ -181,7 +181,7 @@ func TestFindSnapshot(t *testing.T) {
 				sourceVolumeName: SnapTestVolumeName,
 			},
 			output: nil,
-			err:    errors.Errorf("raise error"),
+			err:    errors.New("raise error"),
 		},
 	}
 	for _, v := range tests {
