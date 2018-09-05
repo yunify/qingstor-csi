@@ -43,25 +43,29 @@ func TestMain(m *testing.M) {
 }
 
 func TestSnapshotPrepare(t *testing.T) {
-	CreateVolume(SnapTestVolumeName, SnapTestPoolName, gib, 1)
-	CreateVolume(SnapTestVolumeNameNoSnap, SnapTestPoolName, gib, 1)
+	if _, err := CreateVolume(SnapTestVolumeName, SnapTestPoolName, gib, 1); err != nil{
+		t.Errorf("Failed to create volume [%s], error [%v]", SnapTestVolumeName, err)
+	}
+	if _,err:= CreateVolume(SnapTestVolumeNameNoSnap, SnapTestPoolName, gib, 1); err != nil{
+		t.Errorf("Failed to create volume [%s], error [%v]", SnapTestVolumeNameNoSnap, err)
+	}
 }
 
 func TestSnapshotCheck(t *testing.T){
 	if vol, err := FindVolume(SnapTestVolumeName, SnapTestPoolName); err != nil || vol == nil{
-		t.Errorf("Not found volume [%s]", SnapTestVolumeName)
+		t.Errorf("Not found volume [%s], error [%v]", SnapTestVolumeName, err)
 	}
 	if vol, err := FindVolume(SnapTestVolumeNameNoSnap, SnapTestPoolName); err != nil || vol == nil{
-		t.Errorf("Not found volume [%s]", SnapTestVolumeNameNoSnap)
+		t.Errorf("Not found volume [%s], error [%v]", SnapTestVolumeNameNoSnap, err)
 	}
 }
 
 func TestSnapshotCleaner(t *testing.T){
 	if  err := DeleteVolume(SnapTestVolumeName, SnapTestPoolName); err != nil{
-		t.Errorf("Failed to delete volume [%s]", SnapTestVolumeName)
+		t.Errorf("Failed to delete volume [%s], error [%v]", SnapTestVolumeName, err)
 	}
 	if err := DeleteVolume(SnapTestVolumeNameNoSnap, SnapTestPoolName); err != nil{
-		t.Errorf("Failed to delete volume [%s]", SnapTestVolumeNameNoSnap)
+		t.Errorf("Failed to delete volume [%s], error [%v]", SnapTestVolumeNameNoSnap, err)
 	}
 }
 
