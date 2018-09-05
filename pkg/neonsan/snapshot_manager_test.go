@@ -18,7 +18,7 @@ package neonsan
 
 import (
 	"flag"
-	"fmt"
+	"github.com/pkg/errors"
 	"os"
 	"testing"
 )
@@ -27,8 +27,10 @@ const (
 	SnapTestSnapshotName     = "test"
 	SnapTestFakeSnapshotName = "fake"
 	SnapTestPoolName         = "csi"
+	SnapTestFakePoolName     = "fake"
 	SnapTestVolumeName       = "foo"
 	SnapTestFakeVolumeName   = "fake"
+	SnapTestVolumeNameNoSnap = "nosnap"
 )
 
 func TestMain(m *testing.M) {
@@ -41,7 +43,14 @@ func TestMain(m *testing.M) {
 }
 
 func TestPreparation(t *testing.T) {
+	if volInfo, err := FindVolume(SnapTestVolumeName, SnapTestPoolName); err != nil {
+		t.Fatalf("cannot find volume error: [%v]", err)
+	} else if volInfo != nil {
+		t.Logf("volume [%s] in pool [%s] has been created.", SnapTestVolumeName, SnapTestPoolName)
+	}
+	t.Logf("create volume [%s] in pool [%s]...", SnapTestVolumeName, SnapTestPoolName)
 	CreateVolume(SnapTestVolumeName, SnapTestPoolName, gib, 1)
+	CreateVolume(SnapTestVolumeName, SnapTestVolumeNameNoSnap, gib, 1)
 }
 
 func TestCreateSnapshot(t *testing.T) {
@@ -52,7 +61,7 @@ func TestCreateSnapshot(t *testing.T) {
 		err    error
 	}{
 		{
-			name: "Succeed to create snapshot",
+			name: "succeed to create snapshot",
 			input: &snapshotInfo{
 				snapName:         SnapTestSnapshotName,
 				pool:             SnapTestPoolName,
@@ -66,39 +75,49 @@ func TestCreateSnapshot(t *testing.T) {
 			err: nil,
 		},
 		{
-			name: "Recreate snapshot",
+			name: "recreate snapshot",
 			input: &snapshotInfo{
 				snapName:         SnapTestSnapshotName,
 				pool:             SnapTestPoolName,
 				sourceVolumeName: SnapTestVolumeName,
 			},
 			output: nil,
-			err:    fmt.Errorf("Raise error"),
+			err:    errors.New("raise error"),
 		},
 		{
-			name: "Failed to create snapshot",
+			name: "fake volume name",
 			input: &snapshotInfo{
 				snapName:         SnapTestSnapshotName,
 				pool:             SnapTestPoolName,
 				sourceVolumeName: SnapTestFakeVolumeName,
 			},
 			output: nil,
-			err:    fmt.Errorf("Raise error"),
+			err:    errors.New("raise error"),
+		},
+		{
+			name: "fake pool name",
+			input: &snapshotInfo{
+				snapName:         SnapTestSnapshotName,
+				pool:             SnapTestFakePoolName,
+				sourceVolumeName: SnapTestVolumeName,
+			},
+			output: nil,
+			err:    errors.New("raise error"),
 		},
 	}
 	for _, v := range tests {
 		snapInfo, err := CreateSnapshot(v.input.snapName, v.input.sourceVolumeName, v.input.pool)
 		if (v.err != nil && err == nil) || (v.err == nil && err != nil) {
-			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.err, err)
-		} else if v.err == nil && err == nil {
-			if v.output == nil && snapInfo == nil {
-				t.Errorf("name %s: error expect %v, but actually %v", v.name, v.output, snapInfo)
-			} else if v.output != nil && snapInfo != nil {
+			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.err, err)
+		}
+
+		if v.err == nil && err == nil {
+			if v.output != nil && snapInfo != nil {
 				if v.output.snapName != snapInfo.snapName {
-					t.Errorf("name %s: error expect %v, but actually %v", v.name, v.output, snapInfo)
+					t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.output, snapInfo)
 				}
 			} else {
-				t.Errorf("name %s: error expect %v, but actually %v", v.name, v.output, snapInfo)
+				t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.output, snapInfo)
 			}
 		}
 	}
@@ -112,7 +131,7 @@ func TestFindSnapshot(t *testing.T) {
 		err    error
 	}{
 		{
-			name: "Succeed to find snapshot",
+			name: "succeed to find snapshot",
 			input: &snapshotInfo{
 				snapName:         SnapTestSnapshotName,
 				pool:             SnapTestPoolName,
@@ -125,21 +144,59 @@ func TestFindSnapshot(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			name: "volume doesn't contains any snapshot",
+			input: &snapshotInfo{
+				snapName:         SnapTestSnapshotName,
+				pool:             SnapTestPoolName,
+				sourceVolumeName: SnapTestVolumeNameNoSnap,
+			},
+			output: nil,
+			err:    nil,
+		},
+		{
+			name: "fake snapshot name",
+			input: &snapshotInfo{
+				snapName:         SnapTestFakeSnapshotName,
+				pool:             SnapTestPoolName,
+				sourceVolumeName: SnapTestVolumeName,
+			},
+			output: nil,
+			err:    nil,
+		},
+		{
+			name: "fake volume name",
+			input: &snapshotInfo{
+				snapName:         SnapTestSnapshotName,
+				pool:             SnapTestPoolName,
+				sourceVolumeName: SnapTestFakeVolumeName,
+			},
+			output: nil,
+			err:    errors.Errorf("raise error"),
+		},
+		{
+			name: "fake pool name",
+			input: &snapshotInfo{
+				snapName:         SnapTestSnapshotName,
+				pool:             SnapTestFakePoolName,
+				sourceVolumeName: SnapTestVolumeName,
+			},
+			output: nil,
+			err:    errors.Errorf("raise error"),
+		},
 	}
 	for _, v := range tests {
 		snapInfo, err := FindSnapshot(v.input.snapName, v.input.sourceVolumeName, v.input.pool)
 		if (v.err != nil && err == nil) || (v.err == nil && err != nil) {
-			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.err, err)
+			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.err, err)
 		}
 		if v.err == nil && err == nil {
-			if v.output == nil && snapInfo == nil {
-				t.Errorf("name %s: error expect %v, but actually %v", v.name, v.output, snapInfo)
-			} else if v.output != nil && snapInfo != nil {
+			if v.output != nil && snapInfo != nil {
 				if v.output.snapName != snapInfo.snapName {
-					t.Errorf("name %s: error expect %v, but actually %v", v.name, v.output, snapInfo)
+					t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.output, snapInfo)
 				}
-			} else {
-				t.Errorf("name %s: error expect %v, but actually %v", v.name, v.output, snapInfo)
+			} else if (v.output != nil && snapInfo == nil) || (v.output == nil && snapInfo != nil) {
+				t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.output, snapInfo)
 			}
 		}
 	}
@@ -153,7 +210,7 @@ func TestFindSnapshotWithoutPool(t *testing.T) {
 		err    error
 	}{
 		{
-			name: "Succeed to find snapshot",
+			name: "succeed to find snapshot",
 			input: &snapshotInfo{
 				snapName: SnapTestSnapshotName,
 			},
@@ -165,7 +222,7 @@ func TestFindSnapshotWithoutPool(t *testing.T) {
 			err: nil,
 		},
 		{
-			name: "Not found snapshot",
+			name: "not found snapshot",
 			input: &snapshotInfo{
 				snapName: SnapTestFakeSnapshotName,
 			},
@@ -176,16 +233,15 @@ func TestFindSnapshotWithoutPool(t *testing.T) {
 	for _, v := range tests {
 		snapInfo, err := FindSnapshotWithoutPool(v.input.snapName)
 		if (v.err != nil && err == nil) || (v.err == nil && err != nil) {
-			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.err, err)
+			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.err, err)
 		}
 		if v.err == nil && err == nil {
-			if v.output == nil && snapInfo == nil {
-			} else if v.output != nil && snapInfo != nil {
+			if v.output != nil && snapInfo != nil {
 				if v.output.snapName != snapInfo.snapName || v.output.pool != snapInfo.pool {
-					t.Errorf("name %s: expect %v, but actually %v", v.name, v.output, snapInfo)
+					t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.output, snapInfo)
 				}
-			} else {
-				t.Errorf("name %s: expect %v, but actually %v", v.name, v.output, snapInfo)
+			} else if (v.output != nil && snapInfo == nil) || (v.output == nil && snapInfo != nil) {
+				t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.output, snapInfo)
 			}
 		}
 	}
@@ -199,7 +255,7 @@ func TestListSnapshotByVolume(t *testing.T) {
 		err    error
 	}{
 		{
-			name: "Succeed to find snapshot",
+			name: "succeed to find snapshot",
 			input: &snapshotInfo{
 				pool:             SnapTestPoolName,
 				sourceVolumeName: SnapTestVolumeName,
@@ -213,21 +269,48 @@ func TestListSnapshotByVolume(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			name: "find no snapshot",
+			input: &snapshotInfo{
+				pool:             SnapTestPoolName,
+				sourceVolumeName: SnapTestVolumeNameNoSnap,
+			},
+			output: nil,
+			err:    nil,
+		},
+		{
+			name: "find fake pool",
+			input: &snapshotInfo{
+				pool:             SnapTestFakePoolName,
+				sourceVolumeName: SnapTestVolumeName,
+			},
+			output: nil,
+			err:    errors.New("raise error"),
+		},
+		{
+			name: "find fake volume",
+			input: &snapshotInfo{
+				pool:             SnapTestPoolName,
+				sourceVolumeName: SnapTestFakeVolumeName,
+			},
+			output: nil,
+			err:    errors.New("raise error"),
+		},
 	}
 	for _, v := range tests {
 		snapList, err := ListSnapshotByVolume(v.input.sourceVolumeName, v.input.pool)
 		if (v.err != nil && err == nil) || (v.err == nil && err != nil) {
-			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.err, err)
+			t.Errorf("name [%s]: error expect [%v], but actually [%v]", v.name, v.err, err)
 		}
 		if v.err == nil && err == nil {
 			if len(v.output) != len(snapList) {
-				t.Errorf("name %s: error expect %d, but actually %d", v.name, len(v.output), len(snapList))
-				continue
-			}
-			for i := range v.output {
-				if v.output[i].snapName != snapList[i].snapName || v.output[i].pool != snapList[i].pool {
-					t.Errorf("name %s: expect %v, but actually %v", v.name, v.output, snapList)
-					break
+				t.Errorf("name [%s]: error expect [%d], but actually [%d]", v.name, len(v.output), len(snapList))
+			} else {
+				for i := range v.output {
+					if v.output[i].snapName != snapList[i].snapName || v.output[i].pool != snapList[i].pool {
+						t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.output, snapList)
+						break
+					}
 				}
 			}
 		}
@@ -241,7 +324,7 @@ func TestDeleteSnapshot(t *testing.T) {
 		err      error
 	}{
 		{
-			name: "Succeed to create snapshot",
+			name: "succeed to delete snapshot",
 			snapInfo: &snapshotInfo{
 				snapName:         SnapTestSnapshotName,
 				pool:             SnapTestPoolName,
@@ -250,28 +333,28 @@ func TestDeleteSnapshot(t *testing.T) {
 			err: nil,
 		},
 		{
-			name: "Recreate snapshot",
+			name: "re-delete snapshot",
 			snapInfo: &snapshotInfo{
 				snapName:         SnapTestSnapshotName,
 				pool:             SnapTestPoolName,
 				sourceVolumeName: SnapTestFakeVolumeName,
 			},
-			err: fmt.Errorf("Raise error"),
+			err: errors.New("raise error"),
 		},
 		{
-			name: "Failed to create snapshot",
+			name: "failed to delete snapshot",
 			snapInfo: &snapshotInfo{
 				snapName:         SnapTestSnapshotName,
 				pool:             SnapTestPoolName,
 				sourceVolumeName: SnapTestFakeVolumeName,
 			},
-			err: fmt.Errorf("Raise error"),
+			err: errors.New("raise error"),
 		},
 	}
 	for _, v := range tests {
 		err := DeleteSnapshot(v.snapInfo.snapName, v.snapInfo.sourceVolumeName, v.snapInfo.pool)
 		if (v.err != nil && err == nil) || (v.err == nil && err != nil) {
-			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.err, err)
+			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.err, err)
 		}
 	}
 }

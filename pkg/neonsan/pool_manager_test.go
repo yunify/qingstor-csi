@@ -17,7 +17,6 @@ limitations under the License.
 package neonsan
 
 import (
-	"errors"
 	"testing"
 )
 
@@ -31,7 +30,6 @@ func TestFindPool(t *testing.T) {
 		name     string
 		poolName string
 		output   *poolInfo
-		err      error
 	}{
 		{
 			name:     "find pool",
@@ -39,23 +37,52 @@ func TestFindPool(t *testing.T) {
 			output: &poolInfo{
 				name: PoolTestPoolName,
 			},
-			err: nil,
 		},
 		{
-			name:     "no found pool",
+			name:     "not found pool",
 			poolName: PoolTestFakePoolName,
 			output:   nil,
-			err:      errors.New("not found"),
 		},
 	}
 	for _, v := range tests {
 		poolInfo, err := FindPool(v.poolName)
-		if (v.err != nil && err == nil) && (v.err == nil && err != nil) {
-			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.err, err)
-		} else if v.err == nil && err == nil {
+		if err != nil {
+			t.Errorf("name [%s]: find pool error [%v]", v.name, err)
+		}
+
+		if v.output == nil && poolInfo == nil {
+			// no found volume
+		} else if v.output != nil && poolInfo != nil {
+			// found volume, check volume info
 			if v.output.name != poolInfo.name {
-				t.Errorf("name %s: error expect %v, but actually %v", v.name, v.output, poolInfo)
+				t.Errorf("name [%s]: error expect [%v], but actually [%v]", v.name, v.output, poolInfo)
 			}
+		} else {
+			// return value mismatch
+			t.Errorf("name [%s]: error expect [%v], but actually [%v]", v.name, v.output, poolInfo)
+		}
+	}
+}
+
+func TestListPoolName(t *testing.T) {
+	tests := []struct {
+		name   string
+		output string
+	}{
+		{
+			name:   "find pool",
+			output: PoolTestPoolName,
+		},
+	}
+	for _, v := range tests {
+		pools, err := ListPoolName()
+		if err != nil {
+			t.Fatalf("name [%s]: fatal error [%v]", v.name, err)
+		}
+		// check return pool list
+		t.Logf("name [%s]: actually return pool list [%v]", v.name, pools)
+		if ContainsString(pools, v.output) {
+			t.Errorf("name [%s]: expect pool [%s] must in return pool list [%v], but actually not", v.name, v.output, pools)
 		}
 	}
 }

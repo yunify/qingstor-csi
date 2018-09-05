@@ -16,6 +16,10 @@ limitations under the License.
 
 package neonsan
 
+import (
+	"fmt"
+)
+
 // poolInfo: stats pool
 // total, free, used: pool size in bytes
 type poolInfo struct {
@@ -27,17 +31,28 @@ type poolInfo struct {
 }
 
 // FindPool
-// Description: get pool detail information
+// Description: get pool detail information.
 // Input: pool name: string
 // Return cases:
 //   pool, nil: found pool
-//   nil, nil: pool not found
+//   nil, nil: not found pool
 //   nil, err: error
 func FindPool(poolName string) (outPool *poolInfo, err error) {
+	// check whether the pool exists
+	pools, err := ListPoolName()
+	if err != nil {
+		return nil, fmt.Errorf("call FindPool [%s]: %v", poolName, err.Error())
+	}
+	if !ContainsString(pools, poolName) {
+		// the pool doesn't exist
+		return nil, nil
+	}
+
+	// get pool info
 	args := []string{"stats_pool", "-pool", poolName, "-c", ConfigFilePath}
 	output, err := ExecCommand(CmdNeonsan, args)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("call FindPool [%s]: %v", poolName, err.Error())
 	}
 	poolInfo, err := ParsePoolInfo(string(output))
 	return poolInfo, err
@@ -52,7 +67,7 @@ func ListPoolName() (pools []string, err error) {
 	args := []string{"list_pool", "-c", ConfigFilePath}
 	output, err := ExecCommand(CmdNeonsan, args)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("call ListPoolName: %v", err.Error())
 	}
 	pools, err = ParsePoolNameList(string(output))
 	return pools, err

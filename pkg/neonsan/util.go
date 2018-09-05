@@ -69,7 +69,8 @@ func ExecCommand(command string, args []string) ([]byte, error) {
 	cmd := exec.Command(command, args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("code [%s]: message [%s]", err.Error(), output)
+		return nil, fmt.Errorf("execute cmd [%s] args [%v] error: code [%s], msg [%s]",
+			command, args, err.Error(), output)
 	}
 	return output, nil
 }
@@ -101,6 +102,16 @@ func ContainsVolumeCapabilities(accessModes []*csi.VolumeCapability_AccessMode, 
 func ContainsNodeServiceCapability(nodeCaps []*csi.NodeServiceCapability, subCap csi.NodeServiceCapability_RPC_Type) bool {
 	for _, v := range nodeCaps {
 		if strings.Contains(v.String(), subCap.String()) {
+			return true
+		}
+	}
+	return false
+}
+
+// ContainsString
+func ContainsString(array []string, str string) bool {
+	for _, v := range array {
+		if v == str {
 			return true
 		}
 	}

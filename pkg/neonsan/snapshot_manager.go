@@ -19,7 +19,6 @@ package neonsan
 import (
 	"fmt"
 	"github.com/golang/glog"
-	"time"
 )
 
 type snapshotInfo struct {
@@ -134,21 +133,14 @@ func CreateSnapshot(snapName, srcVolName, pool string) (outSnap *snapshotInfo, e
 		"-c", ConfigFilePath}
 	_, err = ExecCommand(CmdNeonsan, args)
 	if err != nil {
-		glog.Errorf("Failed to create snapshot, args [%v], error [%v].", args, err)
 		return nil, err
 	}
-	glog.Infof("Succeed to create snapshot, args [%v].", args)
-	time.Sleep(time.Second * 2)
 	snapInfo, err := FindSnapshot(snapName, srcVolName, pool)
 	if err != nil {
-		glog.Errorf("Failed to find snapshot [%s] src volume [%s] pool [%s], error: [%s]", snapName, srcVolName, pool,
-			err.Error())
-		return nil, err
+		return nil, fmt.Errorf("CreateSnapshot: [%v]", err)
 	}
 	if snapInfo == nil {
-		str := fmt.Sprintf("Find no snapshot [%s] volume [%s] pool [%s].", snapName, srcVolName, pool)
-		glog.Error(str)
-		return nil, fmt.Errorf(str)
+		return nil, fmt.Errorf("CreateSnapshot error: cannot find snapshot [%s] after creating", snapName)
 	}
 	return snapInfo, nil
 }

@@ -87,10 +87,10 @@ func TestParseVolumeList(t *testing.T) {
 	for _, v := range tests {
 		volList, err := ParseVolumeList(v.output)
 		if (v.err == nil && err != nil) || (v.err != nil && err == nil) {
-			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.err, err)
+			t.Errorf("name [%s]: error expect [%v], but actually [%v]", v.name, v.err, err)
 		}
 		if !reflect.DeepEqual(v.list, volList) {
-			t.Errorf("name %s: expect %v, but actually %v", v.name, v.list, volList)
+			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.list, volList)
 		}
 	}
 }
@@ -143,10 +143,10 @@ func TestParseSnapshotList(t *testing.T) {
 	for _, v := range tests {
 		snapList, err := ParseSnapshotList(v.output)
 		if (v.err == nil && err != nil) || (v.err != nil && err == nil) {
-			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.err, err)
+			t.Errorf("name [%s]: error expect [%v], but actually [%v]", v.name, v.err, err)
 		}
 		if !reflect.DeepEqual(v.list, snapList) {
-			t.Errorf("name %s: expect %v, but actually %v", v.name, v.list, snapList)
+			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.list, snapList)
 		}
 	}
 
@@ -187,10 +187,10 @@ func TestParsePoolInfo(t *testing.T) {
 	for _, v := range tests {
 		poolNames, err := ParsePoolInfo(v.output)
 		if (v.err == nil && err != nil) || (v.err != nil && err == nil) {
-			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.err, err)
+			t.Errorf("name [%s]: error expect [%v], but actually [%v]", v.name, v.err, err)
 		}
 		if !reflect.DeepEqual(v.pools, poolNames) {
-			t.Errorf("name %s: expect %v, but actually %v", v.name, v.pools, poolNames)
+			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.pools, poolNames)
 		}
 	}
 }
@@ -238,10 +238,10 @@ func TestParsePoolNameList(t *testing.T) {
 	for _, v := range tests {
 		poolNames, err := ParsePoolNameList(v.output)
 		if (v.err == nil && err != nil) || (v.err != nil && err == nil) {
-			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.err, err)
+			t.Errorf("name [%s]: error expect [%v], but actually [%v]", v.name, v.err, err)
 		}
 		if !reflect.DeepEqual(v.pools, poolNames) {
-			t.Errorf("name %s: expect %v, but actually %v", v.name, v.pools, poolNames)
+			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.pools, poolNames)
 		}
 	}
 }
@@ -338,11 +338,11 @@ func TestReadCountNumber(t *testing.T) {
 		exCnt, err := readCountNumber(v.output)
 		if err != nil {
 			if err.Error() != v.errStr {
-				t.Errorf("name %s: expect error %s, but actually %s", v.name, v.errStr, err.Error())
+				t.Errorf("name [%s]: expect error [%s], but actually [%s]", v.name, v.errStr, err.Error())
 			}
 		}
 		if exCnt != v.cnt {
-			t.Errorf("name %s: expect %d, but actually %d", v.name, v.cnt, exCnt)
+			t.Errorf("name [%s]: expect [%d], but actually [%d]", v.name, v.cnt, exCnt)
 		}
 	}
 }

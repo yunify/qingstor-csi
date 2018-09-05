@@ -136,9 +136,9 @@ func ListVolumeByPool(pool string) (volList []*volumeInfo, err error) {
 //  volume pool: string
 //  volume bytes: int64
 //  replica count: int
-// Return:
-//  volume information pointer: *volumeInfo
-//  error: error
+// Return case:
+//   volume info, nil: succeed to create volume
+//   nil, err: failed to create volume
 func CreateVolume(volName string, poolName string, volSize64 int64, replicas int) (outVol *volumeInfo, err error) {
 	if volName == "" || poolName == "" || volSize64 == 0 {
 		return nil, fmt.Errorf("invalid input arguments")
