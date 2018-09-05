@@ -94,7 +94,7 @@ func FindSnapshotWithoutPool(snapName string) (outSnap *snapshotInfo, err error)
 		for _, volInfo := range vols {
 			glog.Infof("vol [%s]", volInfo.name)
 			snapInfo, err := FindSnapshot(snapName, volInfo.name, poolName)
-			if err != nil || snapInfo != nil{
+			if err != nil || snapInfo != nil {
 				return snapInfo, err
 			}
 		}
@@ -138,7 +138,7 @@ func CreateSnapshot(snapName, srcVolName, pool string) (outSnap *snapshotInfo, e
 		return nil, err
 	}
 	glog.Infof("Succeed to create snapshot, args [%v].", args)
-	time.Sleep(time.Second*2)
+	time.Sleep(time.Second * 2)
 	snapInfo, err := FindSnapshot(snapName, srcVolName, pool)
 	if err != nil {
 		glog.Errorf("Failed to find snapshot [%s] src volume [%s] pool [%s], error: [%s]", snapName, srcVolName, pool,
@@ -173,7 +173,7 @@ func DeleteSnapshot(snapName, srcVolName, pool string) (err error) {
 // Return case:
 //   nil: succeed to export snapshot
 //   err: failed to export snapshot
-func ExportSnapshot(snapName, volName,snapPool string) (err error) {
+func ExportSnapshot(snapName, volName, snapPool string) (err error) {
 	return nil
 }
 

@@ -17,46 +17,45 @@ limitations under the License.
 package neonsan
 
 import (
-	"testing"
 	"errors"
+	"testing"
 )
 
 const (
-	PoolTestPoolName         = "csi"
-	PoolTestFakePoolName       = "fake"
+	PoolTestPoolName     = "csi"
+	PoolTestFakePoolName = "fake"
 )
 
 func TestFindPool(t *testing.T) {
-	tests := []struct{
-		name string
+	tests := []struct {
+		name     string
 		poolName string
-		output *poolInfo
-		err error
+		output   *poolInfo
+		err      error
 	}{
 		{
-			name: "find pool",
+			name:     "find pool",
 			poolName: PoolTestPoolName,
 			output: &poolInfo{
 				name: PoolTestPoolName,
 			},
-			err:nil,
+			err: nil,
 		},
 		{
-			name: "no found pool",
-			poolName:PoolTestFakePoolName,
-			output: nil,
-			err: errors.New("not found"),
+			name:     "no found pool",
+			poolName: PoolTestFakePoolName,
+			output:   nil,
+			err:      errors.New("not found"),
 		},
 	}
-	for _, v:=range tests{
+	for _, v := range tests {
 		poolInfo, err := FindPool(v.poolName)
-		if (v.err != nil && err == nil)&&(v.err ==nil&&err != nil) {
+		if (v.err != nil && err == nil) && (v.err == nil && err != nil) {
 			t.Errorf("name %s: error expect %v, but actually %v", v.name, v.err, err)
-		}else if v.err == nil && err == nil{
-			if v.output.name != poolInfo.name{
+		} else if v.err == nil && err == nil {
+			if v.output.name != poolInfo.name {
 				t.Errorf("name %s: error expect %v, but actually %v", v.name, v.output, poolInfo)
 			}
 		}
 	}
 }
-
