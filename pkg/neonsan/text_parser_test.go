@@ -30,7 +30,7 @@ func TestParseVolumeList(t *testing.T) {
 		err    error
 	}{
 		{
-			name: "One volume list",
+			name: "one volume list",
 			output: `Volume Count:  1
 +--------------+------+-------------+-----------+---------------+--------+---------------------+---------------------+
 |      ID      | NAME |    SIZE     | REP COUNT | MIN REP COUNT | STATUS |     STATUS TIME     |    CREATED TIME     |
@@ -49,7 +49,7 @@ func TestParseVolumeList(t *testing.T) {
 			err: nil,
 		},
 		{
-			name: "Two volumes list",
+			name: "two volumes list",
 			output: `Volume Count:  2
 +--------------+-------------------------+------------+-----------+---------------+--------+---------------------+---------------------+
 |      ID      |          NAME           |    SIZE    | REP COUNT | MIN REP COUNT | STATUS |     STATUS TIME     |    CREATED TIME     |
@@ -77,7 +77,7 @@ func TestParseVolumeList(t *testing.T) {
 			err: nil,
 		},
 		{
-			name: "No volume list",
+			name: "no volume list",
 			output: `Volume Count:0
 `,
 			list: nil,
@@ -103,7 +103,7 @@ func TestParseSnapshotList(t *testing.T) {
 		err    error
 	}{
 		{
-			name: "Two snapshot list",
+			name: "two snapshot list",
 			output: `Snapshot Count:  2
 +--------------+-------------+---------------+---------------+---------------------------+--------+
 |  VOLUME ID   | SNAPSHOT ID | SNAPSHOT NAME | SNAPSHOT SIZE |        CREATE TIME        | STATUS |
@@ -133,7 +133,7 @@ func TestParseSnapshotList(t *testing.T) {
 			err: nil,
 		},
 		{
-			name: "No volume list",
+			name: "no volume list",
 			output: `Volume Count:0
 `,
 			list: nil,
@@ -160,7 +160,7 @@ func TestParsePoolInfo(t *testing.T) {
 		err    error
 	}{
 		{
-			name: "Find csi pool",
+			name: "find csi pool",
 			output: `+----------+-----------+-------+------+------+
 | POOL ID  | POOL NAME | TOTAL | FREE | USED |
 +----------+-----------+-------+------+------+
@@ -178,7 +178,7 @@ func TestParsePoolInfo(t *testing.T) {
 			err: nil,
 		},
 		{
-			name:   "Pool not found",
+			name:   "pool not found",
 			output: `Pool Count:  0`,
 			pools:  nil,
 			err:    nil,
@@ -203,7 +203,7 @@ func TestParsePoolNameList(t *testing.T) {
 		err    error
 	}{
 		{
-			name: "Find csi pool",
+			name: "find csi pool",
 			output: `Pool Count:  4
 +----------+
 |   NAME   |
@@ -223,13 +223,13 @@ func TestParsePoolNameList(t *testing.T) {
 			err: nil,
 		},
 		{
-			name:   "Pool not found",
+			name:   "pool not found",
 			output: `Pool Count:  0`,
 			pools:  nil,
 			err:    nil,
 		},
 		{
-			name:   "Wrong output",
+			name:   "wrong output",
 			output: `wrong output`,
 			pools:  nil,
 			err:    fmt.Errorf("wrong output"),
@@ -253,7 +253,7 @@ func TestParseAttachedVolumeList(t *testing.T) {
 		infos []attachInfo
 	}{
 		{
-			name: "Two attached volume",
+			name: "two attached volume",
 			input: `dev_id  vol_id  device  volume  config  read_bps    write_bps   read_iops   write_iops
 0   0x3ff7000000    qbd0    csi/foo1    /etc/neonsan/qbd.conf   0   0   0   0
 1   0x3a7c000000    qbd1    csi/foo /etc/neonsan/qbd.conf   0   0   0   0
@@ -304,31 +304,31 @@ func TestReadCountNumber(t *testing.T) {
 		errStr string
 	}{
 		{
-			name:   "Have 0 volume",
+			name:   "have 0 volume",
 			output: "Volume Count:  0",
 			cnt:    0,
 			errStr: "",
 		},
 		{
-			name:   "Have 1 volume",
+			name:   "have 1 volume",
 			output: "Volume Count:  1",
 			cnt:    1,
 			errStr: "",
 		},
 		{
-			name:   "Have 2 volumes",
+			name:   "have 2 volumes",
 			output: "Volume Count:  2",
 			cnt:    2,
 			errStr: "",
 		},
 		{
-			name:   "Not found count number",
+			name:   "not found count number",
 			output: "Volume Count:",
 			cnt:    0,
 			errStr: "strconv.Atoi: parsing \"\": invalid syntax",
 		},
 		{
-			name:   "Not found volume count",
+			name:   "not found volume count",
 			output: "fake",
 			cnt:    0,
 			errStr: "cannot found volume count",
