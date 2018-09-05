@@ -43,14 +43,13 @@ func TestMain(m *testing.M) {
 }
 
 func TestPreparation(t *testing.T) {
-	if volInfo, err := FindVolume(SnapTestVolumeName, SnapTestPoolName); err != nil {
-		t.Fatalf("cannot find volume error: [%v]", err)
-	} else if volInfo != nil {
-		t.Logf("volume [%s] in pool [%s] has been created.", SnapTestVolumeName, SnapTestPoolName)
-	}
-	t.Logf("create volume [%s] in pool [%s]...", SnapTestVolumeName, SnapTestPoolName)
 	CreateVolume(SnapTestVolumeName, SnapTestPoolName, gib, 1)
-	CreateVolume(SnapTestVolumeName, SnapTestVolumeNameNoSnap, gib, 1)
+	CreateVolume(SnapTestVolumeNameNoSnap, SnapTestPoolName, gib, 1)
+}
+
+func TestCleaner(t *testing.T){
+	DeleteVolume(SnapTestVolumeName, SnapTestPoolName)
+	DeleteVolume(SnapTestVolumeNameNoSnap, SnapTestPoolName)
 }
 
 func TestCreateSnapshot(t *testing.T) {
