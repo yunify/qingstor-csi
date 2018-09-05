@@ -57,8 +57,12 @@ func TestSnapshotCheck(t *testing.T){
 }
 
 func TestSnapshotCleaner(t *testing.T){
-	DeleteVolume(SnapTestVolumeName, SnapTestPoolName)
-	DeleteVolume(SnapTestVolumeNameNoSnap, SnapTestPoolName)
+	if  err := DeleteVolume(SnapTestVolumeName, SnapTestPoolName); err != nil{
+		t.Errorf("Failed to delete volume [%s]", SnapTestVolumeName)
+	}
+	if err := DeleteVolume(SnapTestVolumeNameNoSnap, SnapTestPoolName); err != nil{
+		t.Errorf("Failed to delete volume [%s]", SnapTestVolumeNameNoSnap)
+	}
 }
 
 func TestCreateSnapshot(t *testing.T) {
