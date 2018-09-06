@@ -17,8 +17,6 @@ limitations under the License.
 package neonsan
 
 import (
-	"flag"
-	"os"
 	"testing"
 	"errors"
 )
@@ -32,15 +30,6 @@ const (
 	SnapTestFakeVolumeName   = "fake"
 	SnapTestVolumeNameNoSnap = "nosnap"
 )
-
-func TestMain(m *testing.M) {
-	flag.Set("alsologtostderr", "true")
-	flag.Set("log_dir", "/tmp")
-	flag.Set("v", "3")
-	flag.Parse()
-	ret := m.Run()
-	os.Exit(ret)
-}
 
 func TestSnapshotPrepare(t *testing.T) {
 	if _, err := CreateVolume(SnapTestVolumeName, SnapTestPoolName, gib, 1); err != nil{
