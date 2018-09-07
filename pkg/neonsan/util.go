@@ -153,3 +153,12 @@ func ParseIntToDec(hex string) (dec string) {
 	}
 	return strconv.FormatInt(i64, 10)
 }
+
+func EntryFunction(functionName string) func() {
+	start := time.Now()
+	glog.Infof("*************** enter %s at %s ***************", functionName, start.String())
+	return func() {
+		glog.Infof("=============== exit %s (%s since %s) ===============", functionName, time.Since(start),
+			start.String())
+	}
+}

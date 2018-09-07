@@ -17,8 +17,10 @@ limitations under the License.
 package neonsan
 
 import (
-	"testing"
 	"errors"
+	"github.com/container-storage-interface/spec/lib/go/csi/v0"
+	"reflect"
+	"testing"
 )
 
 const (
@@ -32,28 +34,28 @@ const (
 )
 
 func TestSnapshotPrepare(t *testing.T) {
-	if _, err := CreateVolume(SnapTestVolumeName, SnapTestPoolName, gib, 1); err != nil{
+	if _, err := CreateVolume(SnapTestVolumeName, SnapTestPoolName, gib, 1); err != nil {
 		t.Errorf("Failed to create volume [%s], error [%v]", SnapTestVolumeName, err)
 	}
-	if _,err:= CreateVolume(SnapTestVolumeNameNoSnap, SnapTestPoolName, gib, 1); err != nil{
+	if _, err := CreateVolume(SnapTestVolumeNameNoSnap, SnapTestPoolName, gib, 1); err != nil {
 		t.Errorf("Failed to create volume [%s], error [%v]", SnapTestVolumeNameNoSnap, err)
 	}
 }
 
-func TestSnapshotCheck(t *testing.T){
-	if vol, err := FindVolume(SnapTestVolumeName, SnapTestPoolName); err != nil || vol == nil{
+func TestSnapshotCheck(t *testing.T) {
+	if vol, err := FindVolume(SnapTestVolumeName, SnapTestPoolName); err != nil || vol == nil {
 		t.Errorf("Not found volume [%s], error [%v]", SnapTestVolumeName, err)
 	}
-	if vol, err := FindVolume(SnapTestVolumeNameNoSnap, SnapTestPoolName); err != nil || vol == nil{
+	if vol, err := FindVolume(SnapTestVolumeNameNoSnap, SnapTestPoolName); err != nil || vol == nil {
 		t.Errorf("Not found volume [%s], error [%v]", SnapTestVolumeNameNoSnap, err)
 	}
 }
 
-func TestSnapshotCleaner(t *testing.T){
-	if  err := DeleteVolume(SnapTestVolumeName, SnapTestPoolName); err != nil{
+func TestSnapshotCleaner(t *testing.T) {
+	if err := DeleteVolume(SnapTestVolumeName, SnapTestPoolName); err != nil {
 		t.Errorf("Failed to delete volume [%s], error [%v]", SnapTestVolumeName, err)
 	}
-	if err := DeleteVolume(SnapTestVolumeNameNoSnap, SnapTestPoolName); err != nil{
+	if err := DeleteVolume(SnapTestVolumeNameNoSnap, SnapTestPoolName); err != nil {
 		t.Errorf("Failed to delete volume [%s], error [%v]", SnapTestVolumeNameNoSnap, err)
 	}
 }
@@ -360,6 +362,255 @@ func TestDeleteSnapshot(t *testing.T) {
 		err := DeleteSnapshot(v.snapInfo.snapName, v.snapInfo.sourceVolumeName, v.snapInfo.pool)
 		if (v.err != nil && err == nil) || (v.err == nil && err != nil) {
 			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.err, err)
+		}
+	}
+}
+
+func TestConvertNeonToCsiSnap(t *testing.T) {
+	tests := []struct {
+		caseName string
+		neonSnap *snapshotInfo
+		csiSnap  *csi.Snapshot
+	}{
+		{
+			caseName: "valid NeonSAN snapshot",
+			neonSnap: &snapshotInfo{
+				snapName:         SnapTestSnapshotName,
+				snapID:           "25463",
+				sizeByte:         2147483648,
+				status:           SnapshotStatusOk,
+				pool:             SnapTestPoolName,
+				createdTime:      1535024379,
+				sourceVolumeName: SnapTestVolumeName,
+			},
+			csiSnap: &csi.Snapshot{
+				SizeBytes:      2147483648,
+				Id:             SnapTestSnapshotName,
+				SourceVolumeId: SnapTestVolumeName,
+				CreatedAt:      1535024379,
+				Status: &csi.SnapshotStatus{
+					Type: csi.SnapshotStatus_READY,
+				},
+			},
+		},
+		{
+			caseName: "without snap name",
+			neonSnap: &snapshotInfo{
+				snapID:           "25463",
+				sizeByte:         2147483648,
+				status:           SnapshotStatusOk,
+				pool:             SnapTestPoolName,
+				createdTime:      1535024379,
+				sourceVolumeName: SnapTestVolumeName,
+			},
+			csiSnap: &csi.Snapshot{
+				SizeBytes:      2147483648,
+				SourceVolumeId: SnapTestVolumeName,
+				CreatedAt:      1535024379,
+				Status: &csi.SnapshotStatus{
+					Type: csi.SnapshotStatus_READY,
+				},
+			},
+		},
+		{
+			caseName: "zero value snap info",
+			neonSnap: &snapshotInfo{},
+			csiSnap:  &csi.Snapshot{},
+		},
+		{
+			caseName: "nil snap info",
+			neonSnap: nil,
+			csiSnap:  nil,
+		},
+	}
+	for _, v := range tests {
+		csiSnap := ConvertNeonToCsiSnap(v.neonSnap)
+		if !reflect.DeepEqual(v.csiSnap, csiSnap) {
+			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.caseName, v.csiSnap, csiSnap)
+		}
+	}
+}
+
+func TestConvertNeonSnapToListSnapResp(t *testing.T) {
+	tests := []struct {
+		caseName  string
+		neonSnaps []*snapshotInfo
+		respList  []*csi.ListSnapshotsResponse_Entry
+	}{
+		{
+			caseName: "normal snapshot info array",
+			neonSnaps: []*snapshotInfo{
+				{
+					snapName:         "snapshot1",
+					snapID:           "25463",
+					sizeByte:         2147483648,
+					status:           SnapshotStatusOk,
+					createdTime:      1535024299,
+					sourceVolumeName: "volume1",
+				},
+				{
+					snapName:         "snapshot2",
+					snapID:           "25464",
+					sizeByte:         2147483648,
+					status:           SnapshotStatusOk,
+					createdTime:      1535024379,
+					sourceVolumeName: "volume2",
+				},
+			},
+			respList: []*csi.ListSnapshotsResponse_Entry{
+				{
+					Snapshot: &csi.Snapshot{
+						Id:             "snapshot1",
+						SizeBytes:      2147483648,
+						SourceVolumeId: "volume1",
+						CreatedAt:      1535024299,
+						Status: &csi.SnapshotStatus{
+							Type: csi.SnapshotStatus_READY,
+						},
+					},
+				},
+				{
+					Snapshot: &csi.Snapshot{
+						Id:             "snapshot2",
+						SizeBytes:      2147483648,
+						SourceVolumeId: "volume2",
+						CreatedAt:      1535024379,
+						Status: &csi.SnapshotStatus{
+							Type: csi.SnapshotStatus_READY,
+						},
+					},
+				},
+			},
+		},
+		{
+			caseName:  "nil array",
+			neonSnaps: nil,
+			respList:  nil,
+		},
+	}
+	for _, v := range tests {
+		respList := ConvertNeonSnapToListSnapResp(v.neonSnaps)
+		if !reflect.DeepEqual(v.respList, respList) {
+			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.caseName, v.respList, respList)
+		}
+	}
+}
+
+func TestReadListPage(t *testing.T) {
+	exampleFullList := []*snapshotInfo{
+		{
+			snapName:         "snapshot1",
+			snapID:           "25463",
+			sizeByte:         2147483648,
+			status:           SnapshotStatusOk,
+			createdTime:      1535024299,
+			sourceVolumeName: "volume1",
+		},
+		{
+			snapName:         "snapshot2",
+			snapID:           "25466",
+			sizeByte:         2147483648,
+			status:           SnapshotStatusOk,
+			createdTime:      1535024266,
+			sourceVolumeName: "volume1",
+		},
+		{
+			snapName:         "snapshot3",
+			snapID:           "25472",
+			sizeByte:         2147483648,
+			status:           SnapshotStatusOk,
+			createdTime:      1535024272,
+			sourceVolumeName: "volume1",
+		},
+		{
+			snapName:         "snapshot2",
+			snapID:           "25564",
+			sizeByte:         2147485648,
+			status:           SnapshotStatusOk,
+			createdTime:      1535025379,
+			sourceVolumeName: "volume2",
+		},
+		{
+			snapName:         "snapshot3",
+			snapID:           "25564",
+			sizeByte:         2143285648,
+			status:           SnapshotStatusOk,
+			createdTime:      1535024379,
+			sourceVolumeName: "volume2",
+		},
+		{
+			snapName:         "snapshot1",
+			snapID:           "25664",
+			sizeByte:         2147485648,
+			status:           SnapshotStatusOk,
+			createdTime:      1535026379,
+			sourceVolumeName: "volume3",
+		},
+		{
+			snapName:         "snapshot4",
+			snapID:           "25564",
+			sizeByte:         2141285648,
+			status:           SnapshotStatusOk,
+			createdTime:      1535064379,
+			sourceVolumeName: "volume1",
+		},
+	}
+	tests := []struct {
+		caseName    string
+		fullList    []*snapshotInfo
+		page        int
+		itemPerPage int
+		pageList    []*snapshotInfo
+	}{
+		{
+			caseName:    "normal read page 1 and 3 item/page",
+			fullList:    exampleFullList,
+			page:        1,
+			itemPerPage: 3,
+			pageList:    exampleFullList[:3],
+		},
+		{
+			caseName:    "normal read page 2 and 3 item/page",
+			fullList:    exampleFullList,
+			page:        2,
+			itemPerPage: 3,
+			pageList:    exampleFullList[3:6],
+		},
+		{
+			caseName:    "normal read page 3 and 3 item/page",
+			fullList:    exampleFullList,
+			page:        3,
+			itemPerPage: 3,
+			pageList:    exampleFullList[6:],
+		},
+		{
+			caseName:    "normal read page 3 and 2 item/page",
+			fullList:    exampleFullList,
+			page:        3,
+			itemPerPage: 2,
+			pageList:    exampleFullList[4:6],
+		},
+		{
+			caseName:    "normal read page 4 and 2 item/page",
+			fullList:    exampleFullList,
+			page:        4,
+			itemPerPage: 2,
+			pageList:    exampleFullList[6:],
+		},
+		{
+			caseName:    "nil info",
+			fullList:    nil,
+			page:        3,
+			itemPerPage: 3,
+			pageList:    nil,
+		},
+	}
+	for _, v := range tests {
+		pageList, err := ReadListPage(v.fullList, v.page, v.itemPerPage)
+		if err != nil {
+			continue
+		} else if !reflect.DeepEqual(v.pageList, pageList) {
+			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.caseName, v.pageList, pageList)
 		}
 	}
 }

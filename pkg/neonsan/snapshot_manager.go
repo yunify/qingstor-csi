@@ -17,7 +17,9 @@ limitations under the License.
 package neonsan
 
 import (
+	"errors"
 	"fmt"
+	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/golang/glog"
 )
 
@@ -161,18 +163,54 @@ func DeleteSnapshot(snapName, srcVolName, pool string) (err error) {
 	return nil
 }
 
-// ExportSnapshot
-// Return case:
-//   nil: succeed to export snapshot
-//   err: failed to export snapshot
-func ExportSnapshot(snapName, volName, snapPool string) (err error) {
-	return nil
+// ConvertNeonsanToCsiSnap convert snapshot info to csi.Snapshot
+func ConvertNeonToCsiSnap(neonSnap *snapshotInfo) (csiSnap *csi.Snapshot) {
+	if neonSnap == nil {
+		return nil
+	}
+	csiSnap = &csi.Snapshot{}
+	csiSnap.SizeBytes = neonSnap.sizeByte
+	csiSnap.Id = neonSnap.snapName
+	csiSnap.SourceVolumeId = neonSnap.sourceVolumeName
+	csiSnap.CreatedAt = neonSnap.createdTime
+	if neonSnap.status == SnapshotStatusOk {
+		csiSnap.Status = &csi.SnapshotStatus{
+			Type: csi.SnapshotStatus_READY,
+		}
+	}
+	return csiSnap
 }
 
-// ImportSnapshot
-// Return case:
-//   nil: succeed to import snapshot
-//   err: failed to import snapshot
-func ImportSnapshot(volName, volPool string) (err error) {
-	return nil
+// ConvertNeonSnapToListSnapResp covert snapshot info array to csi.ListSnapshotsResponse_Entry array
+func ConvertNeonSnapToListSnapResp(neonSnaps []*snapshotInfo) (respList []*csi.ListSnapshotsResponse_Entry) {
+	for i := range neonSnaps {
+		resp := &csi.ListSnapshotsResponse_Entry{
+			Snapshot: ConvertNeonToCsiSnap(neonSnaps[i]),
+		}
+		respList = append(respList, resp)
+	}
+	return respList
+}
+
+// ReadListPage
+// Parameters:
+//   page: page number begins with 1.
+func ReadListPage(fullList []*snapshotInfo, page int, itemPerPage int) (pageList []*snapshotInfo, err error) {
+	if fullList == nil {
+		return nil, nil
+	}
+	if page < 0 || itemPerPage <= 0 {
+		return nil, errors.New("ReadListPage: input argument error")
+	}
+	// [headIndex, tailIndex)
+	headIndex := itemPerPage * (page - 1)
+	tailIndex := headIndex + itemPerPage
+	totalLength := len(fullList)
+	if totalLength < tailIndex {
+		tailIndex = totalLength
+	}
+	if totalLength < headIndex {
+		return nil, errors.New("ReadListPage: head index must not exceed list length")
+	}
+	return fullList[headIndex:tailIndex], nil
 }
