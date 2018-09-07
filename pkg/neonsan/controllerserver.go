@@ -285,34 +285,43 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	// for idempotency
+	// Idempotent: If a snapshot corresponding to the specified snapshot name
+	// is already successfully cut and uploaded and is compatible with the
+	// specified source volume id and parameters in the CreateSnapshotRequest.
 	exSnap, err := FindSnapshot(req.GetName(), req.GetSourceVolumeId(), sc.Pool)
 	if err != nil {
 		glog.Errorf("Failed to find snapshot [%s], [%s], error: [%s].", req.GetName(), sc.Pool, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	// Volume id in Kubernetes is equal to NeonSAN's volume name.
-	if req.GetSourceVolumeId() == exSnap.sourceVolumeName {
-		// return snapshot already exists.
-		glog.Warningf("Snapshot [%v] already exist. return this.", exSnap)
-		return &csi.CreateSnapshotResponse{
-			Snapshot: &csi.Snapshot{
-				SizeBytes:      exSnap.sizeByte,
-				Id:             exSnap.snapName,
-				SourceVolumeId: exSnap.sourceVolumeName,
-				CreatedAt:      exSnap.createdTime,
-				Status: &csi.SnapshotStatus{
-					Type: csi.SnapshotStatus_READY,
+	if exSnap == nil {
+		// snapshot does not exist
+		glog.Infof("Snapshot [%v] does not exist, should create it later.", req.GetName())
+	}else{
+		// snapshot already exist
+
+		if req.GetSourceVolumeId() == exSnap.sourceVolumeName {
+			// Volume id in Kubernetes is equal to NeonSAN's volume name.
+			// return snapshot already exists.
+			glog.Warningf("Snapshot [%v] already exist. return this.", exSnap)
+			return &csi.CreateSnapshotResponse{
+				Snapshot: &csi.Snapshot{
+					SizeBytes:      exSnap.sizeByte,
+					Id:             exSnap.snapName,
+					SourceVolumeId: exSnap.sourceVolumeName,
+					CreatedAt:      exSnap.createdTime,
+					Status: &csi.SnapshotStatus{
+						Type: csi.SnapshotStatus_READY,
+					},
 				},
-			},
-		}, nil
-	} else {
-		// snapshot already exists but is incompatible.
-		glog.Errorf("Snapshot [%v] already exist. but not compatible with request [%v].", exSnap, req)
-		return nil, status.Errorf(codes.AlreadyExists,
-			"Snapshot [%s] already exists but is incompatible with the specified volume id [%v].", req.GetName(),
-			req.GetSourceVolumeId())
+			}, nil
+		} else {
+			// snapshot already exists but is incompatible.
+			glog.Errorf("Snapshot [%v] already exist. but not compatible with request [%v].", exSnap, req)
+			return nil, status.Errorf(codes.AlreadyExists,
+				"Snapshot [%s] already exists but is incompatible with the specified volume id [%v].", req.GetName(),
+				req.GetSourceVolumeId())
+		}
 	}
 
 	// 3. do create snapshot
