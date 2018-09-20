@@ -723,4 +723,6 @@ func TestSnapshotCache_Sync(t *testing.T) {
 	if err != nil {
 		t.Errorf("sync snapshot cache expect [%v], but actually [%v]", nil, err)
 	}
+	snapList := cache.List()
+	t.Logf("list snapshot cache count [%d]", len(snapList))
 }
