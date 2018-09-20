@@ -14,21 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package neonsan
+package manager
 
 import (
 	"fmt"
+	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
 )
 
-// poolInfo: stats pool
-// total, free, used: pool size in bytes
-type poolInfo struct {
-	id    string
-	name  string
-	total int64
-	free  int64
-	used  int64
-}
+
 
 // FindPool
 // Description: get pool detail information.
@@ -37,20 +30,20 @@ type poolInfo struct {
 //   pool, nil: found pool
 //   nil, nil: not found pool
 //   nil, err: error
-func FindPool(poolName string) (outPool *poolInfo, err error) {
+func FindPool(poolName string) (outPool *PoolInfo, err error) {
 	// check whether the pool exists
 	pools, err := ListPoolName()
 	if err != nil {
 		return nil, fmt.Errorf("call FindPool [%s]: %v", poolName, err.Error())
 	}
-	if !ContainsString(pools, poolName) {
+	if !util.ContainsString(pools, poolName) {
 		// the pool doesn't exist
 		return nil, nil
 	}
 
 	// get pool info
-	args := []string{"stats_pool", "-pool", poolName, "-c", ConfigFilePath}
-	output, err := ExecCommand(CmdNeonsan, args)
+	args := []string{"stats_pool", "-pool", poolName, "-c", util.ConfigFilePath}
+	output, err := util.ExecCommand(CmdNeonsan, args)
 	if err != nil {
 		return nil, fmt.Errorf("call FindPool [%s]: %v", poolName, err.Error())
 	}
@@ -64,8 +57,8 @@ func FindPool(poolName string) (outPool *poolInfo, err error) {
 //   nil, nil: no found pools
 //   nil, err: error
 func ListPoolName() (pools []string, err error) {
-	args := []string{"list_pool", "-c", ConfigFilePath}
-	output, err := ExecCommand(CmdNeonsan, args)
+	args := []string{"list_pool", "-c", util.ConfigFilePath}
+	output, err := util.ExecCommand(CmdNeonsan, args)
 	if err != nil {
 		return nil, fmt.Errorf("call ListPoolName: %v", err.Error())
 	}

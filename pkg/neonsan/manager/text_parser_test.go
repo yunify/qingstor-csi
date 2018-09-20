@@ -14,12 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package neonsan
+package manager
 
 import (
 	"fmt"
 	"reflect"
 	"testing"
+	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
 )
 
 func TestParseVolumeList(t *testing.T) {
@@ -27,7 +28,7 @@ func TestParseVolumeList(t *testing.T) {
 		name   string
 		output string
 		pool   string
-		list   []*volumeInfo
+		list   []*VolumeInfo
 		err    error
 	}{
 		{
@@ -39,14 +40,14 @@ func TestParseVolumeList(t *testing.T) {
 | 251188477952 | foo  | 10737418240 |         1 |             1 | OK     | 2018-07-09 12:18:34 | 2018-07-09 12:18:34 |
 +--------------+------+-------------+-----------+---------------+--------+---------------------+---------------------+`,
 			pool: "kube",
-			list: []*volumeInfo{
+			list: []*VolumeInfo{
 				{
-					id:       "251188477952",
-					name:     "foo",
-					size:     10737418240,
-					status:   VolumeStatusOk,
-					replicas: 1,
-					pool:     "kube",
+					Id:       "251188477952",
+					Name:     "foo",
+					SizeByte:     10737418240,
+					Status:   VolumeStatusOk,
+					Replicas: 1,
+					Pool:     "kube",
 				},
 			},
 			err: nil,
@@ -62,22 +63,22 @@ func TestParseVolumeList(t *testing.T) {
 +--------------+-------------------------+------------+-----------+---------------+--------+---------------------+---------------------+
 `,
 			pool: "kube",
-			list: []*volumeInfo{
+			list: []*VolumeInfo{
 				{
-					id:       "395069882368",
-					name:     "foo",
-					size:     2147483648,
-					status:   VolumeStatusOk,
-					replicas: 1,
-					pool:     "kube",
+					Id:       "395069882368",
+					Name:     "foo",
+					SizeByte:     2147483648,
+					Status:   VolumeStatusOk,
+					Replicas: 1,
+					Pool:     "kube",
 				},
 				{
-					id:       "395589976064",
-					name:     "pre-provisioning-volume",
-					size:     5368709120,
-					status:   VolumeStatusOk,
-					replicas: 1,
-					pool:     "kube",
+					Id:       "395589976064",
+					Name:     "pre-provisioning-volume",
+					SizeByte:     5368709120,
+					Status:   VolumeStatusOk,
+					Replicas: 1,
+					Pool:     "kube",
 				},
 			},
 			err: nil,
@@ -106,7 +107,7 @@ func TestParseSnapshotList(t *testing.T) {
 	tests := []struct {
 		name   string
 		output string
-		list   []*snapshotInfo
+		list   []*SnapshotInfo
 		err    error
 	}{
 		{
@@ -119,22 +120,22 @@ func TestParseSnapshotList(t *testing.T) {
 | 274726912000 |       25464 | snapshot2     |    2147483648 | 2018-08-23T11:39:39+08:00 | OK     |
 +--------------+-------------+---------------+---------------+---------------------------+--------+
 `,
-			list: []*snapshotInfo{
+			list: []*SnapshotInfo{
 				{
-					snapName:         "snapshot",
-					snapID:           "25463",
-					sizeByte:         2147483648,
-					status:           SnapshotStatusOk,
-					createdTime:      1535024299,
-					sourceVolumeName: "274726912000",
+					Name:         "snapshot",
+					Id:           "25463",
+					SizeByte:         2147483648,
+					Status:           SnapshotStatusOk,
+					CreatedTime:      1535024299,
+					SrcVolName: "274726912000",
 				},
 				{
-					snapName:         "snapshot2",
-					snapID:           "25464",
-					sizeByte:         2147483648,
-					status:           SnapshotStatusOk,
-					createdTime:      1535024379,
-					sourceVolumeName: "274726912000",
+					Name:         "snapshot2",
+					Id:           "25464",
+					SizeByte:         2147483648,
+					Status:           SnapshotStatusOk,
+					CreatedTime:      1535024379,
+					SrcVolName: "274726912000",
 				},
 			},
 			err: nil,
@@ -163,7 +164,7 @@ func TestParsePoolInfo(t *testing.T) {
 	tests := []struct {
 		name   string
 		output string
-		pools  *poolInfo
+		pools  *PoolInfo
 		err    error
 	}{
 		{
@@ -175,12 +176,12 @@ func TestParsePoolInfo(t *testing.T) {
 +----------+-----------+-------+------+------+
 
 `,
-			pools: &poolInfo{
-				id:    "67108864",
-				name:  "csi",
-				total: 2982 * gib,
-				free:  1222 * gib,
-				used:  1759 * gib,
+			pools: &PoolInfo{
+				Id:    "67108864",
+				Name:  "csi",
+				TotalByte: 2982 * util.Gib,
+				FreeByte:  1222 * util.Gib,
+				UsedByte:  1759 * util.Gib,
 			},
 			err: nil,
 		},
@@ -257,7 +258,7 @@ func TestParseAttachedVolumeList(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
-		infos []attachInfo
+		infos []AttachInfo
 	}{
 		{
 			name: "two attached volume",
@@ -266,26 +267,26 @@ func TestParseAttachedVolumeList(t *testing.T) {
 1   0x3a7c000000    qbd1    csi/foo /etc/neonsan/qbd.conf   0   0   0   0
 
 `,
-			infos: []attachInfo{
+			infos: []AttachInfo{
 				{
-					id:        "274726912000",
-					name:      "foo1",
-					device:    "/dev/qbd0",
-					pool:      "csi",
-					readBps:   0,
-					writeBps:  0,
-					readIops:  0,
-					writeIops: 0,
+					Id:        "274726912000",
+					Name:      "foo1",
+					Device:    "/dev/qbd0",
+					Pool:      "csi",
+					ReadBps:   0,
+					WriteBps:  0,
+					ReadIops:  0,
+					WriteIops: 0,
 				},
 				{
-					id:        "251188477952",
-					name:      "foo",
-					device:    "/dev/qbd1",
-					pool:      "csi",
-					readBps:   0,
-					writeBps:  0,
-					readIops:  0,
-					writeIops: 0,
+					Id:        "251188477952",
+					Name:      "foo",
+					Device:    "/dev/qbd1",
+					Pool:      "csi",
+					ReadBps:   0,
+					WriteBps:  0,
+					ReadIops:  0,
+					WriteIops: 0,
 				},
 			},
 		},

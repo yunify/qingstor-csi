@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package neonsan
+package util
 
 import (
 	"fmt"
@@ -29,17 +29,16 @@ import (
 const (
 	Int64Max        int64  = int64(^uint64(0) >> 1)
 	PluginFolder    string = "/var/lib/kubelet/plugins/"
-	DefaultPoolName string = "kube"
 	TimeLayout      string = "2006-01-02T15:04:05+08:00"
 )
 
 const (
-	kib    int64 = 1024
-	mib    int64 = kib * 1024
-	gib    int64 = mib * 1024
-	gib100 int64 = gib * 100
-	tib    int64 = gib * 1024
-	tib100 int64 = tib * 100
+	Kib    int64 = 1024
+	Mib    int64 = Kib * 1024
+	Gib    int64 = Mib * 1024
+	Gib100 int64 = Gib * 100
+	Tib    int64 = Gib * 1024
+	Tib100 int64 = Tib * 100
 )
 
 const (
@@ -120,8 +119,8 @@ func ContainsString(array []string, str string) bool {
 
 // FormatVolumeSize convert volume size properly
 func FormatVolumeSize(inputSize int64, step int64) int64 {
-	if inputSize <= gib || step < 0 {
-		return gib
+	if inputSize <= Gib || step < 0 {
+		return Gib
 	}
 	remainder := inputSize % step
 	if remainder != 0 {
@@ -161,4 +160,8 @@ func EntryFunction(functionName string) func() {
 		glog.Infof("=============== exit %s (%s since %s) ===============", functionName, time.Since(start),
 			start.String())
 	}
+}
+
+func GetList(str string)[]string{
+	return strings.Split(strings.Replace(str, " ", "", -1), ",")
 }

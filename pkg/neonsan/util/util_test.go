@@ -14,10 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package neonsan
+package util
 
 import (
 	"testing"
+	"reflect"
 )
 
 func TestFormatVolumeSize(t *testing.T) {
@@ -30,20 +31,20 @@ func TestFormatVolumeSize(t *testing.T) {
 		{
 			name:      "format 4Gi, step 1Gi",
 			inputSize: 4294967296,
-			step:      gib,
+			step:      Gib,
 			outSize:   4294967296,
 		},
 		{
 			name:      "format 4Gi, step 10Gi",
 			inputSize: 4294967296,
-			step:      gib * 10,
-			outSize:   gib * 10,
+			step:      Gib * 10,
+			outSize:   Gib * 10,
 		},
 		{
 			name:      "format 4Gi, step 3Gi",
 			inputSize: 4294967296,
-			step:      gib * 3,
-			outSize:   gib * 6,
+			step:      Gib * 3,
+			outSize:   Gib * 6,
 		},
 	}
 	for _, v := range tests {
@@ -77,5 +78,29 @@ func TestParseIntToDec(t *testing.T) {
 			t.Errorf("name [%s]: expect [%s], but actually [%s]", v.name, v.dec, ret)
 		}
 
+	}
+}
+
+func TestGetList(t *testing.T) {
+	tests := []struct{
+		name string
+		str string
+		list []string
+	}{
+		{
+			name: "normal",
+			str: "csi , kube, vol ",
+			list: []string{
+				"csi",
+				"kube",
+				"vol",
+			},
+		},
+	}
+	for _, v:=range tests{
+		list := GetList(v.str)
+		if !reflect.DeepEqual(v.list, list){
+			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.list, list)
+		}
 	}
 }

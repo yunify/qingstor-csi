@@ -24,18 +24,20 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"strconv"
+	"github.com/yunify/qingstor-csi/pkg/neonsan/manager"
+	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
 )
 
 type controllerServer struct {
 	*csicommon.DefaultControllerServer
-	cache snapshotCache
+	cache manager.SnapshotCache
 }
 
 // This operation MUST be idempotent
 // csi.CreateVolumeRequest: name 				+Required
 //							capability			+Required
 func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
-	defer EntryFunction("CreateVolume")()
+	defer util.EntryFunction("CreateVolume")()
 
 	glog.Info("Validate input arguments.")
 	// Valid controller service capability
@@ -47,7 +49,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	// Required volume capability
 	if req.GetVolumeCapabilities() == nil {
 		return nil, status.Error(codes.InvalidArgument, "Volume capabilities missing in request.")
-	} else if !ContainsVolumeCapabilities(cs.Driver.GetVolumeCapabilityAccessModes(), req.GetVolumeCapabilities()) {
+	} else if !util.ContainsVolumeCapabilities(cs.Driver.GetVolumeCapabilityAccessModes(), req.GetVolumeCapabilities()) {
 		return nil, status.Error(codes.InvalidArgument, "Volume capabilities not match.")
 	}
 
@@ -59,7 +61,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	// Create StorageClass object
 	glog.Info("Create StorageClass object.")
-	sc, err := NewNeonsanStorageClassFromMap(req.GetParameters())
+	sc, err := manager.NewNeonsanStorageClassFromMap(req.GetParameters())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -68,9 +70,9 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	glog.Info("Get request volume size.")
 	requiredByte := req.GetCapacityRange().GetRequiredBytes()
 	limitByte := req.GetCapacityRange().GetLimitBytes()
-	requiredFormatByte := FormatVolumeSize(requiredByte, gib*int64(sc.StepSize))
+	requiredFormatByte := util.FormatVolumeSize(requiredByte, util.Gib*int64(sc.StepSize))
 	if limitByte == 0 {
-		limitByte = Int64Max
+		limitByte = util.Int64Max
 	}
 
 	// check volume range
@@ -82,7 +84,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	// Find exist volume name
 	glog.Infof("Find duplicate volume name [%s].", volumeName)
-	exVol, err := FindVolume(volumeName, sc.Pool)
+	exVol, err := manager.FindVolume(volumeName, sc.Pool)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -90,14 +92,14 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		glog.Infof("Request volume name: [%s], size: [%d], capacity range [%d,%d] Bytes, pool: [%s], replicas: [%d].",
 			volumeName, requiredFormatByte, requiredByte, limitByte, sc.Pool, sc.Replicas)
 		glog.Infof("Exist volume name: [%s], id: [%s], capacity: [%d] Bytes, pool: [%s], replicas: [%d].",
-			exVol.name, exVol.id, exVol.size, exVol.pool, exVol.replicas)
-		if exVol.size >= requiredByte && exVol.size <= limitByte && exVol.replicas == sc.Replicas {
+			exVol.Name, exVol.Id, exVol.SizeByte, exVol.Pool, exVol.Replicas)
+		if exVol.SizeByte >= requiredByte && exVol.SizeByte <= limitByte && exVol.Replicas == sc.Replicas {
 			// exisiting volume is compatible with new request and should be
 			// reused.
 			return &csi.CreateVolumeResponse{
 				Volume: &csi.Volume{
-					Id:            exVol.name,
-					CapacityBytes: exVol.size,
+					Id:            exVol.Name,
+					CapacityBytes: exVol.SizeByte,
 					Attributes:    req.GetParameters(),
 				},
 			}, nil
@@ -108,7 +110,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	// do create volume
 	glog.Infof("Creating volume [%s] with [%d] bytes in pool [%s]...", volumeName, requiredFormatByte, sc.Pool)
-	volumeInfo, err := CreateVolume(volumeName, sc.Pool, requiredFormatByte, sc.Replicas)
+	volumeInfo, err := manager.CreateVolume(volumeName, sc.Pool, requiredFormatByte, sc.Replicas)
 	if err != nil {
 		glog.Errorf("Failed to create volume [%s] with [%d] bytes in pool [%s] with error [%v].", volumeName,
 			requiredFormatByte, sc.Pool, err)
@@ -118,8 +120,8 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		sc.Pool)
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
-			Id:            volumeInfo.name,
-			CapacityBytes: volumeInfo.size,
+			Id:            volumeInfo.Name,
+			CapacityBytes: volumeInfo.SizeByte,
 			Attributes:    req.GetParameters(),
 		},
 	}, nil
@@ -128,7 +130,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 // This operation MUST be idempotent
 // volume id is REQUIRED in csi.DeleteVolumeRequest
 func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
-	defer EntryFunction("DeleteVolume")()
+	defer util.EntryFunction("DeleteVolume")()
 
 	glog.Info("Validate input arguments.")
 	// Valid controller service capability
@@ -148,7 +150,7 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	// For idempotent:
 	// MUST reply OK when volume does not exist
 	glog.Infof("Find volume [%s].", volumeId)
-	volInfo, err := FindVolumeWithoutPool(volumeId)
+	volInfo, err := manager.FindVolumeWithoutPool(volumeId)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -159,13 +161,13 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	glog.Infof("Found volume [%s].", volumeId)
 
 	// Do delete volume
-	glog.Infof("Deleting volume [%s] in pool [%s]...", volumeId, volInfo.pool)
-	err = DeleteVolume(volumeId, volInfo.pool)
+	glog.Infof("Deleting volume [%s] in pool [%s]...", volumeId, volInfo.Pool)
+	err = manager.DeleteVolume(volumeId, volInfo.Pool)
 	if err != nil {
-		glog.Errorf("Failed to delete volume: [%s] in pool [%s] with error: [%v].", volumeId, volInfo.pool, err)
+		glog.Errorf("Failed to delete volume: [%s] in pool [%s] with error: [%v].", volumeId, volInfo.Pool, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	glog.Infof("Succeed to delete volume: [%s] in pool [%s]", volumeId, volInfo.pool)
+	glog.Infof("Succeed to delete volume: [%s] in pool [%s]", volumeId, volInfo.Pool)
 	return &csi.DeleteVolumeResponse{}, nil
 }
 
@@ -173,7 +175,7 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 // csi.ValidateVolumeCapabilitiesRequest: 	volume id 			+ Required
 // 											volume capability 	+ Required
 func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
-	defer EntryFunction("ValidateVolumeCapabilities")()
+	defer util.EntryFunction("ValidateVolumeCapabilities")()
 
 	glog.Info("Validate input arguments.")
 	// require volume id parameter
@@ -188,7 +190,7 @@ func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 
 	// Create StorageClass object
 	glog.Info("Create StorageClass object.")
-	sc, err := NewNeonsanStorageClassFromMap(req.GetVolumeAttributes())
+	sc, err := manager.NewNeonsanStorageClassFromMap(req.GetVolumeAttributes())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -196,7 +198,7 @@ func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 	// check volume exist
 	volumeId := req.GetVolumeId()
 	glog.Infof("Find volume [%s] in pool [%s].", volumeId, sc.Pool)
-	outVol, err := FindVolume(volumeId, sc.Pool)
+	outVol, err := manager.FindVolume(volumeId, sc.Pool)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -231,11 +233,11 @@ func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 // GetCapacity: allow the CO to query the capacity of the storage pool from
 // which the controller provisions volumes.
 func (cs *controllerServer) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (*csi.GetCapacityResponse, error) {
-	defer EntryFunction("GetCapacity")()
+	defer util.EntryFunction("GetCapacity")()
 
 	// Create StorageClass object
 	glog.Info("Create StorageClass object.")
-	sc, err := NewNeonsanStorageClassFromMap(req.GetParameters())
+	sc, err := manager.NewNeonsanStorageClassFromMap(req.GetParameters())
 	if err != nil {
 		glog.Info("Failed to create StorageClass object.")
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -243,7 +245,7 @@ func (cs *controllerServer) GetCapacity(ctx context.Context, req *csi.GetCapacit
 	glog.Info("Succeed to create StorageClass object.")
 
 	// Find pool information
-	poolInfo, err := FindPool(sc.Pool)
+	poolInfo, err := manager.FindPool(sc.Pool)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -253,9 +255,9 @@ func (cs *controllerServer) GetCapacity(ctx context.Context, req *csi.GetCapacit
 	}
 
 	glog.Infof("Succeed to find pool name [%s], id [%s], total [%d] bytes, free [%d] bytes, used [%d] bytes.",
-		poolInfo.name, poolInfo.id, poolInfo.total, poolInfo.free, poolInfo.used)
+		poolInfo.Name, poolInfo.Id, poolInfo.TotalByte, poolInfo.FreeByte, poolInfo.UsedByte)
 	return &csi.GetCapacityResponse{
-		AvailableCapacity: poolInfo.free,
+		AvailableCapacity: poolInfo.FreeByte,
 	}, nil
 }
 
@@ -264,7 +266,7 @@ func (cs *controllerServer) GetCapacity(ctx context.Context, req *csi.GetCapacit
 // is already successfully cut and uploaded and is compatible with the
 // specified source volume id and parameters in the CreateSnapshotRequest.
 func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
-	defer EntryFunction("CreateSnapshot")()
+	defer util.EntryFunction("CreateSnapshot")()
 
 	// 1. Check input arguments
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
@@ -280,7 +282,7 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 
 	// 2. Check if the snapshot already exists.
 	// get storage class
-	sc, err := NewNeonsanStorageClassFromMap(req.GetParameters())
+	sc, err := manager.NewNeonsanStorageClassFromMap(req.GetParameters())
 	if err != nil {
 		glog.Info("Failed to create StorageClass object.")
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -289,7 +291,7 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	// Idempotent: If a snapshot corresponding to the specified snapshot name
 	// is already successfully cut and uploaded and is compatible with the
 	// specified source volume id and parameters in the CreateSnapshotRequest.
-	exSnap, err := FindSnapshot(req.GetName(), req.GetSourceVolumeId(), sc.Pool)
+	exSnap, err := manager.FindSnapshot(req.GetName(), req.GetSourceVolumeId(), sc.Pool)
 	if err != nil {
 		glog.Errorf("Failed to find snapshot [%s], [%s], error: [%s].", req.GetName(), sc.Pool, err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
@@ -301,16 +303,16 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	} else {
 		// snapshot already exist
 
-		if req.GetSourceVolumeId() == exSnap.sourceVolumeName {
+		if req.GetSourceVolumeId() == exSnap.SrcVolName {
 			// Volume id in Kubernetes is equal to NeonSAN's volume name.
 			// return snapshot already exists.
 			glog.Warningf("Snapshot [%v] already exist. return this.", exSnap)
 			return &csi.CreateSnapshotResponse{
 				Snapshot: &csi.Snapshot{
-					SizeBytes:      exSnap.sizeByte,
-					Id:             exSnap.snapName,
-					SourceVolumeId: exSnap.sourceVolumeName,
-					CreatedAt:      exSnap.createdTime,
+					SizeBytes:      exSnap.SizeByte,
+					Id:             exSnap.Name,
+					SourceVolumeId: exSnap.SrcVolName,
+					CreatedAt:      exSnap.CreatedTime,
 					Status: &csi.SnapshotStatus{
 						Type: csi.SnapshotStatus_READY,
 					},
@@ -327,7 +329,7 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 
 	// 3. do create snapshot
 	glog.Infof("Create snapshot [%s] in pool [%s] from volume [%s]...", req.GetName(), sc.Pool, req.GetSourceVolumeId())
-	snapInfo, err := CreateSnapshot(req.GetName(), req.GetSourceVolumeId(), sc.Pool)
+	snapInfo, err := manager.CreateSnapshot(req.GetName(), req.GetSourceVolumeId(), sc.Pool)
 	if err != nil {
 		glog.Errorf("Failed to create snapshot with error [%s].", err.Error())
 		return nil, status.Errorf(codes.Internal, err.Error())
@@ -335,10 +337,10 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	glog.Infof("Succeed to create snapshot [%v].", snapInfo)
 	return &csi.CreateSnapshotResponse{
 		Snapshot: &csi.Snapshot{
-			SizeBytes:      snapInfo.sizeByte,
-			Id:             snapInfo.snapName,
-			SourceVolumeId: snapInfo.sourceVolumeName,
-			CreatedAt:      snapInfo.createdTime,
+			SizeBytes:      snapInfo.SizeByte,
+			Id:             snapInfo.Name,
+			SourceVolumeId: snapInfo.SrcVolName,
+			CreatedAt:      snapInfo.CreatedTime,
 			Status: &csi.SnapshotStatus{
 				Type: csi.SnapshotStatus_READY,
 			},
@@ -351,7 +353,7 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 // not exist, the plugin MUST reply OK.
 // csi.DeleteSnapshotRequest: snapshot id is required.
 func (cs *controllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
-	defer EntryFunction("DeleteSnapshot")()
+	defer util.EntryFunction("DeleteSnapshot")()
 
 	// 1. Check input arguments
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); err != nil {
@@ -363,7 +365,7 @@ func (cs *controllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	}
 
 	// 2. Find snapshot by id
-	exSnap, err := FindSnapshotWithoutPool(req.GetSnapshotId())
+	exSnap, err := manager.FindSnapshotWithoutPool(req.GetSnapshotId())
 	if err != nil {
 		glog.Errorf("Failed to find snapshot [%s], error [%s].", req.GetSnapshotId(), err.Error())
 		return nil, status.Error(codes.Internal, err.Error())
@@ -375,7 +377,7 @@ func (cs *controllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 
 	// 3. Do delete snapshot
 	glog.Infof("Delete snapshot [%v]...", exSnap)
-	err = DeleteSnapshot(exSnap.snapName, exSnap.sourceVolumeName, exSnap.pool)
+	err = manager.DeleteSnapshot(exSnap.Name, exSnap.SrcVolName, exSnap.Pool)
 	if err != nil {
 		glog.Errorf("Failed to delete snapshot [%v].", exSnap)
 		return nil, status.Error(codes.Internal, err.Error())
@@ -387,7 +389,7 @@ func (cs *controllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 // Source Volume ID:
 // Snapshot ID:
 func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
-	defer EntryFunction("ListSnapshots")()
+	defer util.EntryFunction("ListSnapshots")()
 
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS); err != nil {
 		glog.Warningf("Invalid list snapshot req: %v", req)
@@ -398,18 +400,18 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 
 	// case: snapshot id
 	if len(snapId) != 0 {
-		snapInfo, err := FindSnapshotWithoutPool(req.GetSnapshotId())
+		snapInfo, err := manager.FindSnapshotWithoutPool(req.GetSnapshotId())
 		if err != nil {
 			glog.Errorf("Failed to find snapshot [%s], error [%v]", req.GetSnapshotId(), err)
 			return nil, status.Error(codes.Internal, err.Error())
 		}
-		if len(srcVolId) != 0 && srcVolId != snapInfo.sourceVolumeName {
+		if len(srcVolId) != 0 && srcVolId != snapInfo.SrcVolName {
 			return nil, status.Error(codes.Internal, "mismatch snapshot and volume name")
 		}
 		return &csi.ListSnapshotsResponse{
 			Entries: []*csi.ListSnapshotsResponse_Entry{
 				{
-					Snapshot: ConvertNeonToCsiSnap(snapInfo),
+					Snapshot: manager.ConvertNeonToCsiSnap(snapInfo),
 				},
 			},
 		}, nil
@@ -419,11 +421,11 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 	// must consider pageable
 	if len(srcVolId) != 0 {
 		// consult
-		volInfo, err := FindVolumeWithoutPool(srcVolId)
+		volInfo, err := manager.FindVolumeWithoutPool(srcVolId)
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
-		snapInfoList, err := ListSnapshotByVolume(srcVolId, volInfo.pool)
+		snapInfoList, err := manager.ListSnapshotByVolume(srcVolId, volInfo.Pool)
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
@@ -431,7 +433,7 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 		if req.GetMaxEntries() == 0 {
 			// non-pageable
 			return &csi.ListSnapshotsResponse{
-				Entries: ConvertNeonSnapToListSnapResp(snapInfoList),
+				Entries: manager.ConvertNeonSnapToListSnapResp(snapInfoList),
 			}, nil
 		} else {
 			// pageable
@@ -448,12 +450,12 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 			}
 			glog.Infof("Execute ReadListPage list len [%d], page [%d], items per page [%d]",
 				len(snapInfoList), page, req.GetMaxEntries())
-			pageList, err := ReadListPage(snapInfoList, page, int(req.GetMaxEntries()))
+			pageList, err := manager.ReadListPage(snapInfoList, page, int(req.GetMaxEntries()))
 			if err != nil {
 				return nil, status.Error(codes.Internal, err.Error())
 			}
 			return &csi.ListSnapshotsResponse{
-				Entries:   ConvertNeonSnapToListSnapResp(pageList),
+				Entries:   manager.ConvertNeonSnapToListSnapResp(pageList),
 				NextToken: strconv.Itoa(page + 1),
 			}, nil
 		}
@@ -461,19 +463,19 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 
 	// case: non volume id provided
 	// must consider pageable
-	var fullSnapList []*snapshotInfo
-	pools, err := ListPoolName()
+	var fullSnapList []*manager.SnapshotInfo
+	pools, err := manager.ListPoolName()
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	// get full snapshot list
 	for _, v := range pools {
-		vols, err := ListVolumeByPool(v)
+		vols, err := manager.ListVolumeByPool(v)
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 		for _, volInfo := range vols {
-			volSnapList, err := ListSnapshotByVolume(volInfo.name, volInfo.pool)
+			volSnapList, err := manager.ListSnapshotByVolume(volInfo.Name, volInfo.Pool)
 			if err != nil {
 				return nil, status.Error(codes.Internal, err.Error())
 			}
@@ -486,7 +488,7 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 	if req.GetMaxEntries() == 0 {
 		// non-pageable
 		return &csi.ListSnapshotsResponse{
-			Entries: ConvertNeonSnapToListSnapResp(fullSnapList),
+			Entries: manager.ConvertNeonSnapToListSnapResp(fullSnapList),
 		}, nil
 	} else {
 		// pageable
@@ -503,12 +505,12 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 		}
 		glog.Infof("Execute ReadListPage list len [%d], page [%d], items per page [%d]",
 			len(fullSnapList), page, req.GetMaxEntries())
-		pageList, err := ReadListPage(fullSnapList, page, int(req.GetMaxEntries()))
+		pageList, err := manager.ReadListPage(fullSnapList, page, int(req.GetMaxEntries()))
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 		return &csi.ListSnapshotsResponse{
-			Entries:   ConvertNeonSnapToListSnapResp(pageList),
+			Entries:   manager.ConvertNeonSnapToListSnapResp(pageList),
 			NextToken: strconv.Itoa(page + 1),
 		}, nil
 	}

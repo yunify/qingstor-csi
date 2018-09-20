@@ -14,34 +14,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package neonsan
+package manager
 
 import (
 	"fmt"
 	"strconv"
+	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
 )
 
-type neonsanStorageClass struct {
-	Replicas     int    `json:"replicas"`
-	VolumeFsType string `json:"fsType"`
-	Pool         string `json:"pool"`
-	StepSize     int    `json:"stepSize"`
-	Protocol     string `json:"protocol"`
-}
 
 // NewDefaulNeonsanStorageClass create default neonsanStorageClass object
-func NewDefaulNeonsanStorageClass() *neonsanStorageClass {
-	return &neonsanStorageClass{
+func NewDefaulNeonsanStorageClass() *NeonsanStorageClass {
+	return &NeonsanStorageClass{
 		Replicas:     1,
 		StepSize:     1,
 		Pool:         DefaultPoolName,
-		VolumeFsType: FileSystemDefault,
-		Protocol:     ProtocolDefault,
+		VolumeFsType: util.FileSystemDefault,
+		Protocol:     util.ProtocolDefault,
 	}
 }
 
 //	NewNeonsanStorageClassFromMap create a neonsanStorageClass object from map
-func NewNeonsanStorageClassFromMap(opt map[string]string) (*neonsanStorageClass, error) {
+func NewNeonsanStorageClassFromMap(opt map[string]string) (*NeonsanStorageClass, error) {
 	sc := NewDefaulNeonsanStorageClass()
 
 	//	Get volume replicas
@@ -73,7 +67,7 @@ func NewNeonsanStorageClassFromMap(opt map[string]string) (*neonsanStorageClass,
 	// Get volume FsType
 	// Default is ext4
 	if sFsType, ok := opt["fsType"]; ok {
-		if !IsValidFileSystemType(sFsType) {
+		if !util.IsValidFileSystemType(sFsType) {
 			return nil, fmt.Errorf("does not support fsType \"%s\"", sFsType)
 		}
 		sc.VolumeFsType = sFsType

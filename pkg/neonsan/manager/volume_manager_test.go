@@ -14,12 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package neonsan
+package manager
 
 import (
 	"strings"
 	"testing"
 	"time"
+	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
 )
 
 const (
@@ -42,7 +43,7 @@ func TestCreateVolume(t *testing.T) {
 			name:      "create succeed",
 			volName:   TestNormalVolumeName,
 			volPool:   TestPoolName,
-			volSize64: 2 * gib,
+			volSize64: 2 * util.Gib,
 			replicas:  1,
 			infoExist: true,
 			errStr:    "",
@@ -51,7 +52,7 @@ func TestCreateVolume(t *testing.T) {
 			name:      "create failed",
 			volName:   TestNormalVolumeName,
 			volPool:   TestPoolName,
-			volSize64: 2 * gib,
+			volSize64: 2 * util.Gib,
 			replicas:  1,
 			infoExist: false,
 			errStr:    "Volume already existed",
@@ -83,18 +84,18 @@ func TestFindVolume(t *testing.T) {
 		name    string
 		volName string
 		volPool string
-		info    *volumeInfo
+		info    *VolumeInfo
 	}{
 		{
 			name:    "found volume",
 			volName: TestNormalVolumeName,
 			volPool: TestPoolName,
-			info: &volumeInfo{
-				name:     "foo",
-				pool:     TestPoolName,
-				size:     2 * gib,
-				status:   VolumeStatusOk,
-				replicas: 1,
+			info: &VolumeInfo{
+				Name:     "foo",
+				Pool:     TestPoolName,
+				SizeByte:     2 * util.Gib,
+				Status:   VolumeStatusOk,
+				Replicas: 1,
 			},
 		},
 		{
@@ -112,7 +113,7 @@ func TestFindVolume(t *testing.T) {
 
 		// check volume info
 		if v.info != nil && volInfo != nil {
-			if v.info.name != volInfo.name || v.info.pool != volInfo.pool {
+			if v.info.Name != volInfo.Name || v.info.Pool != volInfo.Pool {
 				t.Errorf("name [%s]: volume info expect [%v], but actually [%v]", v.name, v.info, volInfo)
 			}
 		} else if v.info == nil && volInfo == nil {
@@ -146,8 +147,8 @@ func TestFindVolumeWithoutPool(t *testing.T) {
 			t.Errorf("name [%s]: volume error [%s]", v.name, err.Error())
 		}
 		if v.volPool != "" && ret != nil {
-			if v.volPool != ret.pool {
-				t.Errorf("name [%s]: volume pool expect [%s], but actually [%s]", v.name, v.volPool, ret.pool)
+			if v.volPool != ret.Pool {
+				t.Errorf("name [%s]: volume pool expect [%s], but actually [%s]", v.name, v.volPool, ret.Pool)
 			}
 		} else if v.volPool == "" && ret == nil {
 			continue
@@ -162,16 +163,16 @@ func TestListVolumeByPool(t *testing.T) {
 		name    string
 		volName string
 		volPool string
-		info    []*volumeInfo
+		info    []*VolumeInfo
 	}{
 		{
 			name:    "found volume",
 			volPool: TestPoolName,
-			info: []*volumeInfo{
+			info: []*VolumeInfo{
 				{
-					name: TestNormalVolumeName,
-					pool: TestPoolName,
-					size: 2 * gib,
+					Name: TestNormalVolumeName,
+					Pool: TestPoolName,
+					SizeByte: 2 * util.Gib,
 				},
 			},
 		},
@@ -194,7 +195,7 @@ func TestListVolumeByPool(t *testing.T) {
 		}
 		// check each array element
 		for i := range v.info {
-			if v.info[i].name != volList[i].name || v.info[i].pool != volList[i].pool {
+			if v.info[i].Name != volList[i].Name || v.info[i].Pool != volList[i].Pool {
 				t.Errorf("name [%s]: index [%d] expect [%v], but actually [%v]", v.name, i, v.info[i], volList[i])
 			}
 		}
@@ -273,7 +274,7 @@ func TestFindAttachedVolumeWithoutPool(t *testing.T) {
 		if v.pool == "" && info == nil {
 			continue
 		} else if v.pool != "" && info != nil {
-			if v.pool != info.pool {
+			if v.pool != info.Pool {
 				t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.pool, info)
 			}
 		} else {

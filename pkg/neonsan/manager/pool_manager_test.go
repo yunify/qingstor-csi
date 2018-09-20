@@ -14,10 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package neonsan
+package manager
 
 import (
 	"testing"
+	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
 )
 
 const (
@@ -29,13 +30,13 @@ func TestFindPool(t *testing.T) {
 	tests := []struct {
 		name     string
 		poolName string
-		output   *poolInfo
+		output   *PoolInfo
 	}{
 		{
 			name:     "find pool",
 			poolName: PoolTestPoolName,
-			output: &poolInfo{
-				name: PoolTestPoolName,
+			output: &PoolInfo{
+				Name: PoolTestPoolName,
 			},
 		},
 		{
@@ -54,7 +55,7 @@ func TestFindPool(t *testing.T) {
 			// no found volume
 		} else if v.output != nil && poolInfo != nil {
 			// found volume, check volume info
-			if v.output.name != poolInfo.name {
+			if v.output.Name != poolInfo.Name {
 				t.Errorf("name [%s]: error expect [%v], but actually [%v]", v.name, v.output, poolInfo)
 			}
 		} else {
@@ -81,7 +82,7 @@ func TestListPoolName(t *testing.T) {
 		}
 		// check return pool list
 		t.Logf("name [%s]: actually return pool list [%v]", v.name, pools)
-		if ContainsString(pools, v.output) {
+		if util.ContainsString(pools, v.output) {
 			t.Errorf("name [%s]: expect pool [%s] must in return pool list [%v], but actually not", v.name, v.output, pools)
 		}
 	}

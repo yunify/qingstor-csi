@@ -26,6 +26,8 @@ import (
 	"k8s.io/kubernetes/pkg/util/mount"
 	"os"
 	"time"
+	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
+	"github.com/yunify/qingstor-csi/pkg/neonsan/manager"
 )
 
 type nodeServer struct {
@@ -40,7 +42,7 @@ type nodeServer struct {
 //									volume capability	+ Required
 //									read only			+ Required (This field is NOT provided when requesting in Kubernetes)
 func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
-	defer EntryFunction("NodePublishVolume")()
+	defer util.EntryFunction("NodePublishVolume")()
 
 	glog.Info("Validate input arguments.")
 	// 0. Preflight
@@ -55,7 +57,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	// Check volume capability
 	if req.GetVolumeCapability() == nil {
 		return nil, status.Error(codes.InvalidArgument, "Volume capabilities missing in request.")
-	} else if !ContainsVolumeCapability(ns.Driver.GetVolumeCapabilityAccessModes(), req.GetVolumeCapability()) {
+	} else if !util.ContainsVolumeCapability(ns.Driver.GetVolumeCapabilityAccessModes(), req.GetVolumeCapability()) {
 		return nil, status.Error(codes.FailedPrecondition, "Exceed capabilities.")
 	}
 	// check stage path
@@ -69,7 +71,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 
 	// set fsType
 	glog.Info("Create StorageClass.")
-	sc, err := NewNeonsanStorageClassFromMap(req.GetVolumeAttributes())
+	sc, err := manager.NewNeonsanStorageClassFromMap(req.GetVolumeAttributes())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -78,7 +80,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	// Check volume exist
 	glog.Infof("Find volume [%s] in pool [%s].", volumeId, sc.Pool)
 	pool := sc.Pool
-	volInfo, err := FindVolume(volumeId, pool)
+	volInfo, err := manager.FindVolume(volumeId, pool)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -140,7 +142,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 // csi.NodeUnpublishVolumeRequest:	volume id	+ Required
 //									target path	+ Required
 func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
-	defer EntryFunction("NodeUnpublishVolume")()
+	defer util.EntryFunction("NodeUnpublishVolume")()
 
 	// 0. Preflight
 	glog.Info("Validate input arguments.")
@@ -157,7 +159,7 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 
 	// Check volume exist
 	glog.Infof("Find volume [%s].", volumeId)
-	volInfo, err := FindVolumeWithoutPool(volumeId)
+	volInfo, err := manager.FindVolumeWithoutPool(volumeId)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -194,10 +196,11 @@ func (ns *nodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 //								stage target path	+ Required
 //								volume capability	+ Required
 func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
-	defer EntryFunction("NodeStageVolume")()
+	defer util.EntryFunction("NodeStageVolume")()
 
 	capRsp, _ := ns.NodeGetCapabilities(context.Background(), nil)
-	if flag := ContainsNodeServiceCapability(capRsp.GetCapabilities(), csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME); flag == false {
+	if flag := util.ContainsNodeServiceCapability(capRsp.GetCapabilities(),
+		csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME); flag == false {
 		glog.Errorf("driver capability %v", capRsp.GetCapabilities())
 		return nil, status.Error(codes.Unimplemented, "Node has not unstage capability.")
 	}
@@ -219,14 +222,14 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 
 	// create sc object
 	glog.Info("Get storage class from map.")
-	sc, err := NewNeonsanStorageClassFromMap(req.VolumeAttributes)
+	sc, err := manager.NewNeonsanStorageClassFromMap(req.VolumeAttributes)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	// Check volume exist
 	glog.Infof("Find volume [%s] in pool [%s].", volumeId, sc.Pool)
-	volInfo, err := FindVolume(volumeId, sc.Pool)
+	volInfo, err := manager.FindVolume(volumeId, sc.Pool)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -239,7 +242,7 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	// Attach volume
 	// map volume
 	glog.Infof("Map volume [%s] in pool [%s].", volumeId, sc.Pool)
-	err = AttachVolume(volumeId, sc.Pool)
+	err = manager.AttachVolume(volumeId, sc.Pool)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -247,9 +250,9 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 
 	// find volume device path
 	glog.Infof("Find volume [%s] mapping info.", volumeId)
-	var attInfo *attachInfo = nil
+	var attInfo *manager.AttachInfo = nil
 	for i := 1; i < 6; i++ {
-		attInfo, err = FindAttachedVolumeWithoutPool(volumeId)
+		attInfo, err = manager.FindAttachedVolumeWithoutPool(volumeId)
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
@@ -263,9 +266,9 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	glog.Infof("Found volume [%s] attached info [%v]", volumeId, attInfo)
 	if attInfo == nil {
 		return nil, status.Errorf(codes.Internal, "Cannot find attached volume [%s].", volumeId)
-	} else if attInfo.pool != sc.Pool {
+	} else if attInfo.Pool != sc.Pool {
 		return nil, status.Errorf(codes.Internal, "Volume [%s] pool mismatch: expect pool [%s], "+
-			"but actually [%s].", volumeId, sc.Pool, attInfo.pool)
+			"but actually [%s].", volumeId, sc.Pool, attInfo.Pool)
 	}
 
 	// if volume already mounted
@@ -291,7 +294,7 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	glog.Infof("Target path [%s] has not been mounted yet.", targetPath)
 
 	// do mount
-	devicePath := attInfo.device
+	devicePath := attInfo.Device
 	fsType := sc.VolumeFsType
 	glog.Infof("Mounting [%s] to [%s] with format [%s]...", volumeId, targetPath, fsType)
 	diskMounter := &mount.SafeFormatAndMount{Interface: mount.New(""), Exec: mount.NewOsExec()}
@@ -307,10 +310,11 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 // csi.NodeUnstageVolumeRequest:	volume id	+ Required
 //									target path	+ Required
 func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
-	defer EntryFunction("NodeUnstageVolume")()
+	defer util.EntryFunction("NodeUnstageVolume")()
 
 	capRsp, _ := ns.NodeGetCapabilities(context.Background(), nil)
-	if flag := ContainsNodeServiceCapability(capRsp.GetCapabilities(), csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME); flag == false {
+	if flag := util.ContainsNodeServiceCapability(capRsp.GetCapabilities(),
+		csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME); flag == false {
 		glog.Errorf("Driver capability %v", capRsp.GetCapabilities())
 		return nil, status.Error(codes.Unimplemented, "Node has not unstage capability")
 	}
@@ -330,7 +334,7 @@ func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 
 	// check volume exist
 	glog.Info("Get volume info.")
-	volInfo, err := FindVolumeWithoutPool(volumeId)
+	volInfo, err := manager.FindVolumeWithoutPool(volumeId)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -375,24 +379,24 @@ func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 	// Unmap
 	// check map status
 	glog.Infof("Get attached volume [%s] info.", volumeId)
-	attInfo, err := FindAttachedVolumeWithoutPool(volumeId)
+	attInfo, err := manager.FindAttachedVolumeWithoutPool(volumeId)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if attInfo == nil {
 		glog.Warningf("Volume [%s] has been unmapped.", volumeId)
 		return &csi.NodeUnstageVolumeResponse{}, nil
-	} else if volInfo.pool != attInfo.pool {
-		glog.Errorf("Find duplicate volume [%s] in pool [%s] and [%s].", volumeId, volInfo.pool, attInfo.pool)
+	} else if volInfo.Pool != attInfo.Pool {
+		glog.Errorf("Find duplicate volume [%s] in pool [%s] and [%s].", volumeId, volInfo.Pool, attInfo.Pool)
 		return nil, status.Errorf(codes.Internal, "Find duplicate volume [%s] in pool [%s] and [%s].", volumeId,
-			volInfo.pool, attInfo.pool)
+			volInfo.Pool, attInfo.Pool)
 	}
 	glog.Infof("Attached volume [%s] info [%v]", volumeId, attInfo)
 
 	// do unmap
-	pool := volInfo.pool
+	pool := volInfo.Pool
 	glog.Infof("Un-mapping volume [%s] in pool [%s]...", volumeId, pool)
-	err = DetachVolume(volumeId, pool)
+	err = manager.DetachVolume(volumeId, pool)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -402,7 +406,7 @@ func (ns *nodeServer) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstag
 }
 
 func (ns *nodeServer) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
-	defer EntryFunction("NodeGetCapabilities")()
+	defer util.EntryFunction("NodeGetCapabilities")()
 	return &csi.NodeGetCapabilitiesResponse{
 		Capabilities: []*csi.NodeServiceCapability{
 			{

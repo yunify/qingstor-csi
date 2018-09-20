@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package neonsan
+package manager
 
 import (
 	"fmt"
@@ -23,24 +23,17 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
 )
 
-type TextParser interface {
-	ParseVolumeList(input string) (volList []*volumeInfo)
 
-	ParsePoolList(input string) (pools []*poolInfo)
-
-	ParseSnapshotList(input string) (snaps []*snapshotInfo)
-
-	ParsePoolNameList(input string) (poolName []string)
-}
 
 // ParseVolumeList parse a volume info
 // 	Return Case:
 //   volumes, nil: found volumes info
 //   nil, nil: volumes not found
 //   nil, err: error
-func ParseVolumeList(input string, poolName string) (vols []*volumeInfo, err error) {
+func ParseVolumeList(input string, poolName string) (vols []*VolumeInfo, err error) {
 	in := strings.Trim(input, "\n")
 	lines := strings.Split(in, "\n")
 	for i, v := range lines {
@@ -56,7 +49,7 @@ func ParseVolumeList(input string, poolName string) (vols []*volumeInfo, err err
 			}
 		} else if i >= 4 && v[0] != '+' {
 			volInfo := readVolumeInfoContent(v)
-			volInfo.pool = poolName
+			volInfo.Pool = poolName
 			vols = append(vols, volInfo)
 		}
 	}
@@ -66,10 +59,10 @@ func ParseVolumeList(input string, poolName string) (vols []*volumeInfo, err err
 // ParseSnapshotList
 // WARNING: Due to neonsan CLI tool only returning volume ID, we replace
 // volume name field of snapshotInfo by volume id.
-func ParseSnapshotList(input string) (snaps []*snapshotInfo, err error) {
+func ParseSnapshotList(input string) (snaps []*SnapshotInfo, err error) {
 	in := strings.Trim(input, "\n")
 	lines := strings.Split(in, "\n")
-	list := []*snapshotInfo{}
+	list := []*SnapshotInfo{}
 	for i, v := range lines {
 		if i == 0 {
 			cnt, err := readCountNumber(v)
@@ -91,7 +84,7 @@ func ParseSnapshotList(input string) (snaps []*snapshotInfo, err error) {
 // ParsePoolInfo
 // Return case:
 //   pool info, nil:
-func ParsePoolInfo(input string) (poolInfo *poolInfo, err error) {
+func ParsePoolInfo(input string) (poolInfo *PoolInfo, err error) {
 	in := strings.Trim(input, "\n")
 	lines := strings.Split(in, "\n")
 	for i, v := range lines {
@@ -125,7 +118,7 @@ func ParsePoolNameList(input string) (poolNames []string, err error) {
 }
 
 //	ParseAttachedVolume
-func ParseAttachVolumeList(input string) (infoArr []attachInfo) {
+func ParseAttachVolumeList(input string) (infoArr []AttachInfo) {
 	in := strings.Trim(input, "\n")
 	lines := strings.Split(in, "\n")
 	for i, v := range lines {
@@ -156,33 +149,33 @@ func readCountNumber(line string) (cnt int, err error) {
 }
 
 // WARNING: not set volume pool
-func readVolumeInfoContent(line string) (ret *volumeInfo) {
+func readVolumeInfoContent(line string) (ret *VolumeInfo) {
 	curLine := strings.Replace(line, " ", "", -1)
 	curLine = strings.Trim(curLine, "|")
 	fields := strings.Split(curLine, "|")
-	volInfo := volumeInfo{}
+	volInfo := VolumeInfo{}
 	for i, v := range fields {
 		switch i {
 		case 0:
-			volInfo.id = v
+			volInfo.Id = v
 		case 1:
-			volInfo.name = v
+			volInfo.Name = v
 		case 2:
 			size64, err := strconv.ParseInt(v, 10, 64)
 			if err != nil {
 				glog.Errorf("parse int64 [%d] error in string [%s]", v, line)
 				return nil
 			}
-			volInfo.size = size64
+			volInfo.SizeByte = size64
 		case 3:
 			rep, err := strconv.Atoi(v)
 			if err != nil {
 				glog.Errorf("parse int [%d] error in string [%s]", v, line)
 				return nil
 			}
-			volInfo.replicas = rep
+			volInfo.Replicas = rep
 		case 5:
-			volInfo.status = v
+			volInfo.Status = v
 		}
 	}
 	return &volInfo
@@ -198,127 +191,127 @@ func readPoolName(line string) (pool string) {
 	return ""
 }
 
-func readPoolInfoContent(line string) (ret *poolInfo) {
+func readPoolInfoContent(line string) (ret *PoolInfo) {
 	curLine := strings.Replace(line, " ", "", -1)
 	curLine = strings.Trim(curLine, "|")
 	fields := strings.Split(curLine, "|")
-	poolInfo := poolInfo{}
+	poolInfo := PoolInfo{}
 	for i, v := range fields {
 		switch i {
 		case 0:
-			poolInfo.id = v
+			poolInfo.Id = v
 		case 1:
-			poolInfo.name = v
+			poolInfo.Name = v
 		case 2:
 			size, err := strconv.Atoi(v)
 			if err != nil {
 				glog.Error(err.Error())
 				return nil
 			}
-			poolInfo.total = gib * int64(size)
+			poolInfo.TotalByte = util.Gib * int64(size)
 		case 3:
 			size, err := strconv.Atoi(v)
 			if err != nil {
 				glog.Error(err.Error())
 				return nil
 			}
-			poolInfo.free = gib * int64(size)
+			poolInfo.FreeByte = util.Gib * int64(size)
 		case 4:
 			size, err := strconv.Atoi(v)
 			if err != nil {
 				glog.Error(err.Error())
 				return nil
 			}
-			poolInfo.used = gib * int64(size)
+			poolInfo.UsedByte = util.Gib * int64(size)
 		}
 	}
 	return &poolInfo
 }
 
-func readSnapshotInfoContent(line string) (ret *snapshotInfo) {
+func readSnapshotInfoContent(line string) (ret *SnapshotInfo) {
 	curLine := strings.Replace(line, " ", "", -1)
 	curLine = strings.Trim(curLine, "|")
 	fields := strings.Split(curLine, "|")
-	snapInfo := snapshotInfo{}
+	snapInfo := SnapshotInfo{}
 	for i, v := range fields {
 		switch i {
 		case 0:
-			snapInfo.sourceVolumeName = v
+			snapInfo.SrcVolName = v
 		case 1:
-			snapInfo.snapID = v
+			snapInfo.Id = v
 		case 2:
-			snapInfo.snapName = v
+			snapInfo.Name = v
 		case 3:
 			size64, err := strconv.ParseInt(v, 10, 64)
 			if err != nil {
 				glog.Error(err.Error())
 				return nil
 			}
-			snapInfo.sizeByte = size64
+			snapInfo.SizeByte = size64
 		case 4:
-			timeObj, err := time.Parse(TimeLayout, v)
+			timeObj, err := time.Parse(util.TimeLayout, v)
 			if err != nil {
 				glog.Error(err.Error())
 				return nil
 			}
-			snapInfo.createdTime = timeObj.Unix()
+			snapInfo.CreatedTime = timeObj.Unix()
 		case 5:
 			if status, ok := SnapshotStatusType[v]; !ok {
 				glog.Errorf("Invalid snapshot status [%s]", v)
 				return nil
 			} else {
-				snapInfo.status = status
+				snapInfo.Status = status
 			}
 		}
 	}
 	return &snapInfo
 }
 
-func readAttachVolumeInfo(line string) (ret *attachInfo) {
+func readAttachVolumeInfo(line string) (ret *AttachInfo) {
 	fields := regexp.MustCompile("\\s+").Split(line, -1)
-	info := attachInfo{}
+	info := AttachInfo{}
 	for i, v := range fields {
 		switch i {
 		case 1:
-			info.id = ParseIntToDec(v)
+			info.Id = util.ParseIntToDec(v)
 		case 2:
-			info.device = "/dev/" + v
+			info.Device = "/dev/" + v
 		case 3:
 			args := strings.Split(v, "/")
 			if len(args) != 2 {
 				glog.Error("expect pool/volume, but actually [%s]", v)
 				return nil
 			}
-			info.pool = args[0]
-			info.name = args[1]
+			info.Pool = args[0]
+			info.Name = args[1]
 		case 5:
 			num, err := strconv.ParseInt(v, 0, 64)
 			if err != nil {
 				glog.Error(err.Error())
 				return nil
 			}
-			info.readBps = num
+			info.ReadBps = num
 		case 6:
 			num, err := strconv.ParseInt(v, 0, 64)
 			if err != nil {
 				glog.Error(err.Error())
 				return nil
 			}
-			info.writeBps = num
+			info.WriteBps = num
 		case 7:
 			num, err := strconv.ParseInt(v, 0, 64)
 			if err != nil {
 				glog.Error(err.Error())
 				return nil
 			}
-			info.readIops = num
+			info.ReadIops = num
 		case 8:
 			num, err := strconv.ParseInt(v, 0, 64)
 			if err != nil {
 				glog.Error(err.Error())
 				return nil
 			}
-			info.writeIops = num
+			info.WriteIops = num
 		}
 	}
 	return &info
