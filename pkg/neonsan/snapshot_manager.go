@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/golang/glog"
+	"reflect"
 )
 
 type snapshotInfo struct {
@@ -85,6 +86,7 @@ func FindSnapshotWithoutPool(snapName string) (outSnap *snapshotInfo, err error)
 		return nil, err
 	}
 	glog.Infof("pools [%v]", poolNames)
+	// TODO: it will take much time.
 	for _, poolName := range poolNames {
 		glog.Infof("pool [%s]", poolName)
 		vols, err := ListVolumeByPool(poolName)
@@ -213,4 +215,106 @@ func ReadListPage(fullList []*snapshotInfo, page int, itemPerPage int) (pageList
 		return nil, errors.New("ReadListPage: head index must not exceed list length")
 	}
 	return fullList[headIndex:tailIndex], nil
+}
+
+type snapshotCache struct {
+	snaps map[string]*snapshotInfo
+}
+
+type SnapshotCache interface {
+	// Add snapshot into map
+	// 1. snapshot name does not exist, add snapshot information normally.
+	// 2. snapshot name exists but snapshot info is not equal to input
+	// snapshot info, add snapshot failed.
+	// 3. snapshot name exists and snapshot info is equal to input snapshot
+	// info, add snapshot succeed.
+	Add(info *snapshotInfo) bool
+	// Find snapshot information by snapshot name
+	// If founded snapshot, return snapshot info
+	// If not founded snapshot, return nil
+	Find(snapName string) *snapshotInfo
+	// Delete snapshot information form map
+	Delete(snapName string)
+	// Add all snapshot information into map
+	Sync() (bool, error)
+	// List all snapshot info
+	List() []*snapshotInfo
+}
+
+func (snapCache *snapshotCache) New() {
+	snapCache.snaps = make(map[string]*snapshotInfo)
+}
+
+func (snapCache *snapshotCache) Add(info *snapshotInfo) bool {
+	if info == nil {
+		return false
+	}
+	if exInfo, ok := snapCache.snaps[info.snapName]; ok {
+		// already exist
+		if reflect.DeepEqual(info, exInfo) {
+			// new info == exist info
+			return true
+		} else {
+			// new info != exist info
+			return false
+		}
+	}
+	// not exist
+	snapCache.snaps[info.snapName] = info
+	return true
+}
+
+func (snapCache *snapshotCache) Find(snapName string) *snapshotInfo {
+	if exInfo, ok := snapCache.snaps[snapName]; ok {
+		// already exist
+		return exInfo
+	}
+	// not exist
+	return nil
+}
+
+func (snapCache *snapshotCache) Delete(snapName string) {
+	if _, ok := snapCache.snaps[snapName]; ok {
+		// already exist
+		delete(snapCache.snaps, snapName)
+	}
+}
+
+func (snapCache *snapshotCache) Sync() (err error) {
+	// get all pool name
+	pools, err := ListPoolName()
+	if err != nil {
+		return err
+	}
+	// get full snapshot list
+	for _, v := range pools {
+		// visit each pool
+		vols, err := ListVolumeByPool(v)
+		if err != nil {
+			return err
+		}
+		for _, volInfo := range vols {
+			// visit each volume
+			volSnapList, err := ListSnapshotByVolume(volInfo.name, volInfo.pool)
+			if err != nil {
+				return err
+			}
+			for i := range volSnapList {
+				if snapCache.Add(volSnapList[i]) {
+					glog.Infof("add snapshot [%s] into cache successfully", volSnapList[i].snapName)
+				} else {
+					return fmt.Errorf("add snapshot [%s] failed, already exits but incompatiably", volSnapList[i].snapName)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (snapCache *snapshotCache) List() (list []*snapshotInfo) {
+	// TODO: ensure the order of the snapshot info list unchanged
+	for _, v := range snapCache.snaps {
+		list = append(list, v)
+	}
+	return list
 }

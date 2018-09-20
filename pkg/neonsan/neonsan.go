@@ -85,6 +85,9 @@ func (neons *neonsan) Run(driverName, nodeId, endpoint string) {
 	neons.cs = NewControllerServer(neons.driver)
 
 	s := csicommon.NewNonBlockingGRPCServer()
+
+	// Initialize snapshot cache
+
 	s.Start(endpoint, neons.ids, neons.cs, neons.ns)
 	s.Wait()
 }

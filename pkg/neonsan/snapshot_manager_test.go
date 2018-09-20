@@ -18,6 +18,7 @@ package neonsan
 
 import (
 	"errors"
+	"fmt"
 	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"reflect"
 	"testing"
@@ -32,6 +33,45 @@ const (
 	SnapTestFakeVolumeName   = "fake"
 	SnapTestVolumeNameNoSnap = "nosnap"
 )
+
+var cache []*snapshotInfo = []*snapshotInfo{
+	&snapshotInfo{
+		snapName:         "vol1-snap1",
+		snapID:           "399616507911",
+		sizeByte:         10737418240,
+		status:           SnapshotStatusOk,
+		pool:             "kube",
+		createdTime:      1535024379,
+		sourceVolumeName: "vol1",
+	},
+	&snapshotInfo{
+		snapName:         "vol1-snap2",
+		snapID:           "399616507912",
+		sizeByte:         10737418240,
+		status:           SnapshotStatusOk,
+		pool:             "kube",
+		createdTime:      1535024379,
+		sourceVolumeName: "vol1",
+	},
+	&snapshotInfo{
+		snapName:         "vol2-snap1",
+		snapID:           "399616507921",
+		sizeByte:         10737418240,
+		status:           SnapshotStatusOk,
+		pool:             "kube",
+		createdTime:      1535024379,
+		sourceVolumeName: "vol1",
+	},
+	&snapshotInfo{
+		snapName:         "vol2-snap2",
+		snapID:           "399616507922",
+		sizeByte:         10737418240,
+		status:           SnapshotStatusOk,
+		pool:             "kube",
+		createdTime:      1535024379,
+		sourceVolumeName: "vol1",
+	},
+}
 
 func TestSnapshotPrepare(t *testing.T) {
 	if _, err := CreateVolume(SnapTestVolumeName, SnapTestPoolName, gib, 1); err != nil {
@@ -612,5 +652,74 @@ func TestReadListPage(t *testing.T) {
 		} else if !reflect.DeepEqual(v.pageList, pageList) {
 			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.caseName, v.pageList, pageList)
 		}
+	}
+}
+
+func TestSnapshotCache(t *testing.T) {
+	var snapArr []snapshotInfo
+	for vol := 0; vol < 10; vol++ {
+		for snap := 0; snap < 20; snap++ {
+			tmp := snapshotInfo{
+				snapName:         fmt.Sprintf("vol-%d-snap-%d", vol, snap),
+				snapID:           fmt.Sprintf("3996165079%d%d", vol, snap),
+				sizeByte:         10737418240,
+				status:           SnapshotStatusOk,
+				pool:             "kube",
+				createdTime:      1535024379,
+				sourceVolumeName: fmt.Sprintf("vol-%d", vol),
+			}
+			snapArr = append(snapArr, tmp)
+		}
+	}
+	cache := snapshotCache{}
+	cache.New()
+	// Add
+	for _, v := range snapArr {
+		// Normal add
+		tmp := v
+		flag := cache.Add(&tmp)
+		if flag != true {
+			t.Errorf("add snapshot cache expect [%t], but actually [%t]", true, flag)
+		}
+		// Re-add
+		flag = cache.Add(&tmp)
+		if flag != true {
+			t.Errorf("re-add snapshot cache expect [%t], but actually [%t]", true, flag)
+		}
+		// Re-add but incompatible
+		v.sizeByte = v.sizeByte - 1
+		flag = cache.Add(&v)
+		if flag != false {
+			t.Errorf("re-add snapshot cache expect [%t], but actually [%t]", false, flag)
+		}
+	}
+
+	// Find
+	for _, v := range snapArr {
+		snapInfo := cache.Find(v.snapName)
+		if !reflect.DeepEqual(v, *snapInfo) {
+			t.Errorf("find snapshot cache expect [%v], but actually [%v]", v, *snapInfo)
+		}
+	}
+	// Delete
+	for _, v := range snapArr {
+		// normal delete
+		cache.Delete(v.snapName)
+		// re-delete
+		cache.Delete(v.snapName)
+		// find
+		snapInfo := cache.Find(v.snapName)
+		if snapInfo != nil {
+			t.Errorf("find snapshot cache expect [%v], but actually [%v]", nil, snapInfo)
+		}
+	}
+}
+
+func TestSnapshotCache_Sync(t *testing.T) {
+	cache := snapshotCache{}
+	cache.New()
+	err := cache.Sync()
+	if err != nil {
+		t.Errorf("sync snapshot cache expect [%v], but actually [%v]", nil, err)
 	}
 }

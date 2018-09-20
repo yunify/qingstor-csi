@@ -28,6 +28,7 @@ import (
 
 type controllerServer struct {
 	*csicommon.DefaultControllerServer
+	cache snapshotCache
 }
 
 // This operation MUST be idempotent
@@ -297,7 +298,7 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	if exSnap == nil {
 		// snapshot does not exist
 		glog.Infof("Snapshot [%v] does not exist, should create it later.", req.GetName())
-	}else{
+	} else {
 		// snapshot already exist
 
 		if req.GetSourceVolumeId() == exSnap.sourceVolumeName {

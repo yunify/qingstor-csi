@@ -115,6 +115,10 @@ func TestFindVolume(t *testing.T) {
 			if v.info.name != volInfo.name || v.info.pool != volInfo.pool {
 				t.Errorf("name [%s]: volume info expect [%v], but actually [%v]", v.name, v.info, volInfo)
 			}
+		} else if v.info == nil && volInfo == nil {
+			continue
+		} else {
+			t.Errorf("name [%s]: volume info expect [%v], but actually [%v]", v.name, v.info, volInfo)
 		}
 	}
 }

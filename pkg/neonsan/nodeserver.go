@@ -256,7 +256,7 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 		if attInfo != nil {
 			break
 		}
-		glog.Warningf("Cannot find attached volume [%s], retry for [%d] times...", volumeId, i)
+		glog.Warningf("Cannot find attached volume [%s], [%d] remaining retries...", volumeId, i)
 		time.Sleep(time.Duration(i) * time.Second)
 	}
 
