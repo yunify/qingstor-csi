@@ -236,7 +236,7 @@ type SnapshotCache interface {
 	// Delete snapshot information form map
 	Delete(snapName string)
 	// Add all snapshot information into map
-	Sync() (bool, error)
+	Sync(poods []string) error
 	// List all snapshot info
 	List() []*snapshotInfo
 }
@@ -280,12 +280,7 @@ func (snapCache *snapshotCache) Delete(snapName string) {
 	}
 }
 
-func (snapCache *snapshotCache) Sync() (err error) {
-	// get all pool name
-	pools, err := ListPoolName()
-	if err != nil {
-		return err
-	}
+func (snapCache *snapshotCache) Sync(pools []string) (err error) {
 	// get full snapshot list
 	for _, v := range pools {
 		// visit each pool
@@ -297,6 +292,7 @@ func (snapCache *snapshotCache) Sync() (err error) {
 			// visit each volume
 			glog.Info(volInfo)
 			volSnapList, err := ListSnapshotByVolume(volInfo.name, volInfo.pool)
+			glog.Info(volSnapList)
 			if err != nil {
 				return err
 			}

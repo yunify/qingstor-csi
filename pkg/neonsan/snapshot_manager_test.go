@@ -716,9 +716,10 @@ func TestSnapshotCache(t *testing.T) {
 }
 
 func TestSnapshotCache_Sync(t *testing.T) {
+	pools := []string{"kube", "csi"}
 	cache := snapshotCache{}
 	cache.New()
-	err := cache.Sync()
+	err := cache.Sync(pools)
 	if err != nil {
 		t.Errorf("sync snapshot cache expect [%v], but actually [%v]", nil, err)
 	}
