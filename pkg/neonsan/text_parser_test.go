@@ -26,6 +26,7 @@ func TestParseVolumeList(t *testing.T) {
 	tests := []struct {
 		name   string
 		output string
+		pool   string
 		list   []*volumeInfo
 		err    error
 	}{
@@ -37,6 +38,7 @@ func TestParseVolumeList(t *testing.T) {
 +--------------+------+-------------+-----------+---------------+--------+---------------------+---------------------+
 | 251188477952 | foo  | 10737418240 |         1 |             1 | OK     | 2018-07-09 12:18:34 | 2018-07-09 12:18:34 |
 +--------------+------+-------------+-----------+---------------+--------+---------------------+---------------------+`,
+			pool: "kube",
 			list: []*volumeInfo{
 				{
 					id:       "251188477952",
@@ -44,6 +46,7 @@ func TestParseVolumeList(t *testing.T) {
 					size:     10737418240,
 					status:   VolumeStatusOk,
 					replicas: 1,
+					pool:     "kube",
 				},
 			},
 			err: nil,
@@ -58,6 +61,7 @@ func TestParseVolumeList(t *testing.T) {
 | 395589976064 | pre-provisioning-volume | 5368709120 |         1 |             1 | OK     | 2018-09-03 22:50:03 | 2018-09-03 22:50:03 |
 +--------------+-------------------------+------------+-----------+---------------+--------+---------------------+---------------------+
 `,
+			pool: "kube",
 			list: []*volumeInfo{
 				{
 					id:       "395069882368",
@@ -65,6 +69,7 @@ func TestParseVolumeList(t *testing.T) {
 					size:     2147483648,
 					status:   VolumeStatusOk,
 					replicas: 1,
+					pool:     "kube",
 				},
 				{
 					id:       "395589976064",
@@ -72,6 +77,7 @@ func TestParseVolumeList(t *testing.T) {
 					size:     5368709120,
 					status:   VolumeStatusOk,
 					replicas: 1,
+					pool:     "kube",
 				},
 			},
 			err: nil,
@@ -80,12 +86,13 @@ func TestParseVolumeList(t *testing.T) {
 			name: "no volume list",
 			output: `Volume Count:0
 `,
+			pool: "kube",
 			list: nil,
 			err:  nil,
 		},
 	}
 	for _, v := range tests {
-		volList, err := ParseVolumeList(v.output)
+		volList, err := ParseVolumeList(v.output, v.pool)
 		if (v.err == nil && err != nil) || (v.err != nil && err == nil) {
 			t.Errorf("name [%s]: error expect [%v], but actually [%v]", v.name, v.err, err)
 		}

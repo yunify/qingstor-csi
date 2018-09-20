@@ -40,7 +40,7 @@ type TextParser interface {
 //   volumes, nil: found volumes info
 //   nil, nil: volumes not found
 //   nil, err: error
-func ParseVolumeList(input string) (vols []*volumeInfo, err error) {
+func ParseVolumeList(input string, poolName string) (vols []*volumeInfo, err error) {
 	in := strings.Trim(input, "\n")
 	lines := strings.Split(in, "\n")
 	for i, v := range lines {
@@ -55,7 +55,9 @@ func ParseVolumeList(input string) (vols []*volumeInfo, err error) {
 				return nil, nil
 			}
 		} else if i >= 4 && v[0] != '+' {
-			vols = append(vols, readVolumeInfoContent(v))
+			volInfo := readVolumeInfoContent(v)
+			volInfo.pool = poolName
+			vols = append(vols, volInfo)
 		}
 	}
 	return vols, nil
@@ -153,6 +155,7 @@ func readCountNumber(line string) (cnt int, err error) {
 	return cnt, fmt.Errorf("cannot found count")
 }
 
+// WARNING: not set volume pool
 func readVolumeInfoContent(line string) (ret *volumeInfo) {
 	curLine := strings.Replace(line, " ", "", -1)
 	curLine = strings.Trim(curLine, "|")

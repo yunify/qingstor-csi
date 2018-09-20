@@ -295,6 +295,7 @@ func (snapCache *snapshotCache) Sync() (err error) {
 		}
 		for _, volInfo := range vols {
 			// visit each volume
+			glog.Info(volInfo)
 			volSnapList, err := ListSnapshotByVolume(volInfo.name, volInfo.pool)
 			if err != nil {
 				return err

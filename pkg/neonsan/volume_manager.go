@@ -64,7 +64,7 @@ func FindVolume(volName string, volPool string) (outVol *volumeInfo, err error) 
 	if err != nil {
 		return nil, err
 	}
-	volList, err := ParseVolumeList(string(output))
+	volList, err := ParseVolumeList(string(output), volPool)
 	if err != nil {
 		return outVol, err
 	}
@@ -122,7 +122,7 @@ func ListVolumeByPool(pool string) (volList []*volumeInfo, err error) {
 	if err != nil {
 		return nil, err
 	}
-	volList, err = ParseVolumeList(string(output))
+	volList, err = ParseVolumeList(string(output), pool)
 	if err != nil {
 		return nil, err
 	}
