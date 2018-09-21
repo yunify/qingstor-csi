@@ -27,6 +27,7 @@ const (
 )
 
 func TestFindPool(t *testing.T) {
+	Pools = append(Pools, PoolTestPoolName)
 	tests := []struct {
 		name     string
 		poolName string
@@ -66,6 +67,7 @@ func TestFindPool(t *testing.T) {
 }
 
 func TestListPoolName(t *testing.T) {
+	Pools = append(Pools, PoolTestPoolName)
 	tests := []struct {
 		name   string
 		output string
@@ -76,10 +78,8 @@ func TestListPoolName(t *testing.T) {
 		},
 	}
 	for _, v := range tests {
-		pools, err := ListPoolName()
-		if err != nil {
-			t.Fatalf("name [%s]: fatal error [%v]", v.name, err)
-		}
+		pools := ListPoolName()
+
 		// check return pool list
 		if !util.ContainsString(pools, v.output) {
 			t.Errorf("name [%s]: expect pool [%s] must in return pool list [%v], but actually not", v.name, v.output, pools)

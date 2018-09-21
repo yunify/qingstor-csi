@@ -30,6 +30,7 @@ const (
 )
 
 func TestCreateVolume(t *testing.T) {
+	Pools = []string{TestPoolName}
 	tests := []struct {
 		name      string
 		volName   string
@@ -80,6 +81,7 @@ func TestCreateVolume(t *testing.T) {
 }
 
 func TestFindVolume(t *testing.T) {
+	Pools = []string{TestPoolName}
 	tests := []struct {
 		name    string
 		volName string
@@ -125,6 +127,7 @@ func TestFindVolume(t *testing.T) {
 }
 
 func TestFindVolumeWithoutPool(t *testing.T) {
+	Pools = []string{TestPoolName}
 	tests := []struct {
 		name    string
 		volName string
@@ -159,6 +162,7 @@ func TestFindVolumeWithoutPool(t *testing.T) {
 }
 
 func TestListVolumeByPool(t *testing.T) {
+	Pools = []string{TestPoolName}
 	tests := []struct {
 		name    string
 		volName string
@@ -203,6 +207,7 @@ func TestListVolumeByPool(t *testing.T) {
 }
 
 func TestAttachVolume(t *testing.T) {
+	Pools = []string{TestPoolName}
 	tests := []struct {
 		name   string
 		volume string
@@ -243,6 +248,7 @@ func TestAttachVolume(t *testing.T) {
 }
 
 func TestFindAttachedVolumeWithoutPool(t *testing.T) {
+	Pools = []string{TestPoolName}
 	tests := []struct {
 		name   string
 		volume string
@@ -284,6 +290,7 @@ func TestFindAttachedVolumeWithoutPool(t *testing.T) {
 }
 
 func TestDetachVolume(t *testing.T) {
+	Pools = []string{TestPoolName}
 	time.Sleep(3 * time.Second)
 	tests := []struct {
 		name   string
@@ -325,6 +332,7 @@ func TestDetachVolume(t *testing.T) {
 }
 
 func TestDeleteVolume(t *testing.T) {
+	Pools = []string{TestPoolName}
 	tests := []struct {
 		name    string
 		volName string
@@ -359,6 +367,7 @@ func TestDeleteVolume(t *testing.T) {
 }
 
 func TestProbeNeonsanCommand(t *testing.T) {
+	Pools = []string{TestPoolName}
 	tests := []struct {
 		name   string
 		nilErr bool
@@ -377,6 +386,7 @@ func TestProbeNeonsanCommand(t *testing.T) {
 }
 
 func TestProbeQbdCommand(t *testing.T) {
+	Pools = []string{TestPoolName}
 	tests := []struct {
 		name   string
 		nilErr bool

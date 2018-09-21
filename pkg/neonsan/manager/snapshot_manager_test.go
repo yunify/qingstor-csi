@@ -37,17 +37,42 @@ const (
 	SnapTestVolumeNosnap = "nosnap"
 )
 
-func TestPreparation(t *testing.T){
-	CreateVolume(SnapTestVolumeFoo, SnapTestPoolCsi, util.Gib * 10, 1)
+func TestCheck(t *testing.T){
+	Pools = []string{SnapTestPoolCsi}
+	vol, err := FindVolume(SnapTestVolumeFoo, SnapTestPoolCsi)
+	if err != nil{
+		t.Error(err)
+	}
+	if vol == nil{
+		t.Errorf("volume [%s] does not exist", SnapTestVolumeFoo)
+	}
+	vol, err = FindVolume(SnapTestVolumeNosnap, SnapTestPoolCsi)
+	if err != nil{
+		t.Error(err)
+	}
+	if vol == nil{
+		t.Errorf("volume [%s] does not exist", SnapTestVolumeFoo)
+	}
 }
 
 func TestCleaner(t *testing.T){
+	Pools = []string{SnapTestPoolCsi}
 	DeleteVolume(SnapTestVolumeFoo, SnapTestPoolCsi)
-	DeleteVolume(SnapTestVolumeFake, SnapTestPoolCsi)
 	DeleteVolume(SnapTestVolumeNosnap, SnapTestPoolCsi)
 }
 
+func TestInit(t *testing.T){
+	Pools = []string{SnapTestPoolCsi}
+	if _, err := CreateVolume(SnapTestVolumeFoo, SnapTestPoolCsi, util.Gib * 10, 1); err != nil{
+		t.Error(err)
+	}
+	if _, err := CreateVolume(SnapTestVolumeNosnap, SnapTestPoolCsi, util.Gib*10, 1); err != nil{
+		t.Error(err)
+	}
+}
+
 func TestCreateSnapshot(t *testing.T) {
+	Pools = []string{SnapTestPoolCsi}
 	tests := []struct {
 		name   string
 		input  *SnapshotInfo
@@ -118,6 +143,7 @@ func TestCreateSnapshot(t *testing.T) {
 }
 
 func TestFindSnapshot(t *testing.T) {
+	Pools = []string{SnapTestPoolCsi}
 	tests := []struct {
 		name   string
 		input  *SnapshotInfo
@@ -197,6 +223,7 @@ func TestFindSnapshot(t *testing.T) {
 }
 
 func TestFindSnapshotWithoutPool(t *testing.T) {
+	Pools = []string{SnapTestPoolCsi}
 	tests := []struct {
 		name   string
 		input  *SnapshotInfo
@@ -242,6 +269,7 @@ func TestFindSnapshotWithoutPool(t *testing.T) {
 }
 
 func TestListSnapshotByVolume(t *testing.T) {
+	Pools = []string{SnapTestPoolCsi}
 	tests := []struct {
 		name   string
 		input  *SnapshotInfo
@@ -312,6 +340,7 @@ func TestListSnapshotByVolume(t *testing.T) {
 }
 
 func TestDeleteSnapshot(t *testing.T) {
+	Pools = []string{SnapTestPoolCsi}
 	tests := []struct {
 		name     string
 		snapInfo *SnapshotInfo
@@ -354,6 +383,7 @@ func TestDeleteSnapshot(t *testing.T) {
 }
 
 func TestConvertNeonToCsiSnap(t *testing.T) {
+	Pools = []string{SnapTestPoolCsi}
 	tests := []struct {
 		caseName string
 		neonSnap *SnapshotInfo
@@ -383,7 +413,7 @@ func TestConvertNeonToCsiSnap(t *testing.T) {
 		{
 			caseName: "without snap name",
 			neonSnap: &SnapshotInfo{
-				Name:           "25463",
+				Name:           SnapTestSnapTest,
 				SizeByte:         2147483648,
 				Status:           SnapshotStatusOk,
 				Pool:             SnapTestPoolCsi,
@@ -392,6 +422,7 @@ func TestConvertNeonToCsiSnap(t *testing.T) {
 			},
 			csiSnap: &csi.Snapshot{
 				SizeBytes:      2147483648,
+				Id:SnapTestSnapTest,
 				SourceVolumeId: SnapTestVolumeFoo,
 				CreatedAt:      1535024379,
 				Status: &csi.SnapshotStatus{
@@ -419,6 +450,7 @@ func TestConvertNeonToCsiSnap(t *testing.T) {
 }
 
 func TestConvertNeonSnapToListSnapResp(t *testing.T) {
+	Pools = []string{SnapTestPoolCsi}
 	tests := []struct {
 		caseName  string
 		neonSnaps []*SnapshotInfo
@@ -484,6 +516,7 @@ func TestConvertNeonSnapToListSnapResp(t *testing.T) {
 }
 
 func TestReadListPage(t *testing.T) {
+	Pools = []string{SnapTestPoolCsi}
 	exampleFullList := []*SnapshotInfo{
 		{
 			Name:         "snapshot1",
@@ -603,6 +636,7 @@ func TestReadListPage(t *testing.T) {
 }
 
 func TestSnapshotCache(t *testing.T) {
+	Pools = []string{SnapTestPoolCsi}
 	var snapArr []SnapshotInfo
 	for vol := 0; vol < 10; vol++ {
 		for snap := 0; snap < 20; snap++ {
@@ -663,6 +697,7 @@ func TestSnapshotCache(t *testing.T) {
 }
 
 func TestSnapshotCache_Sync(t *testing.T) {
+	Pools = []string{SnapTestPoolCsi}
 	cache := SnapshotCacheType{}
 	cache.New()
 	err := cache.Sync()

@@ -32,6 +32,10 @@ import (
 //   nil, nil: volume not found
 //   nil, err: error
 func FindVolume(volName string, poolName string) (volInfo *VolumeInfo, err error) {
+	// check input args
+	if !util.ContainsString(ListPoolName(), poolName){
+		return nil, fmt.Errorf("invalid pool name [%s]", poolName)
+	}
 	args := []string{"list_volume", "--volume", volName, "--pool", poolName, "--detail", "-c", util.ConfigFilePath}
 	output, err := util.ExecCommand(CmdNeonsan, args)
 	if err != nil {
@@ -58,10 +62,7 @@ func FindVolume(volName string, poolName string) (volInfo *VolumeInfo, err error
 //  nil, nil: not found
 //  nil, error: error
 func FindVolumeWithoutPool(volName string) (volInfo *VolumeInfo, err error) {
-	pools, err := ListPoolName()
-	if err != nil {
-		return nil, err
-	}
+	pools := ListPoolName()
 	var volInfos []*VolumeInfo
 	for _, pool := range pools {
 		vol, err := FindVolume(volName, pool)
@@ -90,6 +91,10 @@ func FindVolumeWithoutPool(volName string) (volInfo *VolumeInfo, err error) {
 //   nil, nil: not found volume
 //   nil, err: error
 func ListVolumeByPool(poolName string) (volList []*VolumeInfo, err error) {
+	// check input args
+	if !util.ContainsString(ListPoolName(), poolName){
+		return nil, fmt.Errorf("invalid pool name [%s]", poolName)
+	}
 	args := []string{"list_volume", "--pool", poolName, "--detail", "-c", util.ConfigFilePath}
 	output, err := util.ExecCommand(CmdNeonsan, args)
 	if err != nil {
@@ -116,6 +121,10 @@ func CreateVolume(volName string, poolName string, volSize64 int64, replicas int
 	if volName == "" || poolName == "" || volSize64 == 0 {
 		return nil, fmt.Errorf("invalid input arguments")
 	}
+	// check input args
+	if !util.ContainsString(ListPoolName(), poolName){
+		return nil, fmt.Errorf("invalid pool name [%s]", poolName)
+	}
 	// do create
 	args := []string{"create_volume", "--volume", volName, "--pool", poolName, "--size", strconv.FormatInt(volSize64,
 		10), "--repcount", strconv.Itoa(replicas), "-c", util.ConfigFilePath}
@@ -138,6 +147,10 @@ func DeleteVolume(volName string, poolName string) (err error) {
 	if volName == "" || poolName == "" {
 		return fmt.Errorf("invalid input arguments")
 	}
+	// check input args
+	if !util.ContainsString(ListPoolName(), poolName){
+		return fmt.Errorf("invalid pool name [%s]", poolName)
+	}
 	args := []string{"delete_volume", "--volume", volName, "--pool", poolName, "-c", util.ConfigFilePath}
 	_, err = util.ExecCommand(CmdNeonsan, args)
 	return err
@@ -148,6 +161,10 @@ func AttachVolume(volName string, poolName string) (err error) {
 	if volName == "" || poolName == "" {
 		return fmt.Errorf("invalid input arguments")
 	}
+	// check input args
+	if !util.ContainsString(ListPoolName(), poolName){
+		return fmt.Errorf("invalid pool name [%s]", poolName)
+	}
 	args := []string{"-m", fmt.Sprintf("%s/%s", poolName, volName), "-c", util.ConfigFilePath}
 	_, err = util.ExecCommand(CmdQbd, args)
 	return err
@@ -157,6 +174,10 @@ func AttachVolume(volName string, poolName string) (err error) {
 func DetachVolume(volName string, poolName string) (err error) {
 	if volName == "" || poolName == "" {
 		return fmt.Errorf("invalid input arguments")
+	}
+	// check input args
+	if !util.ContainsString(ListPoolName(), poolName){
+		return fmt.Errorf("invalid pool name [%s]", poolName)
 	}
 	args := []string{"-u", fmt.Sprintf("%s/%s", poolName, volName), "-c", util.ConfigFilePath}
 	_, err = util.ExecCommand(CmdQbd, args)

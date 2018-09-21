@@ -33,8 +33,12 @@ import (
 //   snap, nil: succeed to find a snapshot
 //   nil, nil: cannot find snapshot
 //   nil, err: find snapshot error
-func FindSnapshot(snapName, srcVolName, pool string) (outSnap *SnapshotInfo, err error) {
-	snapList, err := ListSnapshotByVolume(srcVolName, pool)
+func FindSnapshot(snapName, srcVolName, poolName string) (outSnap *SnapshotInfo, err error) {
+	// check input args
+	if !util.ContainsString(ListPoolName(), poolName){
+		return nil, fmt.Errorf("invalid pool name [%s]", poolName)
+	}
+	snapList, err := ListSnapshotByVolume(srcVolName, poolName)
 	if err != nil {
 		glog.Errorf("List snapshot error: [%v]", err.Error())
 		return nil, err
@@ -55,21 +59,14 @@ func FindSnapshot(snapName, srcVolName, pool string) (outSnap *SnapshotInfo, err
 //   nil, nil: cannot find snapshot
 //   nil, err: find snapshot error or find duplicate snapshots
 func FindSnapshotWithoutPool(snapName string) (outSnap *SnapshotInfo, err error) {
-	poolNames, err := ListPoolName()
-	if err != nil {
-		return nil, err
-	}
-	glog.Infof("pools [%v]", poolNames)
+	poolNames := ListPoolName()
 	// TODO: it will take much time.
 	for _, poolName := range poolNames {
-		glog.Infof("pool [%s]", poolName)
 		vols, err := ListVolumeByPool(poolName)
 		if err != nil {
 			return nil, err
 		}
-		glog.Infof("vols [%v]", vols)
 		for _, volInfo := range vols {
-			glog.Infof("vol [%s]", volInfo.Name)
 			snapInfo, err := FindSnapshot(snapName, volInfo.Name, poolName)
 			if err != nil || snapInfo != nil {
 				return snapInfo, err
@@ -84,8 +81,12 @@ func FindSnapshotWithoutPool(snapName string) (outSnap *SnapshotInfo, err error)
 //   snapshot list, nil: find snapshots in specific volume
 //   nil, nil: find no snapshots in specific volume
 //   nil, err: find snapshot error
-func ListSnapshotByVolume(srcVolName, pool string) (snaps []*SnapshotInfo, err error) {
-	args := []string{"list_snapshot", "--volume", srcVolName, "--pool", pool, "-c", util.ConfigFilePath}
+func ListSnapshotByVolume(srcVolName, poolName string) (snaps []*SnapshotInfo, err error) {
+	// check input args
+	if !util.ContainsString(ListPoolName(), poolName){
+		return nil, fmt.Errorf("invalid pool name [%s]", poolName)
+	}
+	args := []string{"list_snapshot", "--volume", srcVolName, "--pool", poolName, "-c", util.ConfigFilePath}
 	output, err := util.ExecCommand(CmdNeonsan, args)
 	if err != nil {
 		glog.Errorf("Failed to find snapshot, args [%v].", args)
@@ -96,7 +97,7 @@ func ListSnapshotByVolume(srcVolName, pool string) (snaps []*SnapshotInfo, err e
 		return nil, err
 	}
 	for i := range snaps {
-		snaps[i].Pool = pool
+		snaps[i].Pool = poolName
 		snaps[i].SrcVolName = srcVolName
 	}
 	return snaps, nil
@@ -106,14 +107,18 @@ func ListSnapshotByVolume(srcVolName, pool string) (snaps []*SnapshotInfo, err e
 // Return case:
 //   snap, nil: succeed to create the snapshot
 //   nil, err: failed to create the snapshot
-func CreateSnapshot(snapName, srcVolName, pool string) (outSnap *SnapshotInfo, err error) {
-	args := []string{"create_snapshot", "--snapshot", fmt.Sprintf("%s@%s", srcVolName, snapName), "--pool", pool,
+func CreateSnapshot(snapName, srcVolName, poolName string) (outSnap *SnapshotInfo, err error) {
+	// check input args
+	if !util.ContainsString(ListPoolName(), poolName){
+		return nil, fmt.Errorf("invalid pool name [%s]", poolName)
+	}
+	args := []string{"create_snapshot", "--snapshot", fmt.Sprintf("%s@%s", srcVolName, snapName), "--pool", poolName,
 		"-c", util.ConfigFilePath}
 	_, err = util.ExecCommand(CmdNeonsan, args)
 	if err != nil {
 		return nil, err
 	}
-	snapInfo, err := FindSnapshot(snapName, srcVolName, pool)
+	snapInfo, err := FindSnapshot(snapName, srcVolName, poolName)
 	if err != nil {
 		return nil, fmt.Errorf("CreateSnapshot: [%v]", err)
 	}
@@ -127,8 +132,12 @@ func CreateSnapshot(snapName, srcVolName, pool string) (outSnap *SnapshotInfo, e
 // Return case:
 //   nil: succeed to delete snapshot
 //   err: failed to delete snapshot
-func DeleteSnapshot(snapName, srcVolName, pool string) (err error) {
-	args := []string{"delete_snapshot", "--snapshot", fmt.Sprintf("%s@%s", srcVolName, snapName), "--pool", pool,
+func DeleteSnapshot(snapName, srcVolName, poolName string) (err error) {
+	// check input args
+	if !util.ContainsString(ListPoolName(), poolName){
+		return fmt.Errorf("invalid pool name [%s]", poolName)
+	}
+	args := []string{"delete_snapshot", "--snapshot", fmt.Sprintf("%s@%s", srcVolName, snapName), "--pool", poolName,
 		"-c", util.ConfigFilePath}
 	_, err = util.ExecCommand(CmdNeonsan, args)
 	if err != nil {
@@ -232,7 +241,7 @@ func (snapCache *SnapshotCacheType) Delete(snapName string) {
 
 func (snapCache *SnapshotCacheType) Sync() (err error) {
 	// get full snapshot list
-	for _, v := range Pools {
+	for _, v := range ListPoolName() {
 		// visit each pool
 		vols, err := ListVolumeByPool(v)
 		if err != nil {

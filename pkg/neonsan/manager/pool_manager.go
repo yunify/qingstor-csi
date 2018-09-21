@@ -32,15 +32,10 @@ import (
 //   nil, err: error
 func FindPool(poolName string) (outPool *PoolInfo, err error) {
 	// check whether the pool exists
-	pools, err := ListPoolName()
-	if err != nil {
-		return nil, fmt.Errorf("call FindPool [%s]: %v", poolName, err.Error())
-	}
-	if !util.ContainsString(pools, poolName) {
+	if !util.ContainsString(ListPoolName(), poolName) {
 		// the pool doesn't exist
 		return nil, nil
 	}
-
 	// get pool info
 	args := []string{"stats_pool", "-pool", poolName, "-c", util.ConfigFilePath}
 	output, err := util.ExecCommand(CmdNeonsan, args)
@@ -56,12 +51,6 @@ func FindPool(poolName string) (outPool *PoolInfo, err error) {
 //   pool list, nil: found pools
 //   nil, nil: no found pools
 //   nil, err: error
-func ListPoolName() (pools []string, err error) {
-	args := []string{"list_pool", "-c", util.ConfigFilePath}
-	output, err := util.ExecCommand(CmdNeonsan, args)
-	if err != nil {
-		return nil, fmt.Errorf("call ListPoolName: %v", err.Error())
-	}
-	pools, err = ParsePoolNameList(string(output))
-	return pools, err
+func ListPoolName() (pools []string) {
+	return Pools
 }

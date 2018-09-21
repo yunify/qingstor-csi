@@ -167,6 +167,7 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		glog.Errorf("Failed to delete volume: [%s] in pool [%s] with error: [%v].", volumeId, volInfo.Pool, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	cs.cache.Delete(volumeId)
 	glog.Infof("Succeed to delete volume: [%s] in pool [%s]", volumeId, volInfo.Pool)
 	return &csi.DeleteVolumeResponse{}, nil
 }
@@ -334,6 +335,10 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		glog.Errorf("Failed to create snapshot with error [%s].", err.Error())
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
+	if !cs.cache.Add(snapInfo){
+		glog.Warningf("Snapshot [%s] already exist in cache", snapInfo.Name)
+	}
+
 	glog.Infof("Succeed to create snapshot [%v].", snapInfo)
 	return &csi.CreateSnapshotResponse{
 		Snapshot: &csi.Snapshot{
@@ -365,11 +370,7 @@ func (cs *controllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	}
 
 	// 2. Find snapshot by id
-	exSnap, err := manager.FindSnapshotWithoutPool(req.GetSnapshotId())
-	if err != nil {
-		glog.Errorf("Failed to find snapshot [%s], error [%s].", req.GetSnapshotId(), err.Error())
-		return nil, status.Error(codes.Internal, err.Error())
-	}
+	exSnap := cs.cache.Find(req.GetSnapshotId())
 	if exSnap == nil {
 		glog.Warningf("Snapshot [%s] does not exist.", req.GetSnapshotId())
 		return &csi.DeleteSnapshotResponse{}, nil
@@ -377,7 +378,7 @@ func (cs *controllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 
 	// 3. Do delete snapshot
 	glog.Infof("Delete snapshot [%v]...", exSnap)
-	err = manager.DeleteSnapshot(exSnap.Name, exSnap.SrcVolName, exSnap.Pool)
+	err := manager.DeleteSnapshot(exSnap.Name, exSnap.SrcVolName, exSnap.Pool)
 	if err != nil {
 		glog.Errorf("Failed to delete snapshot [%v].", exSnap)
 		return nil, status.Error(codes.Internal, err.Error())
@@ -400,11 +401,7 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 
 	// case: snapshot id
 	if len(snapId) != 0 {
-		snapInfo, err := manager.FindSnapshotWithoutPool(req.GetSnapshotId())
-		if err != nil {
-			glog.Errorf("Failed to find snapshot [%s], error [%v]", req.GetSnapshotId(), err)
-			return nil, status.Error(codes.Internal, err.Error())
-		}
+		snapInfo := cs.cache.Find(req.GetSnapshotId())
 		if len(srcVolId) != 0 && srcVolId != snapInfo.SrcVolName {
 			return nil, status.Error(codes.Internal, "mismatch snapshot and volume name")
 		}
@@ -464,10 +461,7 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 	// case: non volume id provided
 	// must consider pageable
 	var fullSnapList []*manager.SnapshotInfo
-	pools, err := manager.ListPoolName()
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
+	pools:= manager.ListPoolName()
 	// get full snapshot list
 	for _, v := range pools {
 		vols, err := manager.ListVolumeByPool(v)
@@ -498,7 +492,7 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 			page = 1
 		} else {
 			// non-first page
-			page, err = strconv.Atoi(req.GetStartingToken())
+			_, err := strconv.Atoi(req.GetStartingToken())
 			if err != nil {
 				return nil, status.Error(codes.InvalidArgument, err.Error())
 			}
