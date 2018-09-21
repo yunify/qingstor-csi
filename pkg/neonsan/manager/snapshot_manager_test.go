@@ -22,6 +22,7 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"reflect"
 	"testing"
+	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
 )
 
 const (
@@ -35,6 +36,16 @@ const (
 	SnapTestVolumeFake  = "fake"
 	SnapTestVolumeNosnap = "nosnap"
 )
+
+func TestPreparation(t *testing.T){
+	CreateVolume(SnapTestVolumeFoo, SnapTestPoolCsi, util.Gib * 10, 1)
+}
+
+func TestCleaner(t *testing.T){
+	DeleteVolume(SnapTestVolumeFoo, SnapTestPoolCsi)
+	DeleteVolume(SnapTestVolumeFake, SnapTestPoolCsi)
+	DeleteVolume(SnapTestVolumeNosnap, SnapTestPoolCsi)
+}
 
 func TestCreateSnapshot(t *testing.T) {
 	tests := []struct {
