@@ -81,8 +81,7 @@ func TestListPoolName(t *testing.T) {
 			t.Fatalf("name [%s]: fatal error [%v]", v.name, err)
 		}
 		// check return pool list
-		t.Logf("name [%s]: actually return pool list [%v]", v.name, pools)
-		if util.ContainsString(pools, v.output) {
+		if !util.ContainsString(pools, v.output) {
 			t.Errorf("name [%s]: expect pool [%s] must in return pool list [%v], but actually not", v.name, v.output, pools)
 		}
 	}
