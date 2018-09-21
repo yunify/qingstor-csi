@@ -22,84 +22,19 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"reflect"
 	"testing"
-	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
 )
 
 const (
-	SnapTestSnapshotName     = "test"
-	SnapTestFakeSnapshotName = "fake"
-	SnapTestPoolName         = "csi"
-	SnapTestFakePoolName     = "fake"
-	SnapTestVolumeName       = "foo"
-	SnapTestFakeVolumeName   = "fake"
-	SnapTestVolumeNameNoSnap = "nosnap"
+	SnapTestSnapTest  = "test"
+	SnapTestSnapFake = "fake"
+
+	SnapTestPoolCsi      = "csi"
+	SnapTestPoolFake     = "fake"
+
+	SnapTestVolumeFoo     = "foo"
+	SnapTestVolumeFake  = "fake"
+	SnapTestVolumeNosnap = "nosnap"
 )
-
-var cache []*SnapshotInfo = []*SnapshotInfo{
-	&SnapshotInfo{
-		Name:         "vol1-snap1",
-		Id:           "399616507911",
-		SizeByte:         10737418240,
-		Status:           SnapshotStatusOk,
-		Pool:             "kube",
-		CreatedTime:      1535024379,
-		SrcVolName: "vol1",
-	},
-	&SnapshotInfo{
-		Name:         "vol1-snap2",
-		Id:           "399616507912",
-		SizeByte:         10737418240,
-		Status:           SnapshotStatusOk,
-		Pool:             "kube",
-		CreatedTime:      1535024379,
-		SrcVolName: "vol1",
-	},
-	&SnapshotInfo{
-		Name:         "vol2-snap1",
-		Id:           "399616507921",
-		SizeByte:         10737418240,
-		Status:           SnapshotStatusOk,
-		Pool:             "kube",
-		CreatedTime:      1535024379,
-		SrcVolName: "vol1",
-	},
-	&SnapshotInfo{
-		Name:         "vol2-snap2",
-		Id:           "399616507922",
-		SizeByte:         10737418240,
-		Status:           SnapshotStatusOk,
-		Pool:             "kube",
-		CreatedTime:      1535024379,
-		SrcVolName: "vol1",
-	},
-}
-
-func TestSnapshotPrepare(t *testing.T) {
-	if _, err := CreateVolume(SnapTestVolumeName, SnapTestPoolName, util.Gib, 1); err != nil {
-		t.Errorf("Failed to create volume [%s], error [%v]", SnapTestVolumeName, err)
-	}
-	if _, err := CreateVolume(SnapTestVolumeNameNoSnap, SnapTestPoolName, util.Gib, 1); err != nil {
-		t.Errorf("Failed to create volume [%s], error [%v]", SnapTestVolumeNameNoSnap, err)
-	}
-}
-
-func TestSnapshotCheck(t *testing.T) {
-	if vol, err := FindVolume(SnapTestVolumeName, SnapTestPoolName); err != nil || vol == nil {
-		t.Errorf("Not found volume [%s], error [%v]", SnapTestVolumeName, err)
-	}
-	if vol, err := FindVolume(SnapTestVolumeNameNoSnap, SnapTestPoolName); err != nil || vol == nil {
-		t.Errorf("Not found volume [%s], error [%v]", SnapTestVolumeNameNoSnap, err)
-	}
-}
-
-func TestSnapshotCleaner(t *testing.T) {
-	if err := DeleteVolume(SnapTestVolumeName, SnapTestPoolName); err != nil {
-		t.Errorf("Failed to delete volume [%s], error [%v]", SnapTestVolumeName, err)
-	}
-	if err := DeleteVolume(SnapTestVolumeNameNoSnap, SnapTestPoolName); err != nil {
-		t.Errorf("Failed to delete volume [%s], error [%v]", SnapTestVolumeNameNoSnap, err)
-	}
-}
 
 func TestCreateSnapshot(t *testing.T) {
 	tests := []struct {
@@ -111,23 +46,23 @@ func TestCreateSnapshot(t *testing.T) {
 		{
 			name: "succeed to create snapshot",
 			input: &SnapshotInfo{
-				Name:         SnapTestSnapshotName,
-				Pool:             SnapTestPoolName,
-				SrcVolName: SnapTestVolumeName,
+				Name:         SnapTestSnapTest,
+				Pool:             SnapTestPoolCsi,
+				SrcVolName: SnapTestVolumeFoo,
 			},
 			output: &SnapshotInfo{
-				Name:         SnapTestSnapshotName,
-				Pool:             SnapTestPoolName,
-				SrcVolName: SnapTestVolumeName,
+				Name:         SnapTestSnapTest,
+				Pool:             SnapTestPoolCsi,
+				SrcVolName: SnapTestVolumeFoo,
 			},
 			err: nil,
 		},
 		{
 			name: "recreate snapshot",
 			input: &SnapshotInfo{
-				Name:         SnapTestSnapshotName,
-				Pool:             SnapTestPoolName,
-				SrcVolName: SnapTestVolumeName,
+				Name:         SnapTestSnapTest,
+				Pool:             SnapTestPoolCsi,
+				SrcVolName: SnapTestVolumeFoo,
 			},
 			output: nil,
 			err:    errors.New("raise error"),
@@ -135,9 +70,9 @@ func TestCreateSnapshot(t *testing.T) {
 		{
 			name: "fake volume name",
 			input: &SnapshotInfo{
-				Name:         SnapTestSnapshotName,
-				Pool:             SnapTestPoolName,
-				SrcVolName: SnapTestFakeVolumeName,
+				Name:         SnapTestSnapTest,
+				Pool:             SnapTestPoolCsi,
+				SrcVolName: SnapTestVolumeFake,
 			},
 			output: nil,
 			err:    errors.New("raise error"),
@@ -145,9 +80,9 @@ func TestCreateSnapshot(t *testing.T) {
 		{
 			name: "fake pool name",
 			input: &SnapshotInfo{
-				Name:         SnapTestSnapshotName,
-				Pool:             SnapTestFakePoolName,
-				SrcVolName: SnapTestVolumeName,
+				Name:         SnapTestSnapTest,
+				Pool:             SnapTestPoolFake,
+				SrcVolName: SnapTestVolumeFoo,
 			},
 			output: nil,
 			err:    errors.New("raise error"),
@@ -181,23 +116,23 @@ func TestFindSnapshot(t *testing.T) {
 		{
 			name: "succeed to find snapshot",
 			input: &SnapshotInfo{
-				Name:         SnapTestSnapshotName,
-				Pool:             SnapTestPoolName,
-				SrcVolName: SnapTestVolumeName,
+				Name:         SnapTestSnapTest,
+				Pool:             SnapTestPoolCsi,
+				SrcVolName: SnapTestVolumeFoo,
 			},
 			output: &SnapshotInfo{
-				Name:         SnapTestSnapshotName,
-				Pool:             SnapTestPoolName,
-				SrcVolName: SnapTestVolumeName,
+				Name:         SnapTestSnapTest,
+				Pool:             SnapTestPoolCsi,
+				SrcVolName: SnapTestVolumeFoo,
 			},
 			err: nil,
 		},
 		{
 			name: "volume doesn't contains any snapshot",
 			input: &SnapshotInfo{
-				Name:         SnapTestSnapshotName,
-				Pool:             SnapTestPoolName,
-				SrcVolName: SnapTestVolumeNameNoSnap,
+				Name:         SnapTestSnapTest,
+				Pool:             SnapTestPoolCsi,
+				SrcVolName: SnapTestVolumeNosnap,
 			},
 			output: nil,
 			err:    nil,
@@ -205,9 +140,9 @@ func TestFindSnapshot(t *testing.T) {
 		{
 			name: "fake snapshot name",
 			input: &SnapshotInfo{
-				Name:         SnapTestFakeSnapshotName,
-				Pool:             SnapTestPoolName,
-				SrcVolName: SnapTestVolumeName,
+				Name:         SnapTestSnapFake,
+				Pool:             SnapTestPoolCsi,
+				SrcVolName: SnapTestVolumeFoo,
 			},
 			output: nil,
 			err:    nil,
@@ -215,9 +150,9 @@ func TestFindSnapshot(t *testing.T) {
 		{
 			name: "fake volume name",
 			input: &SnapshotInfo{
-				Name:         SnapTestSnapshotName,
-				Pool:             SnapTestPoolName,
-				SrcVolName: SnapTestFakeVolumeName,
+				Name:         SnapTestSnapTest,
+				Pool:             SnapTestPoolCsi,
+				SrcVolName: SnapTestVolumeFake,
 			},
 			output: nil,
 			err:    errors.New("raise error"),
@@ -225,9 +160,9 @@ func TestFindSnapshot(t *testing.T) {
 		{
 			name: "fake pool name",
 			input: &SnapshotInfo{
-				Name:         SnapTestSnapshotName,
-				Pool:             SnapTestFakePoolName,
-				SrcVolName: SnapTestVolumeName,
+				Name:         SnapTestSnapTest,
+				Pool:             SnapTestPoolFake,
+				SrcVolName: SnapTestVolumeFoo,
 			},
 			output: nil,
 			err:    errors.New("raise error"),
@@ -260,19 +195,19 @@ func TestFindSnapshotWithoutPool(t *testing.T) {
 		{
 			name: "succeed to find snapshot",
 			input: &SnapshotInfo{
-				Name: SnapTestSnapshotName,
+				Name: SnapTestSnapTest,
 			},
 			output: &SnapshotInfo{
-				Name:         SnapTestSnapshotName,
-				Pool:             SnapTestPoolName,
-				SrcVolName: SnapTestVolumeName,
+				Name:          SnapTestSnapTest,
+				Pool:             SnapTestPoolCsi,
+				SrcVolName: SnapTestVolumeFoo,
 			},
 			err: nil,
 		},
 		{
 			name: "not found snapshot",
 			input: &SnapshotInfo{
-				Name: SnapTestFakeSnapshotName,
+				Name: SnapTestSnapFake,
 			},
 			output: nil,
 			err:    nil,
@@ -305,14 +240,14 @@ func TestListSnapshotByVolume(t *testing.T) {
 		{
 			name: "succeed to find snapshot",
 			input: &SnapshotInfo{
-				Pool:             SnapTestPoolName,
-				SrcVolName: SnapTestVolumeName,
+				Pool:             SnapTestPoolCsi,
+				SrcVolName: SnapTestVolumeFoo,
 			},
 			output: []*SnapshotInfo{
 				{
-					Name:         SnapTestSnapshotName,
-					Pool:             SnapTestPoolName,
-					SrcVolName: SnapTestVolumeName,
+					Name:         SnapTestSnapTest,
+					Pool:             SnapTestPoolCsi,
+					SrcVolName: SnapTestVolumeFoo,
 				},
 			},
 			err: nil,
@@ -320,8 +255,8 @@ func TestListSnapshotByVolume(t *testing.T) {
 		{
 			name: "find no snapshot",
 			input: &SnapshotInfo{
-				Pool:             SnapTestPoolName,
-				SrcVolName: SnapTestVolumeNameNoSnap,
+				Pool:             SnapTestPoolCsi,
+				SrcVolName: SnapTestVolumeNosnap,
 			},
 			output: nil,
 			err:    nil,
@@ -329,8 +264,8 @@ func TestListSnapshotByVolume(t *testing.T) {
 		{
 			name: "find fake pool",
 			input: &SnapshotInfo{
-				Pool:             SnapTestFakePoolName,
-				SrcVolName: SnapTestVolumeName,
+				Pool:             SnapTestPoolFake,
+				SrcVolName: SnapTestVolumeFoo,
 			},
 			output: nil,
 			err:    errors.New("raise error"),
@@ -338,8 +273,8 @@ func TestListSnapshotByVolume(t *testing.T) {
 		{
 			name: "find fake volume",
 			input: &SnapshotInfo{
-				Pool:             SnapTestPoolName,
-				SrcVolName: SnapTestFakeVolumeName,
+				Pool:             SnapTestPoolCsi,
+				SrcVolName: SnapTestVolumeFake,
 			},
 			output: nil,
 			err:    errors.New("raise error"),
@@ -374,27 +309,27 @@ func TestDeleteSnapshot(t *testing.T) {
 		{
 			name: "succeed to delete snapshot",
 			snapInfo: &SnapshotInfo{
-				Name:         SnapTestSnapshotName,
-				Pool:             SnapTestPoolName,
-				SrcVolName: SnapTestVolumeName,
+				Name:         SnapTestSnapTest,
+				Pool:             SnapTestPoolCsi,
+				SrcVolName: SnapTestVolumeFoo,
 			},
 			err: nil,
 		},
 		{
 			name: "re-delete snapshot",
 			snapInfo: &SnapshotInfo{
-				Name:         SnapTestSnapshotName,
-				Pool:             SnapTestPoolName,
-				SrcVolName: SnapTestFakeVolumeName,
+				Name:         SnapTestSnapTest,
+				Pool:             SnapTestPoolCsi,
+				SrcVolName: SnapTestVolumeFoo,
 			},
 			err: errors.New("raise error"),
 		},
 		{
 			name: "failed to delete snapshot",
 			snapInfo: &SnapshotInfo{
-				Name:         SnapTestSnapshotName,
-				Pool:             SnapTestPoolName,
-				SrcVolName: SnapTestFakeVolumeName,
+				Name:         SnapTestSnapTest,
+				Pool:             SnapTestPoolCsi,
+				SrcVolName: SnapTestVolumeFake,
 			},
 			err: errors.New("raise error"),
 		},
@@ -416,18 +351,18 @@ func TestConvertNeonToCsiSnap(t *testing.T) {
 		{
 			caseName: "valid NeonSAN snapshot",
 			neonSnap: &SnapshotInfo{
-				Name:         SnapTestSnapshotName,
+				Name:         SnapTestSnapTest,
 				Id:           "25463",
 				SizeByte:         2147483648,
 				Status:           SnapshotStatusOk,
-				Pool:             SnapTestPoolName,
+				Pool:             SnapTestPoolCsi,
 				CreatedTime:      1535024379,
-				SrcVolName: SnapTestVolumeName,
+				SrcVolName: SnapTestVolumeFoo,
 			},
 			csiSnap: &csi.Snapshot{
 				SizeBytes:      2147483648,
-				Id:             SnapTestSnapshotName,
-				SourceVolumeId: SnapTestVolumeName,
+				Id:             SnapTestSnapTest,
+				SourceVolumeId: SnapTestVolumeFoo,
 				CreatedAt:      1535024379,
 				Status: &csi.SnapshotStatus{
 					Type: csi.SnapshotStatus_READY,
@@ -440,13 +375,13 @@ func TestConvertNeonToCsiSnap(t *testing.T) {
 				Name:           "25463",
 				SizeByte:         2147483648,
 				Status:           SnapshotStatusOk,
-				Pool:             SnapTestPoolName,
+				Pool:             SnapTestPoolCsi,
 				CreatedTime:      1535024379,
-				SrcVolName: SnapTestVolumeName,
+				SrcVolName: SnapTestVolumeFoo,
 			},
 			csiSnap: &csi.Snapshot{
 				SizeBytes:      2147483648,
-				SourceVolumeId: SnapTestVolumeName,
+				SourceVolumeId: SnapTestVolumeFoo,
 				CreatedAt:      1535024379,
 				Status: &csi.SnapshotStatus{
 					Type: csi.SnapshotStatus_READY,
