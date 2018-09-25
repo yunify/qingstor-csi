@@ -27,9 +27,9 @@ import (
 )
 
 const (
-	Int64Max        int64  = int64(^uint64(0) >> 1)
-	PluginFolder    string = "/var/lib/kubelet/plugins/"
-	TimeLayout      string = "2006-01-02T15:04:05+08:00"
+	Int64Max     int64  = int64(^uint64(0) >> 1)
+	PluginFolder string = "/var/lib/kubelet/plugins/"
+	TimeLayout   string = "2006-01-02T15:04:05+08:00"
 )
 
 const (
@@ -162,6 +162,6 @@ func EntryFunction(functionName string) func() {
 	}
 }
 
-func GetList(str string)[]string{
+func GetList(str string) []string {
 	return strings.Split(strings.Replace(str, " ", "", -1), ",")
 }

@@ -18,9 +18,9 @@ package manager
 
 import (
 	"fmt"
+	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
 	"reflect"
 	"testing"
-	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
 )
 
 func TestParseVolumeList(t *testing.T) {
@@ -44,7 +44,7 @@ func TestParseVolumeList(t *testing.T) {
 				{
 					Id:       "251188477952",
 					Name:     "foo",
-					SizeByte:     10737418240,
+					SizeByte: 10737418240,
 					Status:   VolumeStatusOk,
 					Replicas: 1,
 					Pool:     "kube",
@@ -67,7 +67,7 @@ func TestParseVolumeList(t *testing.T) {
 				{
 					Id:       "395069882368",
 					Name:     "foo",
-					SizeByte:     2147483648,
+					SizeByte: 2147483648,
 					Status:   VolumeStatusOk,
 					Replicas: 1,
 					Pool:     "kube",
@@ -75,7 +75,7 @@ func TestParseVolumeList(t *testing.T) {
 				{
 					Id:       "395589976064",
 					Name:     "pre-provisioning-volume",
-					SizeByte:     5368709120,
+					SizeByte: 5368709120,
 					Status:   VolumeStatusOk,
 					Replicas: 1,
 					Pool:     "kube",
@@ -122,20 +122,20 @@ func TestParseSnapshotList(t *testing.T) {
 `,
 			list: []*SnapshotInfo{
 				{
-					Name:         "snapshot",
-					Id:           "25463",
-					SizeByte:         2147483648,
-					Status:           SnapshotStatusOk,
-					CreatedTime:      1535024299,
-					SrcVolName: "274726912000",
+					Name:        "snapshot",
+					Id:          "25463",
+					SizeByte:    2147483648,
+					Status:      SnapshotStatusOk,
+					CreatedTime: 1535024299,
+					SrcVolName:  "274726912000",
 				},
 				{
-					Name:         "snapshot2",
-					Id:           "25464",
-					SizeByte:         2147483648,
-					Status:           SnapshotStatusOk,
-					CreatedTime:      1535024379,
-					SrcVolName: "274726912000",
+					Name:        "snapshot2",
+					Id:          "25464",
+					SizeByte:    2147483648,
+					Status:      SnapshotStatusOk,
+					CreatedTime: 1535024379,
+					SrcVolName:  "274726912000",
 				},
 			},
 			err: nil,
@@ -177,8 +177,8 @@ func TestParsePoolInfo(t *testing.T) {
 
 `,
 			pools: &PoolInfo{
-				Id:    "67108864",
-				Name:  "csi",
+				Id:        "67108864",
+				Name:      "csi",
 				TotalByte: 2982 * util.Gib,
 				FreeByte:  1222 * util.Gib,
 				UsedByte:  1759 * util.Gib,

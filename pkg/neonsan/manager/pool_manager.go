@@ -21,8 +21,6 @@ import (
 	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
 )
 
-
-
 // FindPool
 // Description: get pool detail information.
 // Input: pool name: string

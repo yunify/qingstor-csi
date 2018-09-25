@@ -17,8 +17,8 @@ limitations under the License.
 package manager
 
 import (
-	"testing"
 	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
+	"testing"
 )
 
 const (

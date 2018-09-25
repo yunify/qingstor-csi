@@ -19,8 +19,8 @@ package manager
 import (
 	"fmt"
 	"github.com/golang/glog"
-	"strconv"
 	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
+	"strconv"
 )
 
 // FindVolume get volume detail information
@@ -33,7 +33,7 @@ import (
 //   nil, err: error
 func FindVolume(volName string, poolName string) (volInfo *VolumeInfo, err error) {
 	// check input args
-	if !util.ContainsString(ListPoolName(), poolName){
+	if !util.ContainsString(ListPoolName(), poolName) {
 		return nil, fmt.Errorf("invalid pool name [%s]", poolName)
 	}
 	args := []string{"list_volume", "--volume", volName, "--pool", poolName, "--detail", "-c", util.ConfigFilePath}
@@ -92,7 +92,7 @@ func FindVolumeWithoutPool(volName string) (volInfo *VolumeInfo, err error) {
 //   nil, err: error
 func ListVolumeByPool(poolName string) (volList []*VolumeInfo, err error) {
 	// check input args
-	if !util.ContainsString(ListPoolName(), poolName){
+	if !util.ContainsString(ListPoolName(), poolName) {
 		return nil, fmt.Errorf("invalid pool name [%s]", poolName)
 	}
 	args := []string{"list_volume", "--pool", poolName, "--detail", "-c", util.ConfigFilePath}
@@ -122,7 +122,7 @@ func CreateVolume(volName string, poolName string, volSize64 int64, replicas int
 		return nil, fmt.Errorf("invalid input arguments")
 	}
 	// check input args
-	if !util.ContainsString(ListPoolName(), poolName){
+	if !util.ContainsString(ListPoolName(), poolName) {
 		return nil, fmt.Errorf("invalid pool name [%s]", poolName)
 	}
 	// do create
@@ -148,7 +148,7 @@ func DeleteVolume(volName string, poolName string) (err error) {
 		return fmt.Errorf("invalid input arguments")
 	}
 	// check input args
-	if !util.ContainsString(ListPoolName(), poolName){
+	if !util.ContainsString(ListPoolName(), poolName) {
 		return fmt.Errorf("invalid pool name [%s]", poolName)
 	}
 	args := []string{"delete_volume", "--volume", volName, "--pool", poolName, "-c", util.ConfigFilePath}
@@ -162,7 +162,7 @@ func AttachVolume(volName string, poolName string) (err error) {
 		return fmt.Errorf("invalid input arguments")
 	}
 	// check input args
-	if !util.ContainsString(ListPoolName(), poolName){
+	if !util.ContainsString(ListPoolName(), poolName) {
 		return fmt.Errorf("invalid pool name [%s]", poolName)
 	}
 	args := []string{"-m", fmt.Sprintf("%s/%s", poolName, volName), "-c", util.ConfigFilePath}
@@ -176,7 +176,7 @@ func DetachVolume(volName string, poolName string) (err error) {
 		return fmt.Errorf("invalid input arguments")
 	}
 	// check input args
-	if !util.ContainsString(ListPoolName(), poolName){
+	if !util.ContainsString(ListPoolName(), poolName) {
 		return fmt.Errorf("invalid pool name [%s]", poolName)
 	}
 	args := []string{"-u", fmt.Sprintf("%s/%s", poolName, volName), "-c", util.ConfigFilePath}

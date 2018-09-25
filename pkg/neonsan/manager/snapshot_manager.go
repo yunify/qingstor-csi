@@ -21,11 +21,9 @@ import (
 	"fmt"
 	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/golang/glog"
-	"reflect"
 	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
+	"reflect"
 )
-
-
 
 // FindSnapshot gets snapshot information in specified pool
 // srcVolName must be a valid volume name
@@ -35,7 +33,7 @@ import (
 //   nil, err: find snapshot error
 func FindSnapshot(snapName, srcVolName, poolName string) (outSnap *SnapshotInfo, err error) {
 	// check input args
-	if !util.ContainsString(ListPoolName(), poolName){
+	if !util.ContainsString(ListPoolName(), poolName) {
 		return nil, fmt.Errorf("invalid pool name [%s]", poolName)
 	}
 	snapList, err := ListSnapshotByVolume(srcVolName, poolName)
@@ -83,7 +81,7 @@ func FindSnapshotWithoutPool(snapName string) (outSnap *SnapshotInfo, err error)
 //   nil, err: find snapshot error
 func ListSnapshotByVolume(srcVolName, poolName string) (snaps []*SnapshotInfo, err error) {
 	// check input args
-	if !util.ContainsString(ListPoolName(), poolName){
+	if !util.ContainsString(ListPoolName(), poolName) {
 		return nil, fmt.Errorf("invalid pool name [%s]", poolName)
 	}
 	args := []string{"list_snapshot", "--volume", srcVolName, "--pool", poolName, "-c", util.ConfigFilePath}
@@ -109,7 +107,7 @@ func ListSnapshotByVolume(srcVolName, poolName string) (snaps []*SnapshotInfo, e
 //   nil, err: failed to create the snapshot
 func CreateSnapshot(snapName, srcVolName, poolName string) (outSnap *SnapshotInfo, err error) {
 	// check input args
-	if !util.ContainsString(ListPoolName(), poolName){
+	if !util.ContainsString(ListPoolName(), poolName) {
 		return nil, fmt.Errorf("invalid pool name [%s]", poolName)
 	}
 	args := []string{"create_snapshot", "--snapshot", fmt.Sprintf("%s@%s", srcVolName, snapName), "--pool", poolName,
@@ -134,7 +132,7 @@ func CreateSnapshot(snapName, srcVolName, poolName string) (outSnap *SnapshotInf
 //   err: failed to delete snapshot
 func DeleteSnapshot(snapName, srcVolName, poolName string) (err error) {
 	// check input args
-	if !util.ContainsString(ListPoolName(), poolName){
+	if !util.ContainsString(ListPoolName(), poolName) {
 		return fmt.Errorf("invalid pool name [%s]", poolName)
 	}
 	args := []string{"delete_snapshot", "--snapshot", fmt.Sprintf("%s@%s", srcVolName, snapName), "--pool", poolName,

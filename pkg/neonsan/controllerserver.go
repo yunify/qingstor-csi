@@ -20,12 +20,12 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/golang/glog"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
+	"github.com/yunify/qingstor-csi/pkg/neonsan/manager"
+	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"strconv"
-	"github.com/yunify/qingstor-csi/pkg/neonsan/manager"
-	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
 )
 
 type controllerServer struct {
@@ -335,7 +335,7 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		glog.Errorf("Failed to create snapshot with error [%s].", err.Error())
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
-	if !cs.cache.Add(snapInfo){
+	if !cs.cache.Add(snapInfo) {
 		glog.Warningf("Snapshot [%s] already exist in cache", snapInfo.Name)
 	}
 
@@ -461,7 +461,7 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 	// case: non volume id provided
 	// must consider pageable
 	var fullSnapList []*manager.SnapshotInfo
-	pools:= manager.ListPoolName()
+	pools := manager.ListPoolName()
 	// get full snapshot list
 	for _, v := range pools {
 		vols, err := manager.ListVolumeByPool(v)

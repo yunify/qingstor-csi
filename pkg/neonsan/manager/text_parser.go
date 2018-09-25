@@ -19,14 +19,12 @@ package manager
 import (
 	"fmt"
 	"github.com/golang/glog"
+	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
-	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
 )
-
-
 
 // ParseVolumeList parse a volume info
 // 	Return Case:

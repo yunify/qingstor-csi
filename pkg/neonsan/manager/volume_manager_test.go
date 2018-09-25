@@ -17,10 +17,10 @@ limitations under the License.
 package manager
 
 import (
+	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
 	"strings"
 	"testing"
 	"time"
-	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
 )
 
 const (
@@ -95,7 +95,7 @@ func TestFindVolume(t *testing.T) {
 			info: &VolumeInfo{
 				Name:     "foo",
 				Pool:     TestPoolName,
-				SizeByte:     2 * util.Gib,
+				SizeByte: 2 * util.Gib,
 				Status:   VolumeStatusOk,
 				Replicas: 1,
 			},
@@ -174,8 +174,8 @@ func TestListVolumeByPool(t *testing.T) {
 			volPool: TestPoolName,
 			info: []*VolumeInfo{
 				{
-					Name: TestNormalVolumeName,
-					Pool: TestPoolName,
+					Name:     TestNormalVolumeName,
+					Pool:     TestPoolName,
 					SizeByte: 2 * util.Gib,
 				},
 			},

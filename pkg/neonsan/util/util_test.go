@@ -17,8 +17,8 @@ limitations under the License.
 package util
 
 import (
-	"testing"
 	"reflect"
+	"testing"
 )
 
 func TestFormatVolumeSize(t *testing.T) {
@@ -82,14 +82,14 @@ func TestParseIntToDec(t *testing.T) {
 }
 
 func TestGetList(t *testing.T) {
-	tests := []struct{
+	tests := []struct {
 		name string
-		str string
+		str  string
 		list []string
 	}{
 		{
 			name: "normal",
-			str: "csi , kube, vol ",
+			str:  "csi , kube, vol ",
 			list: []string{
 				"csi",
 				"kube",
@@ -97,9 +97,9 @@ func TestGetList(t *testing.T) {
 			},
 		},
 	}
-	for _, v:=range tests{
+	for _, v := range tests {
 		list := GetList(v.str)
-		if !reflect.DeepEqual(v.list, list){
+		if !reflect.DeepEqual(v.list, list) {
 			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.list, list)
 		}
 	}

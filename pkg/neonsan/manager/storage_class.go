@@ -18,10 +18,9 @@ package manager
 
 import (
 	"fmt"
-	"strconv"
 	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
+	"strconv"
 )
-
 
 // NewDefaulNeonsanStorageClass create default neonsanStorageClass object
 func NewDefaulNeonsanStorageClass() *NeonsanStorageClass {

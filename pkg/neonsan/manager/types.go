@@ -1,9 +1,24 @@
-package manager
+/*
+Copyright 2018 Yunify, Inc.
 
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package manager
 
 const (
 	SnapshotStatusOk string = "OK"
-	DefaultPoolName string = "kube"
+	DefaultPoolName  string = "kube"
 )
 
 const (
@@ -20,11 +35,10 @@ var SnapshotStatusType = map[string]string{
 
 var Pools []string = []string{"kube"}
 
-
 type VolumeInfo struct {
 	Id       string
 	Name     string
-	SizeByte     int64
+	SizeByte int64
 	Status   string
 	Replicas int
 	Pool     string
@@ -33,8 +47,8 @@ type VolumeInfo struct {
 // poolInfo: stats pool
 // total, free, used: pool size in bytes
 type PoolInfo struct {
-	Id    string
-	Name  string
+	Id        string
+	Name      string
 	TotalByte int64
 	FreeByte  int64
 	UsedByte  int64
@@ -47,7 +61,7 @@ type SnapshotInfo struct {
 
 	// NeonSAN will auto generate this ID, snapshot ID will not be used in
 	// Kubernetes.
-	Id   string
+	Id       string
 	SizeByte int64
 	Status   string
 	Pool     string
@@ -57,8 +71,8 @@ type SnapshotInfo struct {
 	// encoded as an int64. On Unix, the command `date +%s%N` returns the
 	// current time in nanoseconds since 1970-01-01 00:00:00 UTC. This
 	// field is REQUIRED.
-	CreatedTime      int64
-	SrcVolName string
+	CreatedTime int64
+	SrcVolName  string
 }
 
 type AttachInfo struct {
@@ -113,6 +127,3 @@ type TextParser interface {
 
 	ParsePoolNameList(input string) (pools []string)
 }
-
-
-

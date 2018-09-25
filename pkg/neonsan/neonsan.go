@@ -56,7 +56,7 @@ func NewControllerServer(d *csicommon.CSIDriver) *controllerServer {
 	snapCache.Sync()
 	return &controllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
-		cache: &snapCache,
+		cache:                   &snapCache,
 	}
 }
 
