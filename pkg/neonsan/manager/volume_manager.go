@@ -156,7 +156,7 @@ func DeleteVolume(volName string, poolName string) (err error) {
 	return err
 }
 
-//	AttachVolume
+// AttachVolume
 func AttachVolume(volName string, poolName string) (err error) {
 	if volName == "" || poolName == "" {
 		return fmt.Errorf("invalid input arguments")
@@ -202,7 +202,7 @@ func FindAttachedVolumeWithoutPool(volName string) (info *AttachInfo, err error)
 	var infoArrWithName []*AttachInfo
 	for i := range infoArr {
 		if infoArr[i].Name == volName {
-			infoArrWithName = append(infoArrWithName, &infoArr[i])
+			infoArrWithName = append(infoArrWithName, infoArr[i])
 		}
 	}
 	switch len(infoArrWithName) {
@@ -215,7 +215,7 @@ func FindAttachedVolumeWithoutPool(volName string) (info *AttachInfo, err error)
 	}
 }
 
-// Probe Qbd command
+// ProbeQbdCommand
 func ProbeQbdCommand() (err error) {
 	args := []string{"-h"}
 	_, err = util.ExecCommand(CmdQbd, args)
@@ -226,7 +226,7 @@ func ProbeQbdCommand() (err error) {
 	return nil
 }
 
-// Probe Neonsan command
+// ProbeNeonsanCommand
 func ProbeNeonsanCommand() (err error) {
 	args := []string{"-h"}
 	_, err = util.ExecCommand(CmdNeonsan, args)

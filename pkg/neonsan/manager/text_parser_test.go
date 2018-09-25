@@ -258,7 +258,7 @@ func TestParseAttachedVolumeList(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
-		infos []AttachInfo
+		infos []*AttachInfo
 	}{
 		{
 			name: "two attached volume",
@@ -267,7 +267,7 @@ func TestParseAttachedVolumeList(t *testing.T) {
 1   0x3a7c000000    qbd1    csi/foo /etc/neonsan/qbd.conf   0   0   0   0
 
 `,
-			infos: []AttachInfo{
+			infos: []*AttachInfo{
 				{
 					Id:        "274726912000",
 					Name:      "foo1",

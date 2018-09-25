@@ -55,12 +55,11 @@ func ParseVolumeList(input string, poolName string) (vols []*VolumeInfo, err err
 }
 
 // ParseSnapshotList
-// WARNING: Due to neonsan CLI tool only returning volume ID, we replace
+// WARNING: Due to Neonsan CLI tool only returning volume ID, we replace
 // volume name field of snapshotInfo by volume id.
 func ParseSnapshotList(input string) (snaps []*SnapshotInfo, err error) {
 	in := strings.Trim(input, "\n")
 	lines := strings.Split(in, "\n")
-	list := []*SnapshotInfo{}
 	for i, v := range lines {
 		if i == 0 {
 			cnt, err := readCountNumber(v)
@@ -73,10 +72,10 @@ func ParseSnapshotList(input string) (snaps []*SnapshotInfo, err error) {
 				return nil, nil
 			}
 		} else if i >= 4 && v[0] != '+' {
-			list = append(list, readSnapshotInfoContent(v))
+			snaps = append(snaps, readSnapshotInfoContent(v))
 		}
 	}
-	return list, nil
+	return snaps, nil
 }
 
 // ParsePoolInfo
@@ -116,14 +115,14 @@ func ParsePoolNameList(input string) (poolNames []string, err error) {
 }
 
 //	ParseAttachedVolume
-func ParseAttachVolumeList(input string) (infoArr []AttachInfo) {
+func ParseAttachVolumeList(input string) (infoArr []*AttachInfo) {
 	in := strings.Trim(input, "\n")
 	lines := strings.Split(in, "\n")
 	for i, v := range lines {
 		if i > 0 {
 			info := readAttachVolumeInfo(v)
 			if info != nil {
-				infoArr = append(infoArr, *info)
+				infoArr = append(infoArr, info)
 			}
 		}
 	}
@@ -151,32 +150,32 @@ func readVolumeInfoContent(line string) (ret *VolumeInfo) {
 	curLine := strings.Replace(line, " ", "", -1)
 	curLine = strings.Trim(curLine, "|")
 	fields := strings.Split(curLine, "|")
-	volInfo := VolumeInfo{}
+	ret = &VolumeInfo{}
 	for i, v := range fields {
 		switch i {
 		case 0:
-			volInfo.Id = v
+			ret.Id = v
 		case 1:
-			volInfo.Name = v
+			ret.Name = v
 		case 2:
 			size64, err := strconv.ParseInt(v, 10, 64)
 			if err != nil {
 				glog.Errorf("parse int64 [%d] error in string [%s]", v, line)
 				return nil
 			}
-			volInfo.SizeByte = size64
+			ret.SizeByte = size64
 		case 3:
 			rep, err := strconv.Atoi(v)
 			if err != nil {
 				glog.Errorf("parse int [%d] error in string [%s]", v, line)
 				return nil
 			}
-			volInfo.Replicas = rep
+			ret.Replicas = rep
 		case 5:
-			volInfo.Status = v
+			ret.Status = v
 		}
 	}
-	return &volInfo
+	return ret
 }
 
 func readPoolName(line string) (pool string) {
@@ -193,124 +192,124 @@ func readPoolInfoContent(line string) (ret *PoolInfo) {
 	curLine := strings.Replace(line, " ", "", -1)
 	curLine = strings.Trim(curLine, "|")
 	fields := strings.Split(curLine, "|")
-	poolInfo := PoolInfo{}
+	ret = &PoolInfo{}
 	for i, v := range fields {
 		switch i {
 		case 0:
-			poolInfo.Id = v
+			ret.Id = v
 		case 1:
-			poolInfo.Name = v
+			ret.Name = v
 		case 2:
 			size, err := strconv.Atoi(v)
 			if err != nil {
 				glog.Error(err.Error())
 				return nil
 			}
-			poolInfo.TotalByte = util.Gib * int64(size)
+			ret.TotalByte = util.Gib * int64(size)
 		case 3:
 			size, err := strconv.Atoi(v)
 			if err != nil {
 				glog.Error(err.Error())
 				return nil
 			}
-			poolInfo.FreeByte = util.Gib * int64(size)
+			ret.FreeByte = util.Gib * int64(size)
 		case 4:
 			size, err := strconv.Atoi(v)
 			if err != nil {
 				glog.Error(err.Error())
 				return nil
 			}
-			poolInfo.UsedByte = util.Gib * int64(size)
+			ret.UsedByte = util.Gib * int64(size)
 		}
 	}
-	return &poolInfo
+	return ret
 }
 
 func readSnapshotInfoContent(line string) (ret *SnapshotInfo) {
 	curLine := strings.Replace(line, " ", "", -1)
 	curLine = strings.Trim(curLine, "|")
 	fields := strings.Split(curLine, "|")
-	snapInfo := SnapshotInfo{}
+	ret = &SnapshotInfo{}
 	for i, v := range fields {
 		switch i {
 		case 0:
-			snapInfo.SrcVolName = v
+			ret.SrcVolName = v
 		case 1:
-			snapInfo.Id = v
+			ret.Id = v
 		case 2:
-			snapInfo.Name = v
+			ret.Name = v
 		case 3:
 			size64, err := strconv.ParseInt(v, 10, 64)
 			if err != nil {
 				glog.Error(err.Error())
 				return nil
 			}
-			snapInfo.SizeByte = size64
+			ret.SizeByte = size64
 		case 4:
 			timeObj, err := time.Parse(util.TimeLayout, v)
 			if err != nil {
 				glog.Error(err.Error())
 				return nil
 			}
-			snapInfo.CreatedTime = timeObj.Unix()
+			ret.CreatedTime = timeObj.Unix()
 		case 5:
 			if status, ok := SnapshotStatusType[v]; !ok {
 				glog.Errorf("Invalid snapshot status [%s]", v)
 				return nil
 			} else {
-				snapInfo.Status = status
+				ret.Status = status
 			}
 		}
 	}
-	return &snapInfo
+	return ret
 }
 
 func readAttachVolumeInfo(line string) (ret *AttachInfo) {
 	fields := regexp.MustCompile("\\s+").Split(line, -1)
-	info := AttachInfo{}
+	ret = &AttachInfo{}
 	for i, v := range fields {
 		switch i {
 		case 1:
-			info.Id = util.ParseIntToDec(v)
+			ret.Id = util.ParseIntToDec(v)
 		case 2:
-			info.Device = "/dev/" + v
+			ret.Device = "/dev/" + v
 		case 3:
 			args := strings.Split(v, "/")
 			if len(args) != 2 {
 				glog.Error("expect pool/volume, but actually [%s]", v)
 				return nil
 			}
-			info.Pool = args[0]
-			info.Name = args[1]
+			ret.Pool = args[0]
+			ret.Name = args[1]
 		case 5:
 			num, err := strconv.ParseInt(v, 0, 64)
 			if err != nil {
 				glog.Error(err.Error())
 				return nil
 			}
-			info.ReadBps = num
+			ret.ReadBps = num
 		case 6:
 			num, err := strconv.ParseInt(v, 0, 64)
 			if err != nil {
 				glog.Error(err.Error())
 				return nil
 			}
-			info.WriteBps = num
+			ret.WriteBps = num
 		case 7:
 			num, err := strconv.ParseInt(v, 0, 64)
 			if err != nil {
 				glog.Error(err.Error())
 				return nil
 			}
-			info.ReadIops = num
+			ret.ReadIops = num
 		case 8:
 			num, err := strconv.ParseInt(v, 0, 64)
 			if err != nil {
 				glog.Error(err.Error())
 				return nil
 			}
-			info.WriteIops = num
+			ret.WriteIops = num
 		}
 	}
-	return &info
+	return ret
 }

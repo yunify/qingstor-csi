@@ -22,8 +22,8 @@ import (
 	"strconv"
 )
 
-// NewDefaulNeonsanStorageClass create default neonsanStorageClass object
-func NewDefaulNeonsanStorageClass() *NeonsanStorageClass {
+// NewDefaulNeonsanStorageClass create default Neonsan StorageClass object
+func NewDefaultNeonsanStorageClass() *NeonsanStorageClass {
 	return &NeonsanStorageClass{
 		Replicas:     1,
 		StepSize:     1,
@@ -33,9 +33,9 @@ func NewDefaulNeonsanStorageClass() *NeonsanStorageClass {
 	}
 }
 
-//	NewNeonsanStorageClassFromMap create a neonsanStorageClass object from map
+//	NewNeonsanStorageClassFromMap create a Neonsan StorageClass object from map
 func NewNeonsanStorageClassFromMap(opt map[string]string) (*NeonsanStorageClass, error) {
-	sc := NewDefaulNeonsanStorageClass()
+	sc := NewDefaultNeonsanStorageClass()
 
 	//	Get volume replicas
 	if sReplica, ok := opt["replicas"]; ok {
