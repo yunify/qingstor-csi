@@ -95,6 +95,7 @@ spec:
         - "--v=5"
         - "--drivername=csi-neonsan"
         - "--config=/etc/neonsan/qbd.conf"
+        - "--pools=kube"
         env:
         - name: NODE_ID
           valueFrom:
