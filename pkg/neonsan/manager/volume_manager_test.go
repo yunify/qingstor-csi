@@ -14,9 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package neonsan
+package manager
 
 import (
+	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
 	"strings"
 	"testing"
 	"time"
@@ -29,6 +30,7 @@ const (
 )
 
 func TestCreateVolume(t *testing.T) {
+	Pools = []string{TestPoolName}
 	tests := []struct {
 		name      string
 		volName   string
@@ -42,7 +44,7 @@ func TestCreateVolume(t *testing.T) {
 			name:      "create succeed",
 			volName:   TestNormalVolumeName,
 			volPool:   TestPoolName,
-			volSize64: 2 * gib,
+			volSize64: 2 * util.Gib,
 			replicas:  1,
 			infoExist: true,
 			errStr:    "",
@@ -51,7 +53,7 @@ func TestCreateVolume(t *testing.T) {
 			name:      "create failed",
 			volName:   TestNormalVolumeName,
 			volPool:   TestPoolName,
-			volSize64: 2 * gib,
+			volSize64: 2 * util.Gib,
 			replicas:  1,
 			infoExist: false,
 			errStr:    "Volume already existed",
@@ -62,37 +64,40 @@ func TestCreateVolume(t *testing.T) {
 
 		// check volume info
 		if (v.infoExist == false && volInfo != nil) || (v.infoExist == true && volInfo == nil) {
-			t.Errorf("name %s:  volume info expect [%t], but actually [%t]", v.name, v.infoExist, volInfo == nil)
+			t.Errorf("name [%s]:  volume info expect [%t], but actually [%t]", v.name, v.infoExist, volInfo == nil)
 		}
 
 		// check error
 		if v.errStr != "" && err != nil {
 			if !strings.Contains(err.Error(), v.errStr) {
-				t.Errorf("name %s: error expect [%s], but actually [%s]", v.name, v.errStr, err.Error())
+				t.Errorf("name [%s]: error expect [%s], but actually [%s]", v.name, v.errStr, err.Error())
 			}
 		} else if v.errStr == "" && err == nil {
 			continue
 		} else {
-			t.Errorf("name %s: error expect [%s], but actually [%v]", v.name, v.errStr, err)
+			t.Errorf("name [%s]: error expect [%s], but actually [%v]", v.name, v.errStr, err)
 		}
 	}
 }
 
 func TestFindVolume(t *testing.T) {
+	Pools = []string{TestPoolName}
 	tests := []struct {
 		name    string
 		volName string
 		volPool string
-		info    *volumeInfo
+		info    *VolumeInfo
 	}{
 		{
 			name:    "found volume",
 			volName: TestNormalVolumeName,
 			volPool: TestPoolName,
-			info: &volumeInfo{
-				name: "foo",
-				pool: TestPoolName,
-				size: 2 * gib,
+			info: &VolumeInfo{
+				Name:     "foo",
+				Pool:     TestPoolName,
+				SizeByte: 2 * util.Gib,
+				Status:   VolumeStatusOk,
+				Replicas: 1,
 			},
 		},
 		{
@@ -105,19 +110,24 @@ func TestFindVolume(t *testing.T) {
 	for _, v := range tests {
 		volInfo, err := FindVolume(v.volName, v.volPool)
 		if err != nil {
-			t.Errorf("name %s: volume error [%s]", v.name, err.Error())
+			t.Errorf("name [%s]: volume error [%s]", v.name, err.Error())
 		}
 
 		// check volume info
 		if v.info != nil && volInfo != nil {
-			if v.info.name != volInfo.name || v.info.pool != volInfo.pool {
-				t.Errorf("name %s: volume info expect [%v], but actually [%v]", v.name, v.info, volInfo)
+			if v.info.Name != volInfo.Name || v.info.Pool != volInfo.Pool {
+				t.Errorf("name [%s]: volume info expect [%v], but actually [%v]", v.name, v.info, volInfo)
 			}
+		} else if v.info == nil && volInfo == nil {
+			continue
+		} else {
+			t.Errorf("name [%s]: volume info expect [%v], but actually [%v]", v.name, v.info, volInfo)
 		}
 	}
 }
 
 func TestFindVolumeWithoutPool(t *testing.T) {
+	Pools = []string{TestPoolName}
 	tests := []struct {
 		name    string
 		volName string
@@ -137,21 +147,67 @@ func TestFindVolumeWithoutPool(t *testing.T) {
 	for _, v := range tests {
 		ret, err := FindVolumeWithoutPool(v.volName)
 		if err != nil {
-			t.Errorf("name %s: volume error [%s]", v.name, err.Error())
+			t.Errorf("name [%s]: volume error [%s]", v.name, err.Error())
 		}
 		if v.volPool != "" && ret != nil {
-			if v.volPool != ret.pool {
-				t.Errorf("name %s: volume pool expect [%s], but actually [%s]", v.name, v.volPool, ret.pool)
+			if v.volPool != ret.Pool {
+				t.Errorf("name [%s]: volume pool expect [%s], but actually [%s]", v.name, v.volPool, ret.Pool)
 			}
 		} else if v.volPool == "" && ret == nil {
 			continue
 		} else {
-			t.Errorf("name %s: volume pool expect [%s], but actually [%v]", v.name, v.volPool, ret)
+			t.Errorf("name [%s]: volume pool expect [%s], but actually [%v]", v.name, v.volPool, ret)
+		}
+	}
+}
+
+func TestListVolumeByPool(t *testing.T) {
+	Pools = []string{TestPoolName}
+	tests := []struct {
+		name    string
+		volName string
+		volPool string
+		info    []*VolumeInfo
+	}{
+		{
+			name:    "found volume",
+			volPool: TestPoolName,
+			info: []*VolumeInfo{
+				{
+					Name:     TestNormalVolumeName,
+					Pool:     TestPoolName,
+					SizeByte: 2 * util.Gib,
+				},
+			},
+		},
+		{
+			name:    "not found volume",
+			volName: TestNotFoundVolumeName,
+			volPool: TestPoolName,
+			info:    nil,
+		},
+	}
+
+	for _, v := range tests {
+		volList, err := ListVolumeByPool(v.volPool)
+		if err != nil {
+			t.Errorf("name [%s]: volume error [%s]", v.name, err.Error())
+		}
+		// verify array
+		if len(v.info) != len(volList) {
+			t.Errorf("name [%s]: expect [%d], but actually [%d]", v.name, len(v.info), len(volList))
+		}
+		// check each array element
+		for i := range v.info {
+			if v.info[i].Name != volList[i].Name || v.info[i].Pool != volList[i].Pool {
+				t.Errorf("name [%s]: index [%d] expect [%v], but actually [%v]", v.name, i, v.info[i], volList[i])
+			}
 		}
 	}
 }
 
 func TestAttachVolume(t *testing.T) {
+	Pools = []string{TestPoolName}
 	tests := []struct {
 		name   string
 		volume string
@@ -192,6 +248,7 @@ func TestAttachVolume(t *testing.T) {
 }
 
 func TestFindAttachedVolumeWithoutPool(t *testing.T) {
+	Pools = []string{TestPoolName}
 	tests := []struct {
 		name   string
 		volume string
@@ -223,7 +280,7 @@ func TestFindAttachedVolumeWithoutPool(t *testing.T) {
 		if v.pool == "" && info == nil {
 			continue
 		} else if v.pool != "" && info != nil {
-			if v.pool != info.pool {
+			if v.pool != info.Pool {
 				t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.pool, info)
 			}
 		} else {
@@ -233,6 +290,7 @@ func TestFindAttachedVolumeWithoutPool(t *testing.T) {
 }
 
 func TestDetachVolume(t *testing.T) {
+	Pools = []string{TestPoolName}
 	time.Sleep(3 * time.Second)
 	tests := []struct {
 		name   string
@@ -274,6 +332,7 @@ func TestDetachVolume(t *testing.T) {
 }
 
 func TestDeleteVolume(t *testing.T) {
+	Pools = []string{TestPoolName}
 	tests := []struct {
 		name    string
 		volName string
@@ -299,15 +358,16 @@ func TestDeleteVolume(t *testing.T) {
 			continue
 		} else if v.errStr != "" && err != nil {
 			if !strings.Contains(err.Error(), v.errStr) {
-				t.Errorf("name %s: error expect [%s], but actually [%s]", v.name, v.errStr, err.Error())
+				t.Errorf("name [%s]: error expect [%s], but actually [%s]", v.name, v.errStr, err.Error())
 			}
 		} else {
-			t.Errorf("name %s: error expect [%s], but actually [%v]", v.name, v.errStr, err)
+			t.Errorf("name [%s]: error expect [%s], but actually [%v]", v.name, v.errStr, err)
 		}
 	}
 }
 
 func TestProbeNeonsanCommand(t *testing.T) {
+	Pools = []string{TestPoolName}
 	tests := []struct {
 		name   string
 		nilErr bool
@@ -320,12 +380,13 @@ func TestProbeNeonsanCommand(t *testing.T) {
 	for _, v := range tests {
 		err := ProbeNeonsanCommand()
 		if (err == nil) != v.nilErr {
-			t.Errorf("name %s: expect %t, but actually %t, error [%v].", v.name, v.nilErr, err == nil, err)
+			t.Errorf("name [%s]: expect [%t], but actually [%t], error [%v].", v.name, v.nilErr, err == nil, err)
 		}
 	}
 }
 
 func TestProbeQbdCommand(t *testing.T) {
+	Pools = []string{TestPoolName}
 	tests := []struct {
 		name   string
 		nilErr bool
@@ -338,7 +399,7 @@ func TestProbeQbdCommand(t *testing.T) {
 	for _, v := range tests {
 		err := ProbeQbdCommand()
 		if (err == nil) != v.nilErr {
-			t.Errorf("name %s: expect %t, but actually %t, error [%v].", v.name, v.nilErr, err == nil, err)
+			t.Errorf("name [%s]: expect [%t], but actually [%t], error [%v].", v.name, v.nilErr, err == nil, err)
 		}
 	}
 }

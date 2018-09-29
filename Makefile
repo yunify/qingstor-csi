@@ -29,6 +29,13 @@ neonsan-container: neonsan
 	docker build -t $(NEONSAN_IMAGE_NAME):latest deploy/neonsan/docker
 	docker tag  $(NEONSAN_IMAGE_NAME):latest $(NEONSAN_IMAGE_NAME):$(NEONSAN_IMAGE_VERSION)
 
+fmt:
+	go fmt ./cmd/neonsan
+	go fmt ./pkg/neonsan/ ./pkg/neonsan/manager/ ./pkg/neonsan/util/
+
+fmt-deep: fmt
+	gofmt -s -w -l ./cmd/neonsan/ ./pkg/neonsan/ ./pkg/neonsan/manager/ ./pkg/neonsan/util/
+
 clean:
 	go clean -r -x
 	rm -rf ./_output

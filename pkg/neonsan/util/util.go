@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package neonsan
+package util
 
 import (
 	"fmt"
@@ -27,29 +27,36 @@ import (
 )
 
 const (
-	Int64Max        int64  = int64(^uint64(0) >> 1)
-	PluginFolder    string = "/var/lib/kubelet/plugins/"
-	DefaultPoolName string = "kube"
+	Int64Max     int64  = int64(^uint64(0) >> 1)
+	PluginFolder string = "/var/lib/kubelet/plugins/"
+	TimeLayout   string = "2006-01-02T15:04:05+08:00"
 )
 
 const (
-	kib    int64 = 1024
-	mib    int64 = kib * 1024
-	gib    int64 = mib * 1024
-	gib100 int64 = gib * 100
-	tib    int64 = gib * 1024
-	tib100 int64 = tib * 100
+	Kib    int64 = 1024
+	Mib    int64 = Kib * 1024
+	Gib    int64 = Mib * 1024
+	Gib100 int64 = Gib * 100
+	Tib    int64 = Gib * 1024
+	Tib100 int64 = Tib * 100
 )
 
 const (
 	FileSystemExt3    string = "ext3"
 	FileSystemExt4    string = "ext4"
 	FileSystemXfs     string = "xfs"
-	DefaultFileSystem string = FileSystemExt4
+	FileSystemDefault string = FileSystemExt4
+)
+
+const (
+	ProtocolRDMA    string = "RDMA"
+	ProtocolTCP     string = "TCP"
+	ProtocolDefault string = ProtocolRDMA
 )
 
 var (
-	ConfigFilePath string = "/etc/neonsan/qbd.conf"
+	ConfigFilePath  string = "/etc/neonsan/qbd.conf"
+	TempSnapshotDir string = "/tmp"
 )
 
 // ExecCommand
@@ -61,7 +68,8 @@ func ExecCommand(command string, args []string) ([]byte, error) {
 	cmd := exec.Command(command, args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("code [%s]: message [%s]", err.Error(), output)
+		return nil, fmt.Errorf("execute cmd [%s] args [%v] error: code [%s], msg [%s]",
+			command, args, err.Error(), output)
 	}
 	return output, nil
 }
@@ -99,10 +107,20 @@ func ContainsNodeServiceCapability(nodeCaps []*csi.NodeServiceCapability, subCap
 	return false
 }
 
+// ContainsString
+func ContainsString(array []string, str string) bool {
+	for _, v := range array {
+		if v == str {
+			return true
+		}
+	}
+	return false
+}
+
 // FormatVolumeSize convert volume size properly
 func FormatVolumeSize(inputSize int64, step int64) int64 {
-	if inputSize <= gib || step < 0 {
-		return gib
+	if inputSize <= Gib || step < 0 {
+		return Gib
 	}
 	remainder := inputSize % step
 	if remainder != 0 {
@@ -133,4 +151,17 @@ func ParseIntToDec(hex string) (dec string) {
 		return ""
 	}
 	return strconv.FormatInt(i64, 10)
+}
+
+func EntryFunction(functionName string) func() {
+	start := time.Now()
+	glog.Infof("*************** enter %s at %s ***************", functionName, start.String())
+	return func() {
+		glog.Infof("=============== exit %s (%s since %s) ===============", functionName, time.Since(start),
+			start.String())
+	}
+}
+
+func GetList(str string) []string {
+	return strings.Split(strings.Replace(str, " ", "", -1), ",")
 }

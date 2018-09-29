@@ -19,6 +19,8 @@ package main
 import (
 	"flag"
 	"github.com/yunify/qingstor-csi/pkg/neonsan"
+	"github.com/yunify/qingstor-csi/pkg/neonsan/manager"
+	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
 	"os"
 )
 
@@ -31,6 +33,7 @@ var (
 	driverName = flag.String("drivername", "csi-neonsan", "name of the driver")
 	nodeId     = flag.String("nodeid", "", "node id")
 	configPath = flag.String("config", "/etc/neonsan/qbd.conf", "Neonsan server config file path")
+	pools      = flag.String("pools", "kube", "pools list for managing volumes and snapshots")
 )
 
 func main() {
@@ -40,7 +43,8 @@ func main() {
 }
 
 func handle() {
-	neonsan.ConfigFilePath = *configPath
+	util.ConfigFilePath = *configPath
+	manager.Pools = util.GetList(*pools)
 	driver := neonsan.GetNeonsanDriver()
 	driver.Run(*driverName, *nodeId, *endpoint)
 }
