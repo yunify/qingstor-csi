@@ -107,7 +107,7 @@ func ContainsNodeServiceCapability(nodeCaps []*csi.NodeServiceCapability, subCap
 	return false
 }
 
-// ContainsString
+// ContainsString find out if string array contains a certain value.
 func ContainsString(array []string, str string) bool {
 	for _, v := range array {
 		if v == str {
@@ -144,7 +144,7 @@ func IsValidFileSystemType(fs string) bool {
 	}
 }
 
-//	ParseIntToDec convert number string to decimal number string
+// ParseIntToDec convert number string to decimal number string
 func ParseIntToDec(hex string) (dec string) {
 	i64, err := strconv.ParseInt(hex, 0, 64)
 	if err != nil {
@@ -153,6 +153,7 @@ func ParseIntToDec(hex string) (dec string) {
 	return strconv.FormatInt(i64, 10)
 }
 
+// EntryFunction print timestamps
 func EntryFunction(functionName string) func() {
 	start := time.Now()
 	glog.Infof("*************** enter %s at %s ***************", functionName, start.String())
@@ -162,6 +163,10 @@ func EntryFunction(functionName string) func() {
 	}
 }
 
+// GetList parse string separated by comma as string array
 func GetList(str string) []string {
+	if str == "" {
+		return []string{}
+	}
 	return strings.Split(strings.Replace(str, " ", "", -1), ",")
 }
