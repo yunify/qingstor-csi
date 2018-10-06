@@ -115,59 +115,59 @@ spec:
     spec:
       serviceAccount: csi-neonsan-snapshotter
       containers:
-        - name: csi-snapshotter
-          image: quay.io/k8scsi/csi-snapshotter:v0.4.0
-          args:
-            - "--csi-address=$(ADDRESS)"
-            - "--connection-timeout=15s"
-          env:
-            - name: ADDRESS
-              value: /var/lib/csi/sockets/pluginproxy/csi.sock
-          imagePullPolicy: "IfNotPresent"
-          volumeMounts:
-            - name: socket-dir
-              mountPath: /var/lib/csi/sockets/pluginproxy
-        - name: csi-neonsan
-          image: dockerhub.qingcloud.com/csiplugin/csi-neonsan:latest
-          args :
-          - "--nodeid=$(NODE_ID)"
-          - "--endpoint=$(CSI_ENDPOINT)"
-          - "--v=5"
-          - "--drivername=csi-neonsan"
-          - "--config=/etc/neonsan/qbd.conf"
-          - "--pools=kube"
-          env:
-          - name: NODE_ID
-            valueFrom:
-              fieldRef:
-                fieldPath: spec.nodeName
-          - name: CSI_ENDPOINT
-            value: unix://var/lib/csi/sockets/pluginproxy/csi.sock
-          imagePullPolicy: "Always"
-          volumeMounts:
-          - name: socket-dir
-            mountPath: /var/lib/csi/sockets/pluginproxy
-          - name: server-config
-            mountPath: /etc/neonsan
-          - name: neonsan-cmd
-            mountPath: /usr/bin
-          - name: lib
-            mountPath: /lib
-          - name: usrlib
-            mountPath: /usr/lib
-        volumes:
+      - name: csi-snapshotter
+        image: quay.io/k8scsi/csi-snapshotter:v0.4.0
+        args:
+        - "--csi-address=$(ADDRESS)"
+        - "--connection-timeout=15s"
+        env:
+        - name: ADDRESS
+          value: /var/lib/csi/sockets/pluginproxy/csi.sock
+        imagePullPolicy: "IfNotPresent"
+        volumeMounts:
         - name: socket-dir
-          emptyDir:
+          mountPath: /var/lib/csi/sockets/pluginproxy
+      - name: csi-neonsan
+        image: dockerhub.qingcloud.com/csiplugin/csi-neonsan:latest
+        args :
+        - "--nodeid=$(NODE_ID)"
+        - "--endpoint=$(CSI_ENDPOINT)"
+        - "--v=5"
+        - "--drivername=csi-neonsan"
+        - "--config=/etc/neonsan/qbd.conf"
+        - "--pools=kube"
+        env:
+        - name: NODE_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: CSI_ENDPOINT
+          value: unix://var/lib/csi/sockets/pluginproxy/csi.sock
+        imagePullPolicy: "IfNotPresent"
+        volumeMounts:
+        - name: socket-dir
+          mountPath: /var/lib/csi/sockets/pluginproxy
         - name: server-config
-          configMap:
-            name: csi-neonsan
+          mountPath: /etc/neonsan
         - name: neonsan-cmd
-          hostPath:
-            path: /usr/bin
-            type: DirectoryOrCreate
+          mountPath: /usr/bin
         - name: lib
-          hostPath:
-            path: /lib
+          mountPath: /lib
         - name: usrlib
-          hostPath:
-            path: /usr/lib
+          mountPath: /usr/lib
+      volumes:
+      - name: socket-dir
+        emptyDir:
+      - name: server-config
+        configMap:
+          name: csi-neonsan
+      - name: neonsan-cmd
+        hostPath:
+          path: /usr/bin
+          type: DirectoryOrCreate
+      - name: lib
+        hostPath:
+          path: /lib
+      - name: usrlib
+        hostPath:
+          path: /usr/lib
