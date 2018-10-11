@@ -43,20 +43,24 @@ spec:
       hostNetwork: true
       containers:
         - name: driver-registrar
-          image: quay.io/k8scsi/driver-registrar:v0.3.0
+          image: quay.io/k8scsi/driver-registrar:v0.4.0
           args:
             - "--v=5"
             - "--csi-address=$(ADDRESS)"
+            - "--kubelet-registration-path=/var/lib/kubelet/plugins/csi-neonsan/csi.sock"
           env:
             - name: ADDRESS
-              value: /var/lib/kubelet/plugins/csi-neonsan/csi.sock
+              value: /csi/csi.sock
             - name: KUBE_NODE_NAME
               valueFrom:
                 fieldRef:
+                  apiVersion: v1
                   fieldPath: spec.nodeName
           volumeMounts:
-            - name: plugin-dir
-              mountPath: /var/lib/kubelet/plugins/csi-neonsan
+            - name: socket-dir
+              mountPath: /csi
+            - name: registration-dir
+              mountPath: /registration
         - name: csi-neonsan
           securityContext:
             privileged: true
@@ -75,13 +79,14 @@ spec:
             - name: NODE_ID
               valueFrom:
                 fieldRef:
+                  apiVersion: v1
                   fieldPath: spec.nodeName
             - name: CSI_ENDPOINT
-              value: unix://var/lib/kubelet/plugins/csi-neonsan/csi.sock
-          imagePullPolicy: "Always"
+              value: unix:///csi/csi.sock
+          imagePullPolicy: "IfNotPresent"
           volumeMounts:
-            - name: plugin-dir
-              mountPath: /var/lib/kubelet/plugins/csi-neonsan
+            - name: socket-dir
+              mountPath: /csi
             - name: mount-dir
               mountPath: /var/lib/kubelet
               mountPropagation: "Bidirectional"
@@ -103,10 +108,15 @@ spec:
         - name: mount-dir
           hostPath:
             path: /var/lib/kubelet
-        - name: plugin-dir
+            type: DirectoryOrCreate
+        - name: socket-dir
           hostPath:
             path: /var/lib/kubelet/plugins/csi-neonsan
             type: DirectoryOrCreate
+        - name: registration-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins
+            type: Directory
         - name: dev-dir
           hostPath:
             path: /dev

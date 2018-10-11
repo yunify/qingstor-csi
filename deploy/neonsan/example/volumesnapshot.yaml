@@ -1,0 +1,9 @@
+apiVersion: snapshot.storage.k8s.io/v1alpha1
+kind: VolumeSnapshot
+metadata:
+  name: snap-test
+spec:
+  snapshotClassName: csi-neonsan-snapclass
+  source:
+    name: pvc-test 
+    kind: PersistentVolumeClaim
