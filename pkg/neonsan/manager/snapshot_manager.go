@@ -17,7 +17,6 @@ limitations under the License.
 package manager
 
 import (
-	"errors"
 	"fmt"
 	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/golang/glog"
@@ -172,27 +171,4 @@ func ConvertNeonSnapToListSnapResp(neonSnaps []*SnapshotInfo) (respList []*csi.L
 		respList = append(respList, resp)
 	}
 	return respList
-}
-
-// ReadListPage
-// Parameters:
-//   page: page number begins with 1.
-func ReadListPage(fullList []*SnapshotInfo, page int, itemPerPage int) (pageList []*SnapshotInfo, err error) {
-	if fullList == nil {
-		return nil, nil
-	}
-	if page < 0 || itemPerPage <= 0 {
-		return nil, errors.New("ReadListPage: input argument error")
-	}
-	// [headIndex, tailIndex)
-	headIndex := itemPerPage * (page - 1)
-	tailIndex := headIndex + itemPerPage
-	totalLength := len(fullList)
-	if totalLength < tailIndex {
-		tailIndex = totalLength
-	}
-	if totalLength < headIndex {
-		return nil, errors.New("ReadListPage: head index must not exceed list length")
-	}
-	return fullList[headIndex:tailIndex], nil
 }

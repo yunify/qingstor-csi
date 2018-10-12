@@ -290,25 +290,12 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	// Idempotent: If a snapshot corresponding to the specified snapshot name
-	// is already successfully cut and uploaded and is compatible with the
-	// specified source volume id and parameters in the CreateSnapshotRequest.
-	exSnap, err := manager.FindSnapshot(req.GetName(), req.GetSourceVolumeId(), sc.Pool)
-	if err != nil {
-		glog.Errorf("Failed to find snapshot [%s], [%s], error: [%s].", req.GetName(), sc.Pool, err.Error())
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	if exSnap == nil {
-		// snapshot does not exist
-		glog.Infof("Snapshot [%v] does not exist, should create it later.", req.GetName())
-	} else {
-		// snapshot already exist
-
-		if req.GetSourceVolumeId() == exSnap.SrcVolName {
-			// Volume id in Kubernetes is equal to NeonSAN's volume name.
-			// return snapshot already exists.
-			glog.Warningf("Snapshot [%v] already exist. return this.", exSnap)
+	// 3. Snapshot already exist
+	if exSnap := cs.cache.Find(req.GetName()); exSnap != nil {
+		if exSnap.SrcVolName == req.GetSourceVolumeId() {
+			// compatible with source volume id, return OK
+			glog.Warningf("Snapshot [%v] already exist and compatible with srcVolumeId in request, return this.",
+				exSnap)
 			return &csi.CreateSnapshotResponse{
 				Snapshot: &csi.Snapshot{
 					SizeBytes:      exSnap.SizeByte,
@@ -321,8 +308,8 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 				},
 			}, nil
 		} else {
-			// snapshot already exists but is incompatible.
-			glog.Errorf("Snapshot [%v] already exist. but not compatible with request [%v].", exSnap, req)
+			// incompatible with source volume id, return ALREADY_EXIST
+			glog.Errorf("Snapshot [%v] already exist but incompatible with srcVolumeId in request [%v].", exSnap, req)
 			return nil, status.Errorf(codes.AlreadyExists,
 				"Snapshot [%s] already exists but is incompatible with the specified volume id [%v].", req.GetName(),
 				req.GetSourceVolumeId())
@@ -389,12 +376,14 @@ func (cs *controllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 	return &csi.DeleteSnapshotResponse{}, nil
 }
 
-// Source Volume ID:
-// Snapshot ID:
-// Use token get next page only requesting max entries.
+// ListSnapshots return the information about all snapshots on the storage
+// system within the given parameters regardless of how they were created.
+// ListSnapshots SHALL NOT list a snapshot that is being created but has not
+// been cut successfully yet.
+// Use token get next page when only max entries in request.
 func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
 	defer util.EntryFunction("ListSnapshots")()
-
+	// check input args
 	if err := cs.Driver.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_LIST_SNAPSHOTS); err != nil {
 		glog.Warningf("Invalid list snapshot req: %v", req)
 		return nil, err
@@ -405,6 +394,10 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 	// case 1: snapshot id
 	if len(snapId) != 0 {
 		snapInfo := cs.cache.Find(req.GetSnapshotId())
+		if snapInfo == nil {
+			return &csi.ListSnapshotsResponse{}, nil
+		}
+
 		if len(srcVolId) != 0 && srcVolId != snapInfo.SrcVolName {
 			return nil, status.Error(codes.Internal, "mismatch snapshot and volume name")
 		}
@@ -425,6 +418,11 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
+		// should return empty when the specify source volume id is not exist
+		if volInfo == nil {
+			return &csi.ListSnapshotsResponse{}, nil
+		}
+
 		snapInfoList, err := manager.ListSnapshotByVolume(srcVolId, volInfo.Pool)
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
@@ -437,39 +435,37 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 
 	// case 3: non volume id provided
 	// must consider pageable
-	var fullSnapList []*manager.SnapshotInfo
-	//_ := manager.ListPoolName()
 	// get full snapshot list
-	cs.cache.List()
-
-	// pageable
-	if req.GetMaxEntries() == 0 {
-		// non-pageable
+	snapList := cs.cache.List()
+	// get max entries
+	maxEntries := int(req.GetMaxEntries())
+	if maxEntries == 0 || maxEntries >= len(snapList) {
+		maxEntries = len(snapList)
+	}
+	// get starting token
+	startToken := 0
+	if len(req.GetStartingToken()) != 0 {
+		var err error
+		startToken, err = strconv.Atoi(req.GetStartingToken())
+		// token must be an integer
+		if err != nil {
+			return nil, status.Error(codes.Aborted, err.Error())
+		}
+		// should fail when the starting_token is greater than total number of snapshots
+		if startToken > len(snapList) || startToken < 0 {
+			return nil, status.Errorf(codes.Aborted, "invalid starting token")
+		}
+	}
+	endToken := startToken + maxEntries
+	glog.Infof("list snapshot [%d, %d) len [%d] with max entries [%d]", startToken, endToken, len(snapList), maxEntries)
+	if endToken >= len(snapList) {
 		return &csi.ListSnapshotsResponse{
-			Entries: manager.ConvertNeonSnapToListSnapResp(fullSnapList),
+			Entries: manager.ConvertNeonSnapToListSnapResp(snapList[startToken:]),
 		}, nil
 	} else {
-		// pageable
-		var page int
-		if len(req.GetStartingToken()) == 0 {
-			// first page
-			page = 1
-		} else {
-			// non-first page
-			_, err := strconv.Atoi(req.GetStartingToken())
-			if err != nil {
-				return nil, status.Error(codes.InvalidArgument, err.Error())
-			}
-		}
-		glog.Infof("Execute ReadListPage list len [%d], page [%d], items per page [%d]",
-			len(fullSnapList), page, req.GetMaxEntries())
-		pageList, err := manager.ReadListPage(fullSnapList, page, int(req.GetMaxEntries()))
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
 		return &csi.ListSnapshotsResponse{
-			Entries:   manager.ConvertNeonSnapToListSnapResp(pageList),
-			NextToken: strconv.Itoa(page + 1),
+			Entries:   manager.ConvertNeonSnapToListSnapResp(snapList[startToken:endToken]),
+			NextToken: strconv.Itoa(endToken),
 		}, nil
 	}
 }

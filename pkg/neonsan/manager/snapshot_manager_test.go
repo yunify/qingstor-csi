@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/container-storage-interface/spec/lib/go/csi/v0"
+	"github.com/yunify/qingstor-csi/pkg/neonsan/cache"
 	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
 	"reflect"
 	"testing"
@@ -515,126 +516,6 @@ func TestConvertNeonSnapToListSnapResp(t *testing.T) {
 	}
 }
 
-func TestReadListPage(t *testing.T) {
-	Pools = []string{SnapTestPoolCsi}
-	exampleFullList := []*SnapshotInfo{
-		{
-			Name:        "snapshot1",
-			Id:          "25463",
-			SizeByte:    2147483648,
-			Status:      SnapshotStatusOk,
-			CreatedTime: 1535024299,
-			SrcVolName:  "volume1",
-		},
-		{
-			Name:        "snapshot2",
-			Id:          "25466",
-			SizeByte:    2147483648,
-			Status:      SnapshotStatusOk,
-			CreatedTime: 1535024266,
-			SrcVolName:  "volume1",
-		},
-		{
-			Name:        "snapshot3",
-			Id:          "25472",
-			SizeByte:    2147483648,
-			Status:      SnapshotStatusOk,
-			CreatedTime: 1535024272,
-			SrcVolName:  "volume1",
-		},
-		{
-			Name:        "snapshot2",
-			Id:          "25564",
-			SizeByte:    2147485648,
-			Status:      SnapshotStatusOk,
-			CreatedTime: 1535025379,
-			SrcVolName:  "volume2",
-		},
-		{
-			Name:        "snapshot3",
-			Id:          "25564",
-			SizeByte:    2143285648,
-			Status:      SnapshotStatusOk,
-			CreatedTime: 1535024379,
-			SrcVolName:  "volume2",
-		},
-		{
-			Name:        "snapshot1",
-			Id:          "25664",
-			SizeByte:    2147485648,
-			Status:      SnapshotStatusOk,
-			CreatedTime: 1535026379,
-			SrcVolName:  "volume3",
-		},
-		{
-			Name:        "snapshot4",
-			Id:          "25564",
-			SizeByte:    2141285648,
-			Status:      SnapshotStatusOk,
-			CreatedTime: 1535064379,
-			SrcVolName:  "volume1",
-		},
-	}
-	tests := []struct {
-		caseName    string
-		fullList    []*SnapshotInfo
-		page        int
-		itemPerPage int
-		pageList    []*SnapshotInfo
-	}{
-		{
-			caseName:    "normal read page 1 and 3 item/page",
-			fullList:    exampleFullList,
-			page:        1,
-			itemPerPage: 3,
-			pageList:    exampleFullList[:3],
-		},
-		{
-			caseName:    "normal read page 2 and 3 item/page",
-			fullList:    exampleFullList,
-			page:        2,
-			itemPerPage: 3,
-			pageList:    exampleFullList[3:6],
-		},
-		{
-			caseName:    "normal read page 3 and 3 item/page",
-			fullList:    exampleFullList,
-			page:        3,
-			itemPerPage: 3,
-			pageList:    exampleFullList[6:],
-		},
-		{
-			caseName:    "normal read page 3 and 2 item/page",
-			fullList:    exampleFullList,
-			page:        3,
-			itemPerPage: 2,
-			pageList:    exampleFullList[4:6],
-		},
-		{
-			caseName:    "normal read page 4 and 2 item/page",
-			fullList:    exampleFullList,
-			page:        4,
-			itemPerPage: 2,
-			pageList:    exampleFullList[6:],
-		},
-		{
-			caseName:    "nil info",
-			fullList:    nil,
-			page:        3,
-			itemPerPage: 3,
-			pageList:    nil,
-		},
-	}
-	for _, v := range tests {
-		pageList, err := ReadListPage(v.fullList, v.page, v.itemPerPage)
-		if err != nil {
-			continue
-		} else if !reflect.DeepEqual(v.pageList, pageList) {
-			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.caseName, v.pageList, pageList)
-		}
-	}
-}
-
 func TestSnapshotCache(t *testing.T) {
 	Pools = []string{SnapTestPoolCsi}
 	var snapArr []SnapshotInfo
@@ -652,7 +533,7 @@ func TestSnapshotCache(t *testing.T) {
 			snapArr = append(snapArr, tmp)
 		}
 	}
-	cache := SnapshotCacheType{}
+	cache := cache.SnapshotCacheType{}
 	cache.New()
 	// Add
 	for _, v := range snapArr {
@@ -698,7 +579,7 @@ func TestSnapshotCache(t *testing.T) {
 
 func TestSnapshotCache_Sync(t *testing.T) {
 	Pools = []string{SnapTestPoolCsi}
-	cache := SnapshotCacheType{}
+	cache := cache.SnapshotCacheType{}
 	cache.New()
 	err := cache.Sync()
 	if err != nil {

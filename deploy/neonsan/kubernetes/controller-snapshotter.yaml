@@ -114,6 +114,8 @@ spec:
         owner: "yunify"
     spec:
       serviceAccount: csi-neonsan-snapshotter
+      imagePullSecrets:
+      - name: csi-neonsan
       containers:
       - name: csi-snapshotter
         image: quay.io/k8scsi/csi-snapshotter:v0.4.0

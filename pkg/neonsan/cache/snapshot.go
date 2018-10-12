@@ -1,13 +1,12 @@
 package cache
 
 import (
-	"reflect"
-	"github.com/golang/glog"
 	"fmt"
-	"sort"
+	"github.com/golang/glog"
 	"github.com/yunify/qingstor-csi/pkg/neonsan/manager"
+	"reflect"
+	"sort"
 )
-
 
 type SnapshotCache interface {
 	// Add snapshot into map
@@ -28,7 +27,6 @@ type SnapshotCache interface {
 	// List all snapshot info
 	List() []*manager.SnapshotInfo
 }
-
 
 type SnapshotCacheType struct {
 	Snaps map[string]*manager.SnapshotInfo
@@ -105,13 +103,12 @@ func (snapCache *SnapshotCacheType) Sync() (err error) {
 // List: list snapshot map by snapshot name
 func (snapCache *SnapshotCacheType) List() (list []*manager.SnapshotInfo) {
 	sortedKeys := make([]string, 0)
-	for k := range snapCache.Snaps{
+	for k := range snapCache.Snaps {
 		sortedKeys = append(sortedKeys, k)
 	}
 	sort.Strings(sortedKeys)
-	for _, name := range sortedKeys{
+	for _, name := range sortedKeys {
 		list = append(list, snapCache.Snaps[name])
 	}
 	return list
 }
-
