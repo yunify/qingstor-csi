@@ -22,7 +22,6 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/golang/glog"
 	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
-	"reflect"
 )
 
 // FindSnapshot gets snapshot information in specified pool
@@ -196,79 +195,4 @@ func ReadListPage(fullList []*SnapshotInfo, page int, itemPerPage int) (pageList
 		return nil, errors.New("ReadListPage: head index must not exceed list length")
 	}
 	return fullList[headIndex:tailIndex], nil
-}
-
-func (snapCache *SnapshotCacheType) New() {
-	snapCache.Snaps = make(map[string]*SnapshotInfo)
-}
-
-func (snapCache *SnapshotCacheType) Add(info *SnapshotInfo) bool {
-	if info == nil {
-		return false
-	}
-	if exInfo, ok := snapCache.Snaps[info.Name]; ok {
-		// already exist
-		if reflect.DeepEqual(info, exInfo) {
-			// new info == exist info
-			return true
-		} else {
-			// new info != exist info
-			return false
-		}
-	}
-	// not exist
-	snapCache.Snaps[info.Name] = info
-	return true
-}
-
-func (snapCache *SnapshotCacheType) Find(snapName string) *SnapshotInfo {
-	if exInfo, ok := snapCache.Snaps[snapName]; ok {
-		// already exist
-		return exInfo
-	}
-	// not exist
-	return nil
-}
-
-func (snapCache *SnapshotCacheType) Delete(snapName string) {
-	if _, ok := snapCache.Snaps[snapName]; ok {
-		// already exist
-		delete(snapCache.Snaps, snapName)
-	}
-}
-
-func (snapCache *SnapshotCacheType) Sync() (err error) {
-	// get full snapshot list
-	for _, v := range ListPoolName() {
-		// visit each pool
-		vols, err := ListVolumeByPool(v)
-		if err != nil {
-			return err
-		}
-		for _, volInfo := range vols {
-			// visit each volume
-			glog.Info(volInfo)
-			volSnapList, err := ListSnapshotByVolume(volInfo.Name, volInfo.Pool)
-			glog.Info(volSnapList)
-			if err != nil {
-				return err
-			}
-			for i := range volSnapList {
-				if snapCache.Add(volSnapList[i]) {
-					glog.Infof("add snapshot [%s] into cache successfully", volSnapList[i].Name)
-				} else {
-					return fmt.Errorf("add snapshot [%s] failed, already exits but incompatiably", volSnapList[i].Name)
-				}
-			}
-		}
-	}
-	return nil
-}
-
-func (snapCache *SnapshotCacheType) List() (list []*SnapshotInfo) {
-	// TODO: ensure the order of the snapshot info list unchanged
-	for _, v := range snapCache.Snaps {
-		list = append(list, v)
-	}
-	return list
 }

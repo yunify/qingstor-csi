@@ -20,7 +20,7 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/golang/glog"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
-	"github.com/yunify/qingstor-csi/pkg/neonsan/manager"
+	"github.com/yunify/qingstor-csi/pkg/neonsan/cache"
 )
 
 const version = "0.3.0"
@@ -51,7 +51,7 @@ func NewIdentityServer(d *csicommon.CSIDriver) *identityServer {
 // NewControllerServer
 // Create controller server
 func NewControllerServer(d *csicommon.CSIDriver) *controllerServer {
-	var snapCache manager.SnapshotCacheType
+	var snapCache cache.SnapshotCacheType
 	snapCache.New()
 	snapCache.Sync()
 	return &controllerServer{

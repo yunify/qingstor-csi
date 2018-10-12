@@ -34,6 +34,7 @@ var (
 	nodeId     = flag.String("nodeid", "", "node id")
 	configPath = flag.String("config", "/etc/neonsan/qbd.conf", "Neonsan server config file path")
 	pools      = flag.String("pools", "kube", "pools list for managing volumes and snapshots")
+	protocol   = flag.String("protocol", "RDMA", "transport protocol, RDMA (default) or TCP")
 )
 
 func main() {

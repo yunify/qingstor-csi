@@ -20,6 +20,7 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/golang/glog"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
+	"github.com/yunify/qingstor-csi/pkg/neonsan/cache"
 	"github.com/yunify/qingstor-csi/pkg/neonsan/manager"
 	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
 	"golang.org/x/net/context"
@@ -30,7 +31,7 @@ import (
 
 type controllerServer struct {
 	*csicommon.DefaultControllerServer
-	cache manager.SnapshotCache
+	cache cache.SnapshotCache
 }
 
 // This operation MUST be idempotent
@@ -383,12 +384,14 @@ func (cs *controllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 		glog.Errorf("Failed to delete snapshot [%v].", exSnap)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	cs.cache.Delete(exSnap.Name)
 	glog.Infof("Succeed to delete snapshot [%v].", exSnap)
 	return &csi.DeleteSnapshotResponse{}, nil
 }
 
 // Source Volume ID:
 // Snapshot ID:
+// Use token get next page only requesting max entries.
 func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
 	defer util.EntryFunction("ListSnapshots")()
 
@@ -399,7 +402,7 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 	snapId := req.GetSnapshotId()
 	srcVolId := req.GetSourceVolumeId()
 
-	// case: snapshot id
+	// case 1: snapshot id
 	if len(snapId) != 0 {
 		snapInfo := cs.cache.Find(req.GetSnapshotId())
 		if len(srcVolId) != 0 && srcVolId != snapInfo.SrcVolName {
@@ -414,8 +417,8 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 		}, nil
 	}
 
-	// case: volume id
-	// must consider pageable
+	// case 2: volume id
+	// According to csi test, we need not support pageable.
 	if len(srcVolId) != 0 {
 		// consult
 		volInfo, err := manager.FindVolumeWithoutPool(srcVolId)
@@ -426,58 +429,19 @@ func (cs *controllerServer) ListSnapshots(ctx context.Context, req *csi.ListSnap
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
-
-		if req.GetMaxEntries() == 0 {
-			// non-pageable
-			return &csi.ListSnapshotsResponse{
-				Entries: manager.ConvertNeonSnapToListSnapResp(snapInfoList),
-			}, nil
-		} else {
-			// pageable
-			var page int
-			if len(req.GetStartingToken()) == 0 {
-				// first page
-				page = 1
-			} else {
-				// non-first page
-				page, err = strconv.Atoi(req.GetStartingToken())
-				if err != nil {
-					return nil, status.Error(codes.InvalidArgument, err.Error())
-				}
-			}
-			glog.Infof("Execute ReadListPage list len [%d], page [%d], items per page [%d]",
-				len(snapInfoList), page, req.GetMaxEntries())
-			pageList, err := manager.ReadListPage(snapInfoList, page, int(req.GetMaxEntries()))
-			if err != nil {
-				return nil, status.Error(codes.Internal, err.Error())
-			}
-			return &csi.ListSnapshotsResponse{
-				Entries:   manager.ConvertNeonSnapToListSnapResp(pageList),
-				NextToken: strconv.Itoa(page + 1),
-			}, nil
-		}
+		// non-pageable
+		return &csi.ListSnapshotsResponse{
+			Entries: manager.ConvertNeonSnapToListSnapResp(snapInfoList),
+		}, nil
 	}
 
-	// case: non volume id provided
+	// case 3: non volume id provided
 	// must consider pageable
 	var fullSnapList []*manager.SnapshotInfo
-	pools := manager.ListPoolName()
+	//_ := manager.ListPoolName()
 	// get full snapshot list
-	for _, v := range pools {
-		vols, err := manager.ListVolumeByPool(v)
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-		for _, volInfo := range vols {
-			volSnapList, err := manager.ListSnapshotByVolume(volInfo.Name, volInfo.Pool)
-			if err != nil {
-				return nil, status.Error(codes.Internal, err.Error())
-			}
-			for i := range volSnapList {
-				fullSnapList = append(fullSnapList, volSnapList[i])
-			}
-		}
-	}
+	cs.cache.List()
+
 	// pageable
 	if req.GetMaxEntries() == 0 {
 		// non-pageable

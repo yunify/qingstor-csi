@@ -94,30 +94,6 @@ type NeonsanStorageClass struct {
 	Protocol     string `json:"protocol"`
 }
 
-type SnapshotCacheType struct {
-	Snaps map[string]*SnapshotInfo
-}
-
-type SnapshotCache interface {
-	// Add snapshot into map
-	// 1. snapshot name does not exist, add snapshot information normally.
-	// 2. snapshot name exists but snapshot info is not equal to input
-	// snapshot info, add snapshot failed.
-	// 3. snapshot name exists and snapshot info is equal to input snapshot
-	// info, add snapshot succeed.
-	Add(info *SnapshotInfo) bool
-	// Find snapshot information by snapshot name
-	// If founded snapshot, return snapshot info
-	// If not founded snapshot, return nil
-	Find(snapName string) *SnapshotInfo
-	// Delete snapshot information form map
-	Delete(snapName string)
-	// Add all snapshot information into map
-	Sync() error
-	// List all snapshot info
-	List() []*SnapshotInfo
-}
-
 type TextParser interface {
 	ParseVolumeList(input string) (volList []*VolumeInfo)
 
