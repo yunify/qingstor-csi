@@ -32,6 +32,8 @@ type SnapshotCacheType struct {
 	Snaps map[string]*manager.SnapshotInfo
 }
 
+var _ SnapshotCache = &SnapshotCacheType{}
+
 func (snapCache *SnapshotCacheType) New() {
 	// key-value: name-info
 	snapCache.Snaps = make(map[string]*manager.SnapshotInfo)

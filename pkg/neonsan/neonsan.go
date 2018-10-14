@@ -57,6 +57,7 @@ func NewControllerServer(d *csicommon.CSIDriver) *controllerServer {
 	return &controllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
 		cache:                   &snapCache,
+		creatingVolume:          make(map[string]bool),
 	}
 }
 

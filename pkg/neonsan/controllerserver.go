@@ -31,7 +31,8 @@ import (
 
 type controllerServer struct {
 	*csicommon.DefaultControllerServer
-	cache cache.SnapshotCache
+	cache          cache.SnapshotCache
+	creatingVolume map[string]bool
 }
 
 // This operation MUST be idempotent
@@ -55,11 +56,17 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 
 	// Required volume name
-	if len(req.Name) == 0 {
+	if len(req.GetName()) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Volume name missing in request.")
 	}
 	volumeName := req.GetName()
-
+	// check is creating
+	if _, found := cs.creatingVolume[volumeName]; found {
+		return nil, status.Errorf(codes.Aborted, "no more than one call in-flight for volume [%v]", req)
+	} else {
+		cs.creatingVolume[volumeName] = true
+		defer delete(cs.creatingVolume, volumeName)
+	}
 	// Create StorageClass object
 	glog.Info("Create StorageClass object.")
 	sc, err := manager.NewNeonsanStorageClassFromMap(req.GetParameters())
