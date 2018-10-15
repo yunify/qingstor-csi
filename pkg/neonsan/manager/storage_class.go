@@ -27,7 +27,7 @@ func NewDefaultNeonsanStorageClass() *NeonsanStorageClass {
 	return &NeonsanStorageClass{
 		Replicas:     1,
 		StepSize:     1,
-		Pool:         DefaultPoolName,
+		Pool:         PoolNameDefault,
 		VolumeFsType: util.FileSystemDefault,
 		Protocol:     util.ProtocolDefault,
 	}

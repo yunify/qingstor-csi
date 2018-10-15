@@ -35,7 +35,7 @@ func FindPool(poolName string) (outPool *PoolInfo, err error) {
 		return nil, nil
 	}
 	// get pool info
-	args := []string{"stats_pool", "-pool", poolName, "-c", util.ConfigFilePath}
+	args := []string{"stats_pool", "-pool", poolName, "-c", util.ConfigFilepath}
 	output, err := util.ExecCommand(CmdNeonsan, args)
 	if err != nil {
 		return nil, fmt.Errorf("call FindPool [%s]: %v", poolName, err.Error())

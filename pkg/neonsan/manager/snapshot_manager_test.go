@@ -18,9 +18,7 @@ package manager
 
 import (
 	"errors"
-	"fmt"
 	"github.com/container-storage-interface/spec/lib/go/csi/v0"
-	"github.com/yunify/qingstor-csi/pkg/neonsan/cache"
 	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
 	"reflect"
 	"testing"
@@ -514,77 +512,4 @@ func TestConvertNeonSnapToListSnapResp(t *testing.T) {
 			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.caseName, v.respList, respList)
 		}
 	}
-}
-
-func TestSnapshotCache(t *testing.T) {
-	Pools = []string{SnapTestPoolCsi}
-	var snapArr []SnapshotInfo
-	for vol := 0; vol < 10; vol++ {
-		for snap := 0; snap < 20; snap++ {
-			tmp := SnapshotInfo{
-				Name:        fmt.Sprintf("vol-%d-snap-%d", vol, snap),
-				Id:          fmt.Sprintf("3996165079%d%d", vol, snap),
-				SizeByte:    10737418240,
-				Status:      SnapshotStatusOk,
-				Pool:        "kube",
-				CreatedTime: 1535024379,
-				SrcVolName:  fmt.Sprintf("vol-%d", vol),
-			}
-			snapArr = append(snapArr, tmp)
-		}
-	}
-	cache := cache.SnapshotCacheType{}
-	cache.New()
-	// Add
-	for _, v := range snapArr {
-		// Normal add
-		tmp := v
-		flag := cache.Add(&tmp)
-		if flag != true {
-			t.Errorf("add snapshot cache expect [%t], but actually [%t]", true, flag)
-		}
-		// Re-add
-		flag = cache.Add(&tmp)
-		if flag != true {
-			t.Errorf("re-add snapshot cache expect [%t], but actually [%t]", true, flag)
-		}
-		// Re-add but incompatible
-		v.SizeByte = v.SizeByte - 1
-		flag = cache.Add(&v)
-		if flag != false {
-			t.Errorf("re-add snapshot cache expect [%t], but actually [%t]", false, flag)
-		}
-	}
-
-	// Find
-	for _, v := range snapArr {
-		snapInfo := cache.Find(v.Name)
-		if !reflect.DeepEqual(v, *snapInfo) {
-			t.Errorf("find snapshot cache expect [%v], but actually [%v]", v, *snapInfo)
-		}
-	}
-	// Delete
-	for _, v := range snapArr {
-		// normal delete
-		cache.Delete(v.Name)
-		// re-delete
-		cache.Delete(v.Name)
-		// find
-		snapInfo := cache.Find(v.Name)
-		if snapInfo != nil {
-			t.Errorf("find snapshot cache expect [%v], but actually [%v]", nil, snapInfo)
-		}
-	}
-}
-
-func TestSnapshotCache_Sync(t *testing.T) {
-	Pools = []string{SnapTestPoolCsi}
-	cache := cache.SnapshotCacheType{}
-	cache.New()
-	err := cache.Sync()
-	if err != nil {
-		t.Errorf("sync snapshot cache expect [%v], but actually [%v]", nil, err)
-	}
-	snapList := cache.List()
-	t.Logf("list snapshot cache count [%d]", len(snapList))
 }

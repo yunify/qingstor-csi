@@ -26,6 +26,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"path"
 	"strconv"
 )
 
@@ -126,6 +127,57 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 	glog.Infof("Succeed to create volume [%s] with [%d] bytes in pool [%s].", volumeName, requiredFormatByte,
 		sc.Pool)
+
+	// Restore volume from snapshot
+	if req.GetVolumeContentSource() != nil && req.GetVolumeContentSource().GetSnapshot() != nil {
+		snapId := req.GetVolumeContentSource().GetSnapshot().GetId()
+		glog.Infof("Restore volume [%s] from snapshot [%s]", volumeInfo.Name, snapId)
+		snapInfo := cs.cache.Find(snapId)
+		if snapInfo == nil {
+			return nil, status.Errorf(codes.NotFound, "cannot find snapshot %v", snapId)
+		}
+		if snapInfo.Status != manager.SnapshotStatusOk {
+			return nil, status.Errorf(codes.Internal, "status of snapshot %v is not ready", snapId)
+		}
+		// restore volume
+		// 1. export snapshot
+		glog.Info("Export snapshot")
+		err = manager.ExportSnapshot(manager.ExportSnapshotRequest{
+			SnapName:   snapInfo.Name,
+			SrcVolName: snapInfo.SrcVolName,
+			PoolName:   snapInfo.Pool,
+			FilePath:   path.Join(util.TempSnapshotDir, snapInfo.Name),
+			Protocol:   manager.Protocol,
+		})
+		if err != nil {
+			glog.Errorf("Export snapshot error: %s", err.Error())
+			return nil, status.Errorf(codes.Internal, "export snapshot error: %v", err)
+		}
+		// 2. import snapshot
+		glog.Info("Import snapshot")
+		err = manager.ImportSnapshot(manager.ImportSnapshotRequest{
+			VolName:  volumeInfo.Name,
+			PoolName: volumeInfo.Pool,
+			FilePath: path.Join(util.TempSnapshotDir, snapInfo.Name),
+			Protocol: manager.Protocol,
+		})
+		if err != nil {
+			glog.Errorf("Import snapshot error: %s", err.Error())
+			return nil, status.Errorf(codes.Internal, "import snapshot error: %v", err)
+		}
+		// 3. restore volume
+		glog.Info("Rollback snapshot")
+		err = manager.RollbackSnapshot(manager.RollbackSnapshotRequest{
+			VolumeName: volumeInfo.Name,
+			Pool:       volumeInfo.Pool,
+			SnapName:   snapInfo.Name,
+		})
+		if err != nil {
+			glog.Errorf("Rollback snapshot error: %s", err.Error())
+			return nil, status.Errorf(codes.Internal, "rollback snapshot error: %v", err)
+		}
+	}
+
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
 			Id:            volumeInfo.Name,

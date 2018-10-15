@@ -16,9 +16,11 @@ limitations under the License.
 
 package manager
 
+import "github.com/yunify/qingstor-csi/pkg/neonsan/util"
+
 const (
 	SnapshotStatusOk string = "OK"
-	DefaultPoolName  string = "kube"
+	PoolNameDefault  string = "kube"
 )
 
 const (
@@ -33,7 +35,10 @@ var SnapshotStatusType = map[string]string{
 	SnapshotStatusOk: SnapshotStatusOk,
 }
 
-var Pools []string = []string{"kube"}
+var (
+	Pools    []string = []string{"kube"}
+	Protocol string   = util.ProtocolDefault
+)
 
 type VolumeInfo struct {
 	Id       string
@@ -102,4 +107,25 @@ type TextParser interface {
 	ParseSnapshotList(input string) (snaps []*SnapshotInfo)
 
 	ParsePoolNameList(input string) (pools []string)
+}
+
+type ExportSnapshotRequest struct {
+	SnapName   string
+	SrcVolName string
+	PoolName   string
+	FilePath   string
+	Protocol   string
+}
+
+type ImportSnapshotRequest struct {
+	VolName  string
+	PoolName string
+	FilePath string
+	Protocol string
+}
+
+type RollbackSnapshotRequest struct {
+	VolumeName string
+	Pool       string
+	SnapName   string
 }

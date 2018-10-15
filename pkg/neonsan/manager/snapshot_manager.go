@@ -17,10 +17,13 @@ limitations under the License.
 package manager
 
 import (
+	"errors"
 	"fmt"
 	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/golang/glog"
 	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
+	"os"
+	"path"
 )
 
 // FindSnapshot gets snapshot information in specified pool
@@ -82,7 +85,7 @@ func ListSnapshotByVolume(srcVolName, poolName string) (snaps []*SnapshotInfo, e
 	if !util.ContainsString(ListPoolName(), poolName) {
 		return nil, fmt.Errorf("invalid pool name [%s]", poolName)
 	}
-	args := []string{"list_snapshot", "--volume", srcVolName, "--pool", poolName, "-c", util.ConfigFilePath}
+	args := []string{"list_snapshot", "--volume", srcVolName, "--pool", poolName, "-c", util.ConfigFilepath}
 	output, err := util.ExecCommand(CmdNeonsan, args)
 	if err != nil {
 		glog.Errorf("Failed to find snapshot, args [%v].", args)
@@ -109,7 +112,7 @@ func CreateSnapshot(snapName, srcVolName, poolName string) (outSnap *SnapshotInf
 		return nil, fmt.Errorf("invalid pool name [%s]", poolName)
 	}
 	args := []string{"create_snapshot", "--snapshot", fmt.Sprintf("%s@%s", srcVolName, snapName), "--pool", poolName,
-		"-c", util.ConfigFilePath}
+		"-c", util.ConfigFilepath}
 	_, err = util.ExecCommand(CmdNeonsan, args)
 	if err != nil {
 		return nil, err
@@ -134,7 +137,7 @@ func DeleteSnapshot(snapName, srcVolName, poolName string) (err error) {
 		return fmt.Errorf("invalid pool name [%s]", poolName)
 	}
 	args := []string{"delete_snapshot", "--snapshot", fmt.Sprintf("%s@%s", srcVolName, snapName), "--pool", poolName,
-		"-c", util.ConfigFilePath}
+		"-c", util.ConfigFilepath}
 	_, err = util.ExecCommand(CmdNeonsan, args)
 	if err != nil {
 		glog.Errorf("Failed to delete snapshot, args [%v], error [%v].", args, err)
@@ -171,4 +174,78 @@ func ConvertNeonSnapToListSnapResp(neonSnaps []*SnapshotInfo) (respList []*csi.L
 		respList = append(respList, resp)
 	}
 	return respList
+}
+
+// ExportSnapshot exports snapshot as file
+func ExportSnapshot(req ExportSnapshotRequest) (err error) {
+	// Check input args
+	if len(req.SnapName) == 0 || len(req.Protocol) == 0 ||
+		len(req.FilePath) == 0 || len(req.PoolName) == 0 ||
+		len(req.SrcVolName) == 0 {
+		return errors.New("invalid export snapshot request")
+	}
+
+	// Check directory
+	dir := path.Dir(req.FilePath)
+	if _, err := os.Stat(dir); err != nil {
+		if err = os.MkdirAll(dir, 755); err != nil {
+			return err
+		}
+		return err
+	}
+
+	// Export snapshot
+	args := []string{"export_diff", "--snapshot", fmt.Sprintf("%s@%s", req.SrcVolName, req.SnapName),
+		"--of", req.FilePath, "--pool", req.PoolName,
+		"-t", req.Protocol, "-c", util.ConfigFilepath}
+	_, err = util.ExecCommand(CmdNeonsan, args)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// ImportSnapshot imports snapshot from file
+func ImportSnapshot(req ImportSnapshotRequest) (err error) {
+	// Check input args
+	if len(req.VolName) == 0 || len(req.PoolName) == 0 ||
+		len(req.FilePath) == 0 || len(req.Protocol) == 0 {
+		return errors.New("invalid import snapshot request")
+	}
+
+	// Check directory
+	dir := path.Dir(req.FilePath)
+	if _, err := os.Stat(dir); err != nil {
+		if err = os.MkdirAll(dir, 755); err != nil {
+			return err
+		}
+		return err
+	}
+
+	// Import snapshot
+	args := []string{"import_diff", "--volume", req.VolName, "--pool", req.PoolName, "-if", req.FilePath,
+		"-t", req.Protocol, "-c", util.ConfigFilepath}
+	_, err = util.ExecCommand(CmdNeonsan, args)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// RollBack
+func RollbackSnapshot(req RollbackSnapshotRequest) (err error) {
+	// Check input args
+	if len(req.SnapName) == 0 || len(req.Pool) == 0 || len(req.VolumeName) == 0 {
+		return errors.New("invalid rollback snapshot request")
+	}
+
+	// Rollback snapshot
+	args := []string{"rollback_snapshot", "--pool", req.Pool,
+		"--snapshot", fmt.Sprintf("%s@%s", req.VolumeName, req.SnapName), "-c", util.ConfigFilepath}
+	_, err = util.ExecCommand(CmdNeonsan, args)
+	if err != nil {
+		return err
+	}
+	return nil
 }
