@@ -16,16 +16,12 @@ limitations under the License.
 
 package manager
 
-import (
-	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
-	"testing"
-)
-
 const (
 	PoolTestPoolName     = "csi"
 	PoolTestFakePoolName = "fake"
 )
 
+/*
 func TestFindPool(t *testing.T) {
 	Pools = append(Pools, PoolTestPoolName)
 	tests := []struct {
@@ -86,3 +82,4 @@ func TestListPoolName(t *testing.T) {
 		}
 	}
 }
+*/

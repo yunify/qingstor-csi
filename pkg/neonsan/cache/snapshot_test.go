@@ -128,8 +128,8 @@ var _ = Describe("Snapshot Cache", func() {
 	})
 
 	It("can sync cache", func() {
-		if isTesting == false {
-			Skip("Sync")
+		if hasCli == false {
+			Skip(UnsupportCli)
 		}
 		manager.Pools = []string{"csi", "kube"}
 		cache := SnapshotCacheType{}
@@ -137,5 +137,4 @@ var _ = Describe("Snapshot Cache", func() {
 		err := cache.Sync()
 		Expect(err).To(BeNil())
 	})
-
 })

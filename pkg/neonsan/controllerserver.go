@@ -382,6 +382,7 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		glog.Errorf("Failed to create snapshot with error [%s].", err.Error())
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
+	glog.Infof("Add snapshot [%v] into cache", snapInfo)
 	if !cs.cache.Add(snapInfo) {
 		glog.Warningf("Snapshot [%s] already exist in cache", snapInfo.Name)
 	}

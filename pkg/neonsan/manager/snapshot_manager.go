@@ -39,37 +39,12 @@ func FindSnapshot(snapName, srcVolName, poolName string) (outSnap *SnapshotInfo,
 	}
 	snapList, err := ListSnapshotByVolume(srcVolName, poolName)
 	if err != nil {
-		glog.Errorf("List snapshot error: [%v]", err.Error())
 		return nil, err
 	}
 	for i := range snapList {
 		glog.Infof("snapList[%d]=[%v], %s,%s", i, snapList[i], snapList[i].Name, snapName)
 		if snapList[i].Name == snapName {
 			return snapList[i], nil
-		}
-	}
-	return nil, nil
-}
-
-// FindSnapshotWithoutPool gets snapshot information in all pools
-// CAUTION: the execution time is extremely long.
-// Return case:
-//   snap, nil: find a snapshot
-//   nil, nil: cannot find snapshot
-//   nil, err: find snapshot error or find duplicate snapshots
-func FindSnapshotWithoutPool(snapName string) (outSnap *SnapshotInfo, err error) {
-	poolNames := ListPoolName()
-	// TODO: it will take much time.
-	for _, poolName := range poolNames {
-		vols, err := ListVolumeByPool(poolName)
-		if err != nil {
-			return nil, err
-		}
-		for _, volInfo := range vols {
-			snapInfo, err := FindSnapshot(snapName, volInfo.Name, poolName)
-			if err != nil || snapInfo != nil {
-				return snapInfo, err
-			}
 		}
 	}
 	return nil, nil
@@ -88,7 +63,6 @@ func ListSnapshotByVolume(srcVolName, poolName string) (snaps []*SnapshotInfo, e
 	args := []string{"list_snapshot", "--volume", srcVolName, "--pool", poolName, "-c", util.ConfigFilepath}
 	output, err := util.ExecCommand(CmdNeonsan, args)
 	if err != nil {
-		glog.Errorf("Failed to find snapshot, args [%v].", args)
 		return nil, err
 	}
 	snaps, err = ParseSnapshotList(string(output))
@@ -140,7 +114,6 @@ func DeleteSnapshot(snapName, srcVolName, poolName string) (err error) {
 		"-c", util.ConfigFilepath}
 	_, err = util.ExecCommand(CmdNeonsan, args)
 	if err != nil {
-		glog.Errorf("Failed to delete snapshot, args [%v], error [%v].", args, err)
 		return err
 	}
 	glog.Infof("Succeed to delete snapshot, args [%v].", args)
