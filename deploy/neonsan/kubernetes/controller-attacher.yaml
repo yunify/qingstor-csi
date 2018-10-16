@@ -1,0 +1,109 @@
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: csi-neonsan-attacher
+  namespace: kube-system
+  labels:
+    app: "csi-neonsan"
+    role: "attacher"
+    csi: "v0.4.0"
+    owner: "yunify"
+spec:
+  selector:
+    app: "csi-neonsan"
+    role: "attacher"
+    csi: "v0.4.0"
+    owner: "yunify"
+  ports:
+    - name: dummy
+      port: 12345
+
+---
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: csi-neonsan-attacher
+  namespace: kube-system
+  labels:
+    app: "csi-neonsan"
+    role: "attacher"
+    csi: "v0.4.0"
+    owner: "yunify"
+spec:
+  serviceName: "csi-neonsan-attacher"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: "csi-neonsan"
+      role: "attacher"
+      csi: "v0.4.0"
+      owner: "yunify"
+  template:
+    metadata:
+      labels:
+        app: "csi-neonsan"
+        role: "attacher"
+        csi: "v0.4.0"
+        owner: "yunify"
+    spec:
+      serviceAccount: csi-neonsan-attacher
+      imagePullSecrets:
+      - name: csi-neonsan
+      containers:
+      - name: csi-attacher
+        image: quay.io/k8scsi/csi-attacher:v0.4.0
+        args:
+        - "--v=5"
+        - "--csi-address=$(ADDRESS)"
+        env:
+        - name: ADDRESS
+          value: /csi/csi.sock
+        imagePullPolicy: "IfNotPresent"
+        volumeMounts:
+        - name: socket-dir
+          mountPath: /csi
+      - name: csi-neonsan
+        image: dockerhub.qingcloud.com/csiplugin/csi-neonsan:latest
+        args:
+        - "--nodeid=$(NODE_ID)"
+        - "--endpoint=$(CSI_ENDPOINT)"
+        - "--v=5"
+        - "--drivername=csi-neonsan"
+        - "--config=/etc/neonsan/qbd.conf"
+        - "--pools=kube"
+        env:
+        - name: NODE_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: CSI_ENDPOINT
+          value: unix:///csi/csi.sock
+        imagePullPolicy: "IfNotPresent"
+        volumeMounts:
+        - name: socket-dir
+          mountPath: /csi
+        - name: server-config
+          mountPath: /etc/neonsan
+        - name: neonsan-cmd
+          mountPath: /usr/bin
+        - name: lib
+          mountPath: /lib
+        - name: usrlib
+          mountPath: /usr/lib
+      volumes:
+      - name: socket-dir
+        emptyDir:
+      - name: server-config
+        configMap:
+          name: csi-neonsan
+      - name: neonsan-cmd
+        hostPath:
+          path: /usr/bin
+          type: DirectoryOrCreate
+      - name: lib
+        hostPath:
+          path: /lib
+      - name: usrlib
+        hostPath:
+          path: /usr/lib

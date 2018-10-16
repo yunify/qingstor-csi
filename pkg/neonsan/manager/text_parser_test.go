@@ -16,13 +16,7 @@ limitations under the License.
 
 package manager
 
-import (
-	"fmt"
-	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
-	"reflect"
-	"testing"
-)
-
+/*
 func TestParseVolumeList(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -354,3 +348,4 @@ func TestReadCountNumber(t *testing.T) {
 		}
 	}
 }
+*/

@@ -22,7 +22,8 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi/v0"
 	"github.com/golang/glog"
 	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
-	"reflect"
+	"os"
+	"path"
 )
 
 // FindSnapshot gets snapshot information in specified pool
@@ -38,37 +39,12 @@ func FindSnapshot(snapName, srcVolName, poolName string) (outSnap *SnapshotInfo,
 	}
 	snapList, err := ListSnapshotByVolume(srcVolName, poolName)
 	if err != nil {
-		glog.Errorf("List snapshot error: [%v]", err.Error())
 		return nil, err
 	}
 	for i := range snapList {
 		glog.Infof("snapList[%d]=[%v], %s,%s", i, snapList[i], snapList[i].Name, snapName)
 		if snapList[i].Name == snapName {
 			return snapList[i], nil
-		}
-	}
-	return nil, nil
-}
-
-// FindSnapshotWithoutPool gets snapshot information in all pools
-// CAUTION: the execution time is extremely long.
-// Return case:
-//   snap, nil: find a snapshot
-//   nil, nil: cannot find snapshot
-//   nil, err: find snapshot error or find duplicate snapshots
-func FindSnapshotWithoutPool(snapName string) (outSnap *SnapshotInfo, err error) {
-	poolNames := ListPoolName()
-	// TODO: it will take much time.
-	for _, poolName := range poolNames {
-		vols, err := ListVolumeByPool(poolName)
-		if err != nil {
-			return nil, err
-		}
-		for _, volInfo := range vols {
-			snapInfo, err := FindSnapshot(snapName, volInfo.Name, poolName)
-			if err != nil || snapInfo != nil {
-				return snapInfo, err
-			}
 		}
 	}
 	return nil, nil
@@ -84,10 +60,9 @@ func ListSnapshotByVolume(srcVolName, poolName string) (snaps []*SnapshotInfo, e
 	if !util.ContainsString(ListPoolName(), poolName) {
 		return nil, fmt.Errorf("invalid pool name [%s]", poolName)
 	}
-	args := []string{"list_snapshot", "--volume", srcVolName, "--pool", poolName, "-c", util.ConfigFilePath}
+	args := []string{"list_snapshot", "--volume", srcVolName, "--pool", poolName, "-c", util.ConfigFilepath}
 	output, err := util.ExecCommand(CmdNeonsan, args)
 	if err != nil {
-		glog.Errorf("Failed to find snapshot, args [%v].", args)
 		return nil, err
 	}
 	snaps, err = ParseSnapshotList(string(output))
@@ -111,7 +86,7 @@ func CreateSnapshot(snapName, srcVolName, poolName string) (outSnap *SnapshotInf
 		return nil, fmt.Errorf("invalid pool name [%s]", poolName)
 	}
 	args := []string{"create_snapshot", "--snapshot", fmt.Sprintf("%s@%s", srcVolName, snapName), "--pool", poolName,
-		"-c", util.ConfigFilePath}
+		"-c", util.ConfigFilepath}
 	_, err = util.ExecCommand(CmdNeonsan, args)
 	if err != nil {
 		return nil, err
@@ -136,10 +111,9 @@ func DeleteSnapshot(snapName, srcVolName, poolName string) (err error) {
 		return fmt.Errorf("invalid pool name [%s]", poolName)
 	}
 	args := []string{"delete_snapshot", "--snapshot", fmt.Sprintf("%s@%s", srcVolName, snapName), "--pool", poolName,
-		"-c", util.ConfigFilePath}
+		"-c", util.ConfigFilepath}
 	_, err = util.ExecCommand(CmdNeonsan, args)
 	if err != nil {
-		glog.Errorf("Failed to delete snapshot, args [%v], error [%v].", args, err)
 		return err
 	}
 	glog.Infof("Succeed to delete snapshot, args [%v].", args)
@@ -175,100 +149,76 @@ func ConvertNeonSnapToListSnapResp(neonSnaps []*SnapshotInfo) (respList []*csi.L
 	return respList
 }
 
-// ReadListPage
-// Parameters:
-//   page: page number begins with 1.
-func ReadListPage(fullList []*SnapshotInfo, page int, itemPerPage int) (pageList []*SnapshotInfo, err error) {
-	if fullList == nil {
-		return nil, nil
+// ExportSnapshot exports snapshot as file
+func ExportSnapshot(req ExportSnapshotRequest) (err error) {
+	// Check input args
+	if len(req.SnapName) == 0 || len(req.Protocol) == 0 ||
+		len(req.FilePath) == 0 || len(req.PoolName) == 0 ||
+		len(req.SrcVolName) == 0 {
+		return errors.New("invalid export snapshot request")
 	}
-	if page < 0 || itemPerPage <= 0 {
-		return nil, errors.New("ReadListPage: input argument error")
-	}
-	// [headIndex, tailIndex)
-	headIndex := itemPerPage * (page - 1)
-	tailIndex := headIndex + itemPerPage
-	totalLength := len(fullList)
-	if totalLength < tailIndex {
-		tailIndex = totalLength
-	}
-	if totalLength < headIndex {
-		return nil, errors.New("ReadListPage: head index must not exceed list length")
-	}
-	return fullList[headIndex:tailIndex], nil
-}
 
-func (snapCache *SnapshotCacheType) New() {
-	snapCache.Snaps = make(map[string]*SnapshotInfo)
-}
-
-func (snapCache *SnapshotCacheType) Add(info *SnapshotInfo) bool {
-	if info == nil {
-		return false
-	}
-	if exInfo, ok := snapCache.Snaps[info.Name]; ok {
-		// already exist
-		if reflect.DeepEqual(info, exInfo) {
-			// new info == exist info
-			return true
-		} else {
-			// new info != exist info
-			return false
-		}
-	}
-	// not exist
-	snapCache.Snaps[info.Name] = info
-	return true
-}
-
-func (snapCache *SnapshotCacheType) Find(snapName string) *SnapshotInfo {
-	if exInfo, ok := snapCache.Snaps[snapName]; ok {
-		// already exist
-		return exInfo
-	}
-	// not exist
-	return nil
-}
-
-func (snapCache *SnapshotCacheType) Delete(snapName string) {
-	if _, ok := snapCache.Snaps[snapName]; ok {
-		// already exist
-		delete(snapCache.Snaps, snapName)
-	}
-}
-
-func (snapCache *SnapshotCacheType) Sync() (err error) {
-	// get full snapshot list
-	for _, v := range ListPoolName() {
-		// visit each pool
-		vols, err := ListVolumeByPool(v)
-		if err != nil {
+	// Check directory
+	dir := path.Dir(req.FilePath)
+	if _, err := os.Stat(dir); err != nil {
+		if err = os.MkdirAll(dir, 755); err != nil {
 			return err
 		}
-		for _, volInfo := range vols {
-			// visit each volume
-			glog.Info(volInfo)
-			volSnapList, err := ListSnapshotByVolume(volInfo.Name, volInfo.Pool)
-			glog.Info(volSnapList)
-			if err != nil {
-				return err
-			}
-			for i := range volSnapList {
-				if snapCache.Add(volSnapList[i]) {
-					glog.Infof("add snapshot [%s] into cache successfully", volSnapList[i].Name)
-				} else {
-					return fmt.Errorf("add snapshot [%s] failed, already exits but incompatiably", volSnapList[i].Name)
-				}
-			}
-		}
+		return err
+	}
+
+	// Export snapshot
+	args := []string{"export_diff", "--snapshot", fmt.Sprintf("%s@%s", req.SrcVolName, req.SnapName),
+		"--of", req.FilePath, "--pool", req.PoolName,
+		"-t", req.Protocol, "-c", util.ConfigFilepath}
+	_, err = util.ExecCommand(CmdNeonsan, args)
+	if err != nil {
+		return err
 	}
 	return nil
 }
 
-func (snapCache *SnapshotCacheType) List() (list []*SnapshotInfo) {
-	// TODO: ensure the order of the snapshot info list unchanged
-	for _, v := range snapCache.Snaps {
-		list = append(list, v)
+// ImportSnapshot imports snapshot from file
+func ImportSnapshot(req ImportSnapshotRequest) (err error) {
+	// Check input args
+	if len(req.VolName) == 0 || len(req.PoolName) == 0 ||
+		len(req.FilePath) == 0 || len(req.Protocol) == 0 {
+		return errors.New("invalid import snapshot request")
 	}
-	return list
+
+	// Check directory
+	dir := path.Dir(req.FilePath)
+	if _, err := os.Stat(dir); err != nil {
+		if err = os.MkdirAll(dir, 755); err != nil {
+			return err
+		}
+		return err
+	}
+
+	// Import snapshot
+	args := []string{"import_diff", "--volume", req.VolName, "--pool", req.PoolName, "-if", req.FilePath,
+		"-t", req.Protocol, "-c", util.ConfigFilepath}
+	_, err = util.ExecCommand(CmdNeonsan, args)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// RollBack
+func RollbackSnapshot(req RollbackSnapshotRequest) (err error) {
+	// Check input args
+	if len(req.SnapName) == 0 || len(req.Pool) == 0 || len(req.VolumeName) == 0 {
+		return errors.New("invalid rollback snapshot request")
+	}
+
+	// Rollback snapshot
+	args := []string{"rollback_snapshot", "--pool", req.Pool,
+		"--snapshot", fmt.Sprintf("%s@%s", req.VolumeName, req.SnapName), "-c", util.ConfigFilepath}
+	_, err = util.ExecCommand(CmdNeonsan, args)
+	if err != nil {
+		return err
+	}
+	return nil
 }

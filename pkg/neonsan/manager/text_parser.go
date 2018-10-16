@@ -160,14 +160,14 @@ func readVolumeInfoContent(line string) (ret *VolumeInfo) {
 		case 2:
 			size64, err := strconv.ParseInt(v, 10, 64)
 			if err != nil {
-				glog.Errorf("parse int64 [%d] error in string [%s]", v, line)
+				glog.Errorf("parse int64 [%s] error in string [%s]", v, line)
 				return nil
 			}
 			ret.SizeByte = size64
 		case 3:
 			rep, err := strconv.Atoi(v)
 			if err != nil {
-				glog.Errorf("parse int [%d] error in string [%s]", v, line)
+				glog.Errorf("parse int [%s] error in string [%s]", v, line)
 				return nil
 			}
 			ret.Replicas = rep
@@ -276,7 +276,7 @@ func readAttachVolumeInfo(line string) (ret *AttachInfo) {
 		case 3:
 			args := strings.Split(v, "/")
 			if len(args) != 2 {
-				glog.Error("expect pool/volume, but actually [%s]", v)
+				glog.Errorf("expect pool/volume, but actually [%s]", v)
 				return nil
 			}
 			ret.Pool = args[0]
