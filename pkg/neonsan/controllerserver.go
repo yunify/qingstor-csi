@@ -39,7 +39,8 @@ type controllerServer struct {
 // This operation MUST be idempotent
 // csi.CreateVolumeRequest: name 				+Required
 //							capability			+Required
-func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
+func (cs *controllerServer) CreateVolume(ctx context.Context,
+	req *csi.CreateVolumeRequest) (resp *csi.CreateVolumeResponse, err error) {
 	defer util.EntryFunction("CreateVolume")()
 
 	glog.Info("Validate input arguments.")
@@ -61,6 +62,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, status.Error(codes.InvalidArgument, "Volume name missing in request.")
 	}
 	volumeName := req.GetName()
+
 	// check is creating
 	if _, found := cs.creatingVolume[volumeName]; found {
 		return nil, status.Errorf(codes.Aborted, "no more than one call in-flight for volume [%v]", req)
@@ -68,6 +70,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		cs.creatingVolume[volumeName] = true
 		defer delete(cs.creatingVolume, volumeName)
 	}
+
 	// Create StorageClass object
 	glog.Info("Create StorageClass object.")
 	sc, err := manager.NewNeonsanStorageClassFromMap(req.GetParameters())
@@ -90,46 +93,22 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			requiredByte, limitByte, requiredFormatByte)
 		return nil, status.Error(codes.OutOfRange, "Unsupported capacity range.")
 	}
-
-	// Find exist volume name
-	glog.Infof("Find duplicate volume name [%s].", volumeName)
-	exVol, err := manager.FindVolume(volumeName, sc.Pool)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	if exVol != nil {
-		glog.Infof("Request volume name: [%s], size: [%d], capacity range [%d,%d] Bytes, pool: [%s], replicas: [%d].",
-			volumeName, requiredFormatByte, requiredByte, limitByte, sc.Pool, sc.Replicas)
-		glog.Infof("Exist volume name: [%s], id: [%s], capacity: [%d] Bytes, pool: [%s], replicas: [%d].",
-			exVol.Name, exVol.Id, exVol.SizeByte, exVol.Pool, exVol.Replicas)
-		if exVol.SizeByte >= requiredByte && exVol.SizeByte <= limitByte && exVol.Replicas == sc.Replicas {
-			// exisiting volume is compatible with new request and should be
-			// reused.
-			return &csi.CreateVolumeResponse{
-				Volume: &csi.Volume{
-					Id:            exVol.Name,
-					CapacityBytes: exVol.SizeByte,
-					Attributes:    req.GetParameters(),
-				},
-			}, nil
-		}
-		return nil, status.Errorf(codes.AlreadyExists, "Volume [%s] already exists but is incompatible.", volumeName)
-	}
-	glog.Infof("Not Found duplicate volume name [%s].", volumeName)
-
-	// do create volume
-	glog.Infof("Creating volume [%s] with [%d] bytes in pool [%s]...", volumeName, requiredFormatByte, sc.Pool)
-	volumeInfo, err := manager.CreateVolume(volumeName, sc.Pool, requiredFormatByte, sc.Replicas)
-	if err != nil {
-		glog.Errorf("Failed to create volume [%s] with [%d] bytes in pool [%s] with error [%v].", volumeName,
-			requiredFormatByte, sc.Pool, err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	glog.Infof("Succeed to create volume [%s] with [%d] bytes in pool [%s].", volumeName, requiredFormatByte,
-		sc.Pool)
-
+	// Create volume from snapshot
 	// Restore volume from snapshot
 	if req.GetVolumeContentSource() != nil && req.GetVolumeContentSource().GetSnapshot() != nil {
+		// create new volume
+		volumeInfo, err := manager.CreateVolume(volumeName, sc.Pool, requiredFormatByte, sc.Replicas)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		deleteVolume := func() {
+			if err != nil {
+				manager.DeleteVolume(volumeInfo.Name, volumeInfo.Pool)
+			}
+		}
+		defer deleteVolume()
+
+		// get snapshot id
 		snapId := req.GetVolumeContentSource().GetSnapshot().GetId()
 		glog.Infof("Restore volume [%s] from snapshot [%s]", volumeInfo.Name, snapId)
 		snapInfo := cs.cache.Find(snapId)
@@ -176,7 +155,51 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			glog.Errorf("Rollback snapshot error: %s", err.Error())
 			return nil, status.Errorf(codes.Internal, "rollback snapshot error: %v", err)
 		}
+		return &csi.CreateVolumeResponse{
+			Volume: &csi.Volume{
+				Id:            volumeInfo.Name,
+				CapacityBytes: volumeInfo.SizeByte,
+				Attributes:    req.GetParameters(),
+			},
+		}, nil
 	}
+
+	// Find exist volume name
+	glog.Infof("Find duplicate volume name [%s].", volumeName)
+	exVol, err := manager.FindVolume(volumeName, sc.Pool)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if exVol != nil {
+		glog.Infof("Request volume name: [%s], size: [%d], capacity range [%d,%d] Bytes, pool: [%s], replicas: [%d].",
+			volumeName, requiredFormatByte, requiredByte, limitByte, sc.Pool, sc.Replicas)
+		glog.Infof("Exist volume name: [%s], id: [%s], capacity: [%d] Bytes, pool: [%s], replicas: [%d].",
+			exVol.Name, exVol.Id, exVol.SizeByte, exVol.Pool, exVol.Replicas)
+		if exVol.SizeByte >= requiredByte && exVol.SizeByte <= limitByte && exVol.Replicas == sc.Replicas {
+			// exisiting volume is compatible with new request and should be
+			// reused.
+			return &csi.CreateVolumeResponse{
+				Volume: &csi.Volume{
+					Id:            exVol.Name,
+					CapacityBytes: exVol.SizeByte,
+					Attributes:    req.GetParameters(),
+				},
+			}, nil
+		}
+		return nil, status.Errorf(codes.AlreadyExists, "Volume [%s] already exists but is incompatible.", volumeName)
+	}
+	glog.Infof("Not Found duplicate volume name [%s].", volumeName)
+
+	// do create volume
+	glog.Infof("Creating volume [%s] with [%d] bytes in pool [%s]...", volumeName, requiredFormatByte, sc.Pool)
+	volumeInfo, err := manager.CreateVolume(volumeName, sc.Pool, requiredFormatByte, sc.Replicas)
+	if err != nil {
+		glog.Errorf("Failed to create volume [%s] with [%d] bytes in pool [%s] with error [%v].", volumeName,
+			requiredFormatByte, sc.Pool, err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	glog.Infof("Succeed to create volume [%s] with [%d] bytes in pool [%s].", volumeName, requiredFormatByte,
+		sc.Pool)
 
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{

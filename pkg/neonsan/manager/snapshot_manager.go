@@ -189,7 +189,7 @@ func ImportSnapshot(req ImportSnapshotRequest) (err error) {
 	// Check directory
 	dir := path.Dir(req.FilePath)
 	if _, err := os.Stat(dir); err != nil {
-		if err = os.MkdirAll(dir, 755); err != nil {
+		if err = os.MkdirAll(dir, os.ModePerm); err != nil {
 			return err
 		}
 		return err
