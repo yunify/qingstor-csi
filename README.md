@@ -5,7 +5,7 @@
 
 > English | [中文](README_zh.md)
 ## Description
-QingStor CSI plugin implements an interface between Container Storage Interface ([CSI](https://github.com/container-storage-interface/)) enabled Container Orchestrator (CO) and the storage of QingStor. Currently, QingCloud CSI plugin is tested in Kubernetes v1.11+ environment.
+QingStor CSI plugin implements an interface between Container Storage Interface ([CSI](https://github.com/container-storage-interface/)) enabled Container Orchestrator (CO) and the storage of QingStor. Currently, QingCloud CSI plugin is tested in Kubernetes v1.12+ environment.
 
 ## Installation
 
