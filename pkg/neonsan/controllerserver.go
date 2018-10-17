@@ -26,6 +26,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"os"
 	"path"
 	"strconv"
 )
@@ -103,6 +104,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context,
 		}
 		deleteVolume := func() {
 			if err != nil {
+				glog.Errorf("")
 				manager.DeleteVolume(volumeInfo.Name, volumeInfo.Pool)
 			}
 		}
@@ -119,6 +121,19 @@ func (cs *controllerServer) CreateVolume(ctx context.Context,
 			return nil, status.Errorf(codes.Internal, "status of snapshot %v is not ready", snapId)
 		}
 		// restore volume
+		tempSnapshotFilepath := path.Join(util.TempSnapshotDir, snapInfo.Name)
+		deleteTempFile := func() {
+			err := os.Remove(tempSnapshotFilepath)
+			if err != nil {
+				if os.IsNotExist(err) {
+					glog.Warningf("File [%s] does not exist", tempSnapshotFilepath)
+				}
+				glog.Errorf("Failed to remote [%s], error: [%s]", tempSnapshotFilepath, err)
+			}
+			glog.Infof("Succeed to remove [%s]", tempSnapshotFilepath)
+		}
+		defer deleteTempFile()
+
 		// 1. export snapshot
 		glog.Info("Export snapshot")
 		err = manager.ExportSnapshot(manager.ExportSnapshotRequest{
