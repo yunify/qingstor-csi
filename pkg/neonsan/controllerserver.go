@@ -94,6 +94,33 @@ func (cs *controllerServer) CreateVolume(ctx context.Context,
 			requiredByte, limitByte, requiredFormatByte)
 		return nil, status.Error(codes.OutOfRange, "Unsupported capacity range.")
 	}
+
+	// Find exist volume name
+	glog.Infof("Find duplicate volume name [%s].", volumeName)
+	exVol, err := manager.FindVolume(volumeName, sc.Pool)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if exVol != nil {
+		glog.Infof("Request volume name: [%s], size: [%d], capacity range [%d,%d] Bytes, pool: [%s], replicas: [%d].",
+			volumeName, requiredFormatByte, requiredByte, limitByte, sc.Pool, sc.Replicas)
+		glog.Infof("Exist volume name: [%s], id: [%s], capacity: [%d] Bytes, pool: [%s], replicas: [%d].",
+			exVol.Name, exVol.Id, exVol.SizeByte, exVol.Pool, exVol.Replicas)
+		if exVol.SizeByte >= requiredByte && exVol.SizeByte <= limitByte && exVol.Replicas == sc.Replicas {
+			// exisiting volume is compatible with new request and should be
+			// reused.
+			return &csi.CreateVolumeResponse{
+				Volume: &csi.Volume{
+					Id:            exVol.Name,
+					CapacityBytes: exVol.SizeByte,
+					Attributes:    req.GetParameters(),
+				},
+			}, nil
+		}
+		return nil, status.Errorf(codes.AlreadyExists, "Volume [%s] already exists but is incompatible.", volumeName)
+	}
+	glog.Infof("Not Found duplicate volume name [%s].", volumeName)
+
 	// Create volume from snapshot
 	// Restore volume from snapshot
 	if req.GetVolumeContentSource() != nil && req.GetVolumeContentSource().GetSnapshot() != nil {
@@ -178,32 +205,6 @@ func (cs *controllerServer) CreateVolume(ctx context.Context,
 			},
 		}, nil
 	}
-
-	// Find exist volume name
-	glog.Infof("Find duplicate volume name [%s].", volumeName)
-	exVol, err := manager.FindVolume(volumeName, sc.Pool)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	if exVol != nil {
-		glog.Infof("Request volume name: [%s], size: [%d], capacity range [%d,%d] Bytes, pool: [%s], replicas: [%d].",
-			volumeName, requiredFormatByte, requiredByte, limitByte, sc.Pool, sc.Replicas)
-		glog.Infof("Exist volume name: [%s], id: [%s], capacity: [%d] Bytes, pool: [%s], replicas: [%d].",
-			exVol.Name, exVol.Id, exVol.SizeByte, exVol.Pool, exVol.Replicas)
-		if exVol.SizeByte >= requiredByte && exVol.SizeByte <= limitByte && exVol.Replicas == sc.Replicas {
-			// exisiting volume is compatible with new request and should be
-			// reused.
-			return &csi.CreateVolumeResponse{
-				Volume: &csi.Volume{
-					Id:            exVol.Name,
-					CapacityBytes: exVol.SizeByte,
-					Attributes:    req.GetParameters(),
-				},
-			}, nil
-		}
-		return nil, status.Errorf(codes.AlreadyExists, "Volume [%s] already exists but is incompatible.", volumeName)
-	}
-	glog.Infof("Not Found duplicate volume name [%s].", volumeName)
 
 	// do create volume
 	glog.Infof("Creating volume [%s] with [%d] bytes in pool [%s]...", volumeName, requiredFormatByte, sc.Pool)
