@@ -42,7 +42,7 @@ reclaimPolicy: Delete
 - `stepSize`: 用户所创建存储卷容量的增量，单位为GiB，默认为 `1`
 - `fsType`: 存储卷的文件系统格式，默认为 `ext4`
 
-### CSI 插件启动参数
+### CSI 插件启动参数
 
 csi-neonsan 容器启动参数
 

@@ -2,7 +2,7 @@
 
 ## 准备环境
 
-- NeonSAN 服务端，并创建供 Kubernetes 使用的 Pool
+- NeonSAN 服务端，并创建名为 `kube` 的 Pool 供 Kubernetes 使用
 - Kubernetes v1.12+ 集群
     - 启用 [Priviliged Pod](https://kubernetes-csi.github.io/docs/Setup.html#enable-privileged-pods)，将配置项 `--allow-privileged` 设置为 `true`
     - 启用（默认开启）[Mount Propagation](https://kubernetes.io/docs/concepts/storage/volumes/#mount-propagation) 特性
@@ -52,16 +52,15 @@ $ kubectl create configmap csi-neonsan --from-file=qbd.conf=./qbd.conf --namespa
 ## 创建镜像仓库密钥
 
 ```
-$ kubectl apply -f ./csi-secret.yaml
+$ kubectl apply -f ./secret-registry.yaml
 ```
 
-## 创建快照相关对象
+## 创建注册插件对象
 
 ```
-$ kubectl apply -f ./crd-csidriver.yaml
-$ kubectl apply -f ./crd-csinodeinfo.yaml
-$ kubectl apply -f ./csidriver-neonsan.yaml
-$ kubectl apply -f ./crd-snapshotclass.yaml
+$ kubectl apply -f ./crd-csidriver.yaml  --validate=false
+$ kubectl apply -f ./crd-csinodeinfo.yaml  --validate=false
+$ kubectl apply -f ./csidriver.yaml
 ```
 
 ## 创建服务程序

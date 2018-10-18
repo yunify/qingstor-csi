@@ -17,7 +17,7 @@ QingStor CSI 插件实现 CSI 接口，使容器编排平台（如 Kubernetes）
 
 ## 参考资料
 - 如何创建、删除和挂载存储卷，请参考：[NeonSAN CSI 插件用法-存储卷](docs/usage_neonsan_volume_zh.md)
-- 如何创建、删除和创建基于快照内容的存储卷，请参考：[NeonSAN CSI 插件用法-快照](docs/usage_neonsan_snapshot_zh.md)
+- 如何创建、删除和创建基于快照内容的存储卷，请参考：[NeonSAN CSI 插件用法-快照](docs/usage_neonsan_snapshot_zh.md)
 - 如何卸载插件，请参考：[NeonSAN CSI 插件卸载](docs/uninstall_neonsan_zh.md)
 - 依赖版本，特性，对象参数说明，请参考： [参考资料](docs/reference_zh.md)
 
