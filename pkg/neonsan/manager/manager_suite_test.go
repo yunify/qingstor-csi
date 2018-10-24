@@ -29,11 +29,11 @@ const (
 
 func init() {
 	flag.BoolVar(&hasCli, "hasCli", false, "current environment support NeonSAN CLI")
+	// add csi pool
 	manager.Pools = append(manager.Pools, TestPool)
 }
 
 func TestManager(t *testing.T) {
-
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Manager Suite")
 }

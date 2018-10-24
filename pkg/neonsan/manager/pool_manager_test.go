@@ -14,72 +14,29 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package manager
+package manager_test
 
-const (
-	PoolTestPoolName     = "csi"
-	PoolTestFakePoolName = "fake"
+import (
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"github.com/yunify/qingstor-csi/pkg/neonsan/manager"
 )
 
-/*
-func TestFindPool(t *testing.T) {
-	Pools = append(Pools, PoolTestPoolName)
-	tests := []struct {
-		name     string
-		poolName string
-		output   *PoolInfo
-	}{
-		{
-			name:     "find pool",
-			poolName: PoolTestPoolName,
-			output: &PoolInfo{
-				Name: PoolTestPoolName,
-			},
-		},
-		{
-			name:     "not found pool",
-			poolName: PoolTestFakePoolName,
-			output:   nil,
-		},
-	}
-	for _, v := range tests {
-		poolInfo, err := FindPool(v.poolName)
-		if err != nil {
-			t.Errorf("name [%s]: find pool error [%v]", v.name, err)
-		}
+var _ = Describe("Pool", func() {
+	It("can find pool", func() {
+		By("csi pool")
+		poolInfo, err := manager.FindPool(TestPool)
+		Expect(err).To(BeNil())
+		Expect(poolInfo.Name).To(Equal(TestPool))
 
-		if v.output == nil && poolInfo == nil {
-			// no found volume
-		} else if v.output != nil && poolInfo != nil {
-			// found volume, check volume info
-			if v.output.Name != poolInfo.Name {
-				t.Errorf("name [%s]: error expect [%v], but actually [%v]", v.name, v.output, poolInfo)
-			}
-		} else {
-			// return value mismatch
-			t.Errorf("name [%s]: error expect [%v], but actually [%v]", v.name, v.output, poolInfo)
-		}
-	}
-}
+		By("fake pool")
+		poolInfo, err = manager.FindPool(TestPoolFake)
+		Expect(err).NotTo(BeNil())
+	})
 
-func TestListPoolName(t *testing.T) {
-	Pools = append(Pools, PoolTestPoolName)
-	tests := []struct {
-		name   string
-		output string
-	}{
-		{
-			name:   "find pool",
-			output: PoolTestPoolName,
-		},
-	}
-	for _, v := range tests {
-		pools := ListPoolName()
+	It("can list pool", func() {
+		pools := manager.ListPoolName()
+		Expect(len(pools)).NotTo(Equal(0))
+	})
 
-		// check return pool list
-		if !util.ContainsString(pools, v.output) {
-			t.Errorf("name [%s]: expect pool [%s] must in return pool list [%v], but actually not", v.name, v.output, pools)
-		}
-	}
-}
-*/
+})
