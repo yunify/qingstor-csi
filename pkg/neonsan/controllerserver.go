@@ -26,6 +26,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"os"
 	"path"
 	"strconv"
 )
@@ -39,7 +40,8 @@ type controllerServer struct {
 // This operation MUST be idempotent
 // csi.CreateVolumeRequest: name 				+Required
 //							capability			+Required
-func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
+func (cs *controllerServer) CreateVolume(ctx context.Context,
+	req *csi.CreateVolumeRequest) (resp *csi.CreateVolumeResponse, err error) {
 	defer util.EntryFunction("CreateVolume")()
 
 	glog.Info("Validate input arguments.")
@@ -61,6 +63,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, status.Error(codes.InvalidArgument, "Volume name missing in request.")
 	}
 	volumeName := req.GetName()
+
 	// check is creating
 	if _, found := cs.creatingVolume[volumeName]; found {
 		return nil, status.Errorf(codes.Aborted, "no more than one call in-flight for volume [%v]", req)
@@ -68,6 +71,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 		cs.creatingVolume[volumeName] = true
 		defer delete(cs.creatingVolume, volumeName)
 	}
+
 	// Create StorageClass object
 	glog.Info("Create StorageClass object.")
 	sc, err := manager.NewNeonsanStorageClassFromMap(req.GetParameters())
@@ -117,19 +121,23 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 	}
 	glog.Infof("Not Found duplicate volume name [%s].", volumeName)
 
-	// do create volume
-	glog.Infof("Creating volume [%s] with [%d] bytes in pool [%s]...", volumeName, requiredFormatByte, sc.Pool)
-	volumeInfo, err := manager.CreateVolume(volumeName, sc.Pool, requiredFormatByte, sc.Replicas)
-	if err != nil {
-		glog.Errorf("Failed to create volume [%s] with [%d] bytes in pool [%s] with error [%v].", volumeName,
-			requiredFormatByte, sc.Pool, err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	glog.Infof("Succeed to create volume [%s] with [%d] bytes in pool [%s].", volumeName, requiredFormatByte,
-		sc.Pool)
-
+	// Create volume from snapshot
 	// Restore volume from snapshot
 	if req.GetVolumeContentSource() != nil && req.GetVolumeContentSource().GetSnapshot() != nil {
+		// create new volume
+		volumeInfo, err := manager.CreateVolume(volumeName, sc.Pool, requiredFormatByte, sc.Replicas)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		deleteVolume := func() {
+			if err != nil {
+				glog.Errorf("")
+				manager.DeleteVolume(volumeInfo.Name, volumeInfo.Pool)
+			}
+		}
+		defer deleteVolume()
+
+		// get snapshot id
 		snapId := req.GetVolumeContentSource().GetSnapshot().GetId()
 		glog.Infof("Restore volume [%s] from snapshot [%s]", volumeInfo.Name, snapId)
 		snapInfo := cs.cache.Find(snapId)
@@ -140,6 +148,19 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			return nil, status.Errorf(codes.Internal, "status of snapshot %v is not ready", snapId)
 		}
 		// restore volume
+		tempSnapshotFilepath := path.Join(util.TempSnapshotDir, snapInfo.Name)
+		deleteTempFile := func() {
+			err := os.Remove(tempSnapshotFilepath)
+			if err != nil {
+				if os.IsNotExist(err) {
+					glog.Warningf("File [%s] does not exist", tempSnapshotFilepath)
+				}
+				glog.Errorf("Failed to remote [%s], error: [%s]", tempSnapshotFilepath, err)
+			}
+			glog.Infof("Succeed to remove [%s]", tempSnapshotFilepath)
+		}
+		defer deleteTempFile()
+
 		// 1. export snapshot
 		glog.Info("Export snapshot")
 		err = manager.ExportSnapshot(manager.ExportSnapshotRequest{
@@ -176,7 +197,25 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 			glog.Errorf("Rollback snapshot error: %s", err.Error())
 			return nil, status.Errorf(codes.Internal, "rollback snapshot error: %v", err)
 		}
+		return &csi.CreateVolumeResponse{
+			Volume: &csi.Volume{
+				Id:            volumeInfo.Name,
+				CapacityBytes: volumeInfo.SizeByte,
+				Attributes:    req.GetParameters(),
+			},
+		}, nil
 	}
+
+	// do create volume
+	glog.Infof("Creating volume [%s] with [%d] bytes in pool [%s]...", volumeName, requiredFormatByte, sc.Pool)
+	volumeInfo, err := manager.CreateVolume(volumeName, sc.Pool, requiredFormatByte, sc.Replicas)
+	if err != nil {
+		glog.Errorf("Failed to create volume [%s] with [%d] bytes in pool [%s] with error [%v].", volumeName,
+			requiredFormatByte, sc.Pool, err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	glog.Infof("Succeed to create volume [%s] with [%d] bytes in pool [%s].", volumeName, requiredFormatByte,
+		sc.Pool)
 
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
