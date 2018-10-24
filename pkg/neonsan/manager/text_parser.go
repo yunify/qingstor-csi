@@ -31,7 +31,7 @@ import (
 //   volumes, nil: found volumes info
 //   nil, nil: volumes not found
 //   nil, err: error
-func ParseVolumeList(input string, poolName string) (vols []*VolumeInfo, err error) {
+func ParseVolumeList(input string) (vols []*VolumeInfo, err error) {
 	in := strings.Trim(input, "\n")
 	lines := strings.Split(in, "\n")
 	for i, v := range lines {
@@ -47,7 +47,6 @@ func ParseVolumeList(input string, poolName string) (vols []*VolumeInfo, err err
 			}
 		} else if i >= 4 && v[0] != '+' {
 			volInfo := readVolumeInfoContent(v)
-			volInfo.Pool = poolName
 			vols = append(vols, volInfo)
 		}
 	}
@@ -165,13 +164,15 @@ func readVolumeInfoContent(line string) (ret *VolumeInfo) {
 			}
 			ret.SizeByte = size64
 		case 3:
+			ret.Pool = v
+		case 4:
 			rep, err := strconv.Atoi(v)
 			if err != nil {
 				glog.Errorf("parse int [%s] error in string [%s]", v, line)
 				return nil
 			}
 			ret.Replicas = rep
-		case 5:
+		case 6:
 			ret.Status = v
 		}
 	}

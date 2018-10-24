@@ -41,9 +41,9 @@ func FindVolume(volName string, poolName string) (volInfo *VolumeInfo, err error
 	if err != nil {
 		return nil, err
 	}
-	volList, err := ParseVolumeList(string(output), poolName)
+	volList, err := ParseVolumeList(string(output))
 	if err != nil {
-		return volInfo, err
+		return nil, err
 	}
 	glog.Infof("Found [%d] volume in [%v].", len(volList), args)
 	switch len(volList) {
@@ -62,26 +62,23 @@ func FindVolume(volName string, poolName string) (volInfo *VolumeInfo, err error
 //  nil, nil: not found
 //  nil, error: error
 func FindVolumeWithoutPool(volName string) (volInfo *VolumeInfo, err error) {
-	pools := ListPoolName()
 	var volInfos []*VolumeInfo
-	for _, pool := range pools {
-		vol, err := FindVolume(volName, pool)
-		if err != nil {
-			glog.Errorf("error find volume [%s] in pool [%s]", volName, pool)
-			return nil, err
-		}
-		if vol != nil {
-			glog.Infof("found volume [%s] in pool [%s]", vol.Name, vol.Pool)
-			volInfos = append(volInfos, vol)
-		}
+	args := []string{"list_volume", "--volume", volName, "--detail", "-c", util.ConfigFilepath}
+	output, err := util.ExecCommand(CmdNeonsan, args)
+	if err != nil {
+		return nil, err
 	}
-	switch len(volInfos) {
+	volList, err := ParseVolumeList(string(output))
+	if err != nil {
+		return nil, err
+	}
+	switch len(volList) {
 	case 0:
 		return nil, nil
 	case 1:
-		return volInfos[0], nil
+		return volList[0], nil
 	default:
-		return nil, fmt.Errorf("find duplicate volume [%s] in [%d] pools", volName, len(volInfos))
+		return nil, fmt.Errorf("found duplicate volume [%s] in [%d] pools", volName, len(volInfos))
 	}
 }
 
@@ -100,7 +97,7 @@ func ListVolumeByPool(poolName string) (volList []*VolumeInfo, err error) {
 	if err != nil {
 		return nil, err
 	}
-	volList, err = ParseVolumeList(string(output), poolName)
+	volList, err = ParseVolumeList(string(output))
 	if err != nil {
 		return nil, err
 	}
@@ -135,9 +132,6 @@ func CreateVolume(volName string, poolName string, volSize64 int64, replicas int
 	// get volume information
 	return FindVolume(volName, poolName)
 }
-
-// CreateVolume from snapshot
-//
 
 // DeleteVolume delete volume through Neonsan client command line tool
 // Input:
