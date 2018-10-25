@@ -14,394 +14,196 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package manager
+package manager_test
 
-/*
 import (
-	"testing"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"github.com/yunify/qingstor-csi/pkg/neonsan/manager"
 	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
-	"strings"
-	"time"
 )
 
-const (
-	TestPoolName           = "csi"
-	TestNormalVolumeName   = "foo"
-	TestNotFoundVolumeName = "nofound"
-)
+var _ = Describe("VolumeManager", func() {
+	BeforeEach(func() {
+		if hasCli == false {
+			Skip(UnsupportCli)
+		}
+		By("clean volume")
+		info, err := manager.FindVolume(TestVolume1, TestPool)
+		Expect(err).To(BeNil())
+		if info != nil {
+			manager.DeleteVolume(info.Name, info.Pool)
+		}
+		info, err = manager.FindVolume(TestVolume2, TestPool)
+		Expect(err).To(BeNil())
+		if info != nil {
+			manager.DeleteVolume(info.Name, info.Pool)
+		}
+		info, err = manager.FindVolume(TestVolumeFake, TestPool)
+		Expect(err).To(BeNil())
+		if info != nil {
+			manager.DeleteVolume(info.Name, info.Pool)
+		}
+	})
 
-func TestCreateVolume(t *testing.T) {
-	Pools = []string{TestPoolName}
-	tests := []struct {
-		name      string
-		volName   string
-		volPool   string
-		volSize64 int64
-		replicas  int
-		infoExist bool
-		errStr    string
-	}{
-		{
-			name:      "create succeed",
-			volName:   TestNormalVolumeName,
-			volPool:   TestPoolName,
-			volSize64: 2 * util.Gib,
-			replicas:  1,
-			infoExist: true,
-			errStr:    "",
-		},
-		{
-			name:      "create failed",
-			volName:   TestNormalVolumeName,
-			volPool:   TestPoolName,
-			volSize64: 2 * util.Gib,
-			replicas:  1,
-			infoExist: false,
-			errStr:    "Volume already existed",
-		},
-	}
-	for _, v := range tests {
-		volInfo, err := CreateVolume(v.volName, v.volPool, v.volSize64, v.replicas)
+	Describe("CreateVolume", func() {
+		It("can create volume", func() {
+			By("creating volume")
+			volInfo1, err := manager.CreateVolume(TestVolume1, TestPool, util.Gib*2, 1)
+			Expect(err).To(BeNil())
+			Expect(volInfo1.Name).To(Equal(TestVolume1))
 
-		// check volume info
-		if (v.infoExist == false && volInfo != nil) || (v.infoExist == true && volInfo == nil) {
-			t.Errorf("name [%s]:  volume info expect [%t], but actually [%t]", v.name, v.infoExist, volInfo == nil)
-		}
+			By("finding volume")
+			exVolInfo, err := manager.FindVolume(volInfo1.Name, volInfo1.Pool)
+			Expect(err).To(BeNil())
+			Expect(exVolInfo).To(Equal(volInfo1))
 
-		// check error
-		if v.errStr != "" && err != nil {
-			if !strings.Contains(err.Error(), v.errStr) {
-				t.Errorf("name [%s]: error expect [%s], but actually [%s]", v.name, v.errStr, err.Error())
-			}
-		} else if v.errStr == "" && err == nil {
-			continue
-		} else {
-			t.Errorf("name [%s]: error expect [%s], but actually [%v]", v.name, v.errStr, err)
-		}
-	}
-}
+			By("re-creating volume")
+			volInfo2, err := manager.CreateVolume(TestVolume1, TestPool, util.Gib*2, 1)
+			Expect(err).NotTo(BeNil())
+			Expect(volInfo2).To(BeNil())
+		})
+	})
 
-func TestFindVolume(t *testing.T) {
-	Pools = []string{TestPoolName}
-	tests := []struct {
-		name    string
-		volName string
-		volPool string
-		info    *VolumeInfo
-	}{
-		{
-			name:    "found volume",
-			volName: TestNormalVolumeName,
-			volPool: TestPoolName,
-			info: &VolumeInfo{
-				Name:     "foo",
-				Pool:     TestPoolName,
-				SizeByte: 2 * util.Gib,
-				Status:   VolumeStatusOk,
-				Replicas: 1,
-			},
-		},
-		{
-			name:    "not found volume",
-			volName: TestNotFoundVolumeName,
-			volPool: TestPoolName,
-			info:    nil,
-		},
-	}
-	for _, v := range tests {
-		volInfo, err := FindVolume(v.volName, v.volPool)
-		if err != nil {
-			t.Errorf("name [%s]: volume error [%s]", v.name, err.Error())
-		}
+	Describe("DeleteVolume", func() {
+		BeforeEach(func() {
+			By("creating volume")
+			volInfo1, err := manager.CreateVolume(TestVolume1, TestPool, util.Gib*2, 1)
+			Expect(err).To(BeNil())
+			Expect(volInfo1.Name).To(Equal(TestVolume1))
+		})
 
-		// check volume info
-		if v.info != nil && volInfo != nil {
-			if v.info.Name != volInfo.Name || v.info.Pool != volInfo.Pool {
-				t.Errorf("name [%s]: volume info expect [%v], but actually [%v]", v.name, v.info, volInfo)
-			}
-		} else if v.info == nil && volInfo == nil {
-			continue
-		} else {
-			t.Errorf("name [%s]: volume info expect [%v], but actually [%v]", v.name, v.info, volInfo)
-		}
-	}
-}
+		It("can delete volume", func() {
+			By("deleting volume")
+			err := manager.DeleteVolume(TestVolume1, TestPool)
+			Expect(err).To(BeNil())
+		})
 
-func TestFindVolumeWithoutPool(t *testing.T) {
-	Pools = []string{TestPoolName}
-	tests := []struct {
-		name    string
-		volName string
-		volPool string
-	}{
-		{
-			name:    "found volume in pool",
-			volName: TestNormalVolumeName,
-			volPool: TestPoolName,
-		},
-		{
-			name:    "not found volume in pool",
-			volName: TestNotFoundVolumeName,
-			volPool: "",
-		},
-	}
-	for _, v := range tests {
-		ret, err := FindVolumeWithoutPool(v.volName)
-		if err != nil {
-			t.Errorf("name [%s]: volume error [%s]", v.name, err.Error())
-		}
-		if v.volPool != "" && ret != nil {
-			if v.volPool != ret.Pool {
-				t.Errorf("name [%s]: volume pool expect [%s], but actually [%s]", v.name, v.volPool, ret.Pool)
-			}
-		} else if v.volPool == "" && ret == nil {
-			continue
-		} else {
-			t.Errorf("name [%s]: volume pool expect [%s], but actually [%v]", v.name, v.volPool, ret)
-		}
-	}
-}
+		It("cannot re-delete volume", func() {
+			By("deleting volume")
+			err := manager.DeleteVolume(TestVolume1, TestPool)
+			Expect(err).To(BeNil())
 
-func TestListVolumeByPool(t *testing.T) {
-	Pools = []string{TestPoolName}
-	tests := []struct {
-		name    string
-		volName string
-		volPool string
-		info    []*VolumeInfo
-	}{
-		{
-			name:    "found volume",
-			volPool: TestPoolName,
-			info: []*VolumeInfo{
-				{
-					Name:     TestNormalVolumeName,
-					Pool:     TestPoolName,
-					SizeByte: 2 * util.Gib,
-				},
-			},
-		},
-		{
-			name:    "not found volume",
-			volName: TestNotFoundVolumeName,
-			volPool: TestPoolName,
-			info:    nil,
-		},
-	}
+			By("re-deleting volume")
+			err = manager.DeleteVolume(TestVolume1, TestPool)
+			Expect(err).NotTo(BeNil())
+		})
 
-	for _, v := range tests {
-		volList, err := ListVolumeByPool(v.volPool)
-		if err != nil {
-			t.Errorf("name [%s]: volume error [%s]", v.name, err.Error())
-		}
-		// verify array
-		if len(v.info) != len(volList) {
-			t.Errorf("name [%s]: expect [%d], but actually [%d]", v.name, len(v.info), len(volList))
-		}
-		// check each array element
-		for i := range v.info {
-			if v.info[i].Name != volList[i].Name || v.info[i].Pool != volList[i].Pool {
-				t.Errorf("name [%s]: index [%d] expect [%v], but actually [%v]", v.name, i, v.info[i], volList[i])
-			}
-		}
-	}
-}
+		It("cannot delete fake volume", func() {
+			By("deleting fake volume")
+			err := manager.DeleteVolume(TestVolumeFake, TestPool)
+			Expect(err).NotTo(BeNil())
+		})
+	})
 
-func TestAttachVolume(t *testing.T) {
-	Pools = []string{TestPoolName}
-	tests := []struct {
-		name   string
-		volume string
-		pool   string
-		errStr string
-	}{
-		{
-			name:   "attach foo image",
-			volume: TestNormalVolumeName,
-			pool:   TestPoolName,
-			errStr: "",
-		},
-		{
-			name:   "reattach foo image",
-			volume: TestNormalVolumeName,
-			pool:   TestPoolName,
-			errStr: "exit status 17",
-		},
-		{
-			name:   "attach not exists image",
-			volume: TestNotFoundVolumeName,
-			pool:   TestPoolName,
-			errStr: "exit status 154",
-		},
-	}
-	for _, v := range tests {
-		err := AttachVolume(v.volume, v.pool)
-		if err == nil && v.errStr == "" {
-			continue
-		} else if err != nil && v.errStr != "" {
-			if !strings.Contains(err.Error(), v.errStr) {
-				t.Errorf("name [%s]: expect contains [%s], but actually [%s]", v.name, v.errStr, err.Error())
-			}
-		} else {
-			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.errStr, err)
-		}
-	}
-}
+	Describe("Attach and Detach Volume", func() {
+		BeforeEach(func() {
+			By("creating volume")
+			volInfo1, err := manager.CreateVolume(TestVolume1, TestPool, util.Gib*2, 1)
+			Expect(err).To(BeNil())
+			Expect(volInfo1.Name).To(Equal(TestVolume1))
+		})
 
-func TestFindAttachedVolumeWithoutPool(t *testing.T) {
-	Pools = []string{TestPoolName}
-	tests := []struct {
-		name   string
-		volume string
-		pool   string
-		errStr string
-	}{
-		{
-			name:   "attach info",
-			volume: TestNormalVolumeName,
-			pool:   TestPoolName,
-			errStr: "",
-		},
-		{
-			name:   "nil attach info",
-			volume: TestNotFoundVolumeName,
-			pool:   "",
-			errStr: "",
-		},
-	}
-	for _, v := range tests {
-		info, err := FindAttachedVolumeWithoutPool(v.volume)
-		if err != nil && v.errStr != "" {
-			if !strings.Contains(err.Error(), v.errStr) {
-				t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.errStr, err)
-			}
-		} else if !(err == nil && v.errStr == "") {
-			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.errStr, err)
-		}
-		if v.pool == "" && info == nil {
-			continue
-		} else if v.pool != "" && info != nil {
-			if v.pool != info.Pool {
-				t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.pool, info)
-			}
-		} else {
-			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.pool, info)
-		}
-	}
-}
+		It("can attach volume", func() {
+			By("succeed to attach volume")
+			err := manager.AttachVolume(TestVolume1, TestPool)
+			Expect(err).To(BeNil())
 
-func TestDetachVolume(t *testing.T) {
-	Pools = []string{TestPoolName}
-	time.Sleep(3 * time.Second)
-	tests := []struct {
-		name   string
-		volume string
-		pool   string
-		errStr string
-	}{
-		{
-			name:   "detach foo image",
-			volume: "foo",
-			pool:   TestPoolName,
-			errStr: "",
-		},
-		{
-			name:   "re-detach foo image",
-			volume: "foo",
-			pool:   TestPoolName,
-			errStr: "exit status 25",
-		},
-		{
-			name:   "detach not exists image",
-			volume: "nofound",
-			pool:   TestPoolName,
-			errStr: "exit status 25",
-		},
-	}
-	for _, v := range tests {
-		err := DetachVolume(v.volume, v.pool)
-		if err == nil && v.errStr == "" {
-			continue
-		} else if err != nil && v.errStr != "" {
-			if !strings.Contains(err.Error(), v.errStr) {
-				t.Errorf("name [%s]: expect contains [%s], but actually [%s]", v.name, v.errStr, err.Error())
-			}
-		} else {
-			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.errStr, err)
-		}
-	}
-}
+			By("cleaner")
+			err = manager.DetachVolume(TestVolume1, TestPool)
+			Expect(err).To(BeNil())
+		})
 
-func TestDeleteVolume(t *testing.T) {
-	Pools = []string{TestPoolName}
-	tests := []struct {
-		name    string
-		volName string
-		volPool string
-		errStr  string
-	}{
-		{
-			name:    "delete success",
-			volName: "foo",
-			volPool: TestPoolName,
-			errStr:  "",
-		},
-		{
-			name:    "delete failed",
-			volName: "nofound",
-			volPool: TestPoolName,
-			errStr:  "Volume not exists",
-		},
-	}
-	for _, v := range tests {
-		err := DeleteVolume(v.volName, v.volPool)
-		if v.errStr == "" && err == nil {
-			continue
-		} else if v.errStr != "" && err != nil {
-			if !strings.Contains(err.Error(), v.errStr) {
-				t.Errorf("name [%s]: error expect [%s], but actually [%s]", v.name, v.errStr, err.Error())
-			}
-		} else {
-			t.Errorf("name [%s]: error expect [%s], but actually [%v]", v.name, v.errStr, err)
-		}
-	}
-}
+		It("cannot re-attach volume", func() {
+			By("succeed to attach volume")
+			err := manager.AttachVolume(TestVolume1, TestPool)
+			Expect(err).To(BeNil())
 
-func TestProbeNeonsanCommand(t *testing.T) {
-	Pools = []string{TestPoolName}
-	tests := []struct {
-		name   string
-		nilErr bool
-	}{
-		{
-			name:   "Probe Neonsan",
-			nilErr: true,
-		},
-	}
-	for _, v := range tests {
-		err := ProbeNeonsanCommand()
-		if (err == nil) != v.nilErr {
-			t.Errorf("name [%s]: expect [%t], but actually [%t], error [%v].", v.name, v.nilErr, err == nil, err)
-		}
-	}
-}
+			By("failed to re-attach volume")
+			err = manager.AttachVolume(TestVolume1, TestPool)
+			Expect(err).NotTo(BeNil())
 
-func TestProbeQbdCommand(t *testing.T) {
-	Pools = []string{TestPoolName}
-	tests := []struct {
-		name   string
-		nilErr bool
-	}{
-		{
-			name:   "Probe Qbd",
-			nilErr: true,
-		},
-	}
-	for _, v := range tests {
-		err := ProbeQbdCommand()
-		if (err == nil) != v.nilErr {
-			t.Errorf("name [%s]: expect [%t], but actually [%t], error [%v].", v.name, v.nilErr, err == nil, err)
-		}
-	}
-}
-*/
+			By("cleaner")
+			err = manager.DetachVolume(TestVolume1, TestPool)
+			Expect(err).To(BeNil())
+		})
+
+		It("cannot attach and detach not-exist volume", func() {
+			err := manager.AttachVolume(TestVolumeFake, TestPool)
+			Expect(err).NotTo(BeNil())
+			err = manager.DetachVolume(TestVolumeFake, TestPool)
+			Expect(err).NotTo(BeNil())
+		})
+	})
+
+	Describe("Consult Volume", func() {
+		BeforeEach(func() {
+			By("creating volume")
+			volInfo1, err := manager.CreateVolume(TestVolume1, TestPool, util.Gib*2, 1)
+			Expect(err).To(BeNil())
+			Expect(volInfo1.Name).To(Equal(TestVolume1))
+
+			volInfo2, err := manager.CreateVolume(TestVolume2, TestPool, util.Gib*2, 1)
+			Expect(err).To(BeNil())
+			Expect(volInfo2.Name).To(Equal(TestVolume2))
+		})
+
+		It("find volume", func() {
+			volInfo, err := manager.FindVolume(TestVolume1, TestPool)
+			Expect(err).To(BeNil())
+			Expect(volInfo).NotTo(BeNil())
+		})
+
+		It("find non-exist volume", func() {
+			volInfo, err := manager.FindVolume(TestVolumeFake, TestPool)
+			Expect(err).To(BeNil())
+			Expect(volInfo).To(BeNil())
+		})
+
+		It("find volume in non-exist pool", func() {
+			_, err := manager.FindVolume(TestVolume1, TestPoolFake)
+			Expect(err).NotTo(BeNil())
+		})
+
+		It("find volume without pool", func() {
+			volInfo, err := manager.FindVolumeWithoutPool(TestVolume1)
+			Expect(err).To(BeNil())
+			Expect(volInfo).NotTo(BeNil())
+		})
+
+		It("find non-exist volume without pool", func() {
+			volInfo, err := manager.FindVolumeWithoutPool(TestVolumeFake)
+			Expect(err).To(BeNil())
+			Expect(volInfo).To(BeNil())
+		})
+
+		It("list volume by pool", func() {
+			volInfos, err := manager.ListVolumeByPool(TestPool)
+			Expect(err).To(BeNil())
+			Expect(len(volInfos) > 0).To(Equal(true))
+		})
+
+		It("list volume by non-exist pool", func() {
+			_, err := manager.ListVolumeByPool(TestPoolFake)
+			Expect(err).NotTo(BeNil())
+		})
+
+		It("find attached volume without pool", func() {
+			err := manager.AttachVolume(TestVolume1, TestPool)
+			Expect(err).To(BeNil())
+			volInfo, err := manager.FindAttachedVolumeWithoutPool(TestVolume1)
+			Expect(err).To(BeNil())
+			Expect(volInfo.Name).To(Equal(TestVolume1))
+
+			By("cleaner")
+			err = manager.DetachVolume(TestVolume1,TestPool)
+			Expect(err).To(BeNil())
+		})
+
+		It("find non-attached volume without pool", func() {
+			volInfo, err := manager.FindAttachedVolumeWithoutPool(TestVolumeFake)
+			Expect(err).To(BeNil())
+			Expect(volInfo).To(BeNil())
+		})
+	})
+})

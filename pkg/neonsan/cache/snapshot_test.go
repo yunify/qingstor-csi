@@ -136,7 +136,7 @@ var _ = Describe("Snapshot Cache", func() {
 		cache.New()
 		err := cache.Sync()
 		fmt.Fprintf(GinkgoWriter, "len %d", len(cache.List()))
-		for _,v :=range cache.List(){
+		for _, v := range cache.List() {
 			fmt.Fprintf(GinkgoWriter, "snapshot %v\n", v)
 		}
 		Expect(err).To(BeNil())
