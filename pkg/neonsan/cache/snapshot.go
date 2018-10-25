@@ -94,7 +94,7 @@ func (snapCache *SnapshotCacheType) Sync() (err error) {
 				if snapCache.Add(volSnapList[i]) {
 					glog.Infof("add snapshot [%s] into cache successfully", volSnapList[i].Name)
 				} else {
-					return fmt.Errorf("add snapshot [%s] failed, already exits but incompatiably", volSnapList[i].Name)
+					return fmt.Errorf("add snapshot [%v] failed, already exits but incompatiably", volSnapList[i])
 				}
 			}
 		}

@@ -197,6 +197,21 @@ func (cs *controllerServer) CreateVolume(ctx context.Context,
 			glog.Errorf("Rollback snapshot error: %s", err.Error())
 			return nil, status.Errorf(codes.Internal, "rollback snapshot error: %v", err)
 		}
+
+		// 4. remove snapshot from restore volume
+		if info, err := manager.FindSnapshot(snapInfo.Name, volumeInfo.Name, snapInfo.Pool); err != nil {
+			glog.Errorf("Find restore volume's snapshot error: %s", err.Error())
+			return nil, status.Errorf(codes.Internal, "find restore volume's snapshot error: %v", err)
+		} else {
+			if info != nil {
+				err = manager.DeleteSnapshot(info.Name, info.SrcVolName, info.Pool)
+				if err != nil {
+					glog.Errorf("Delete snapshot error: %s", err.Error())
+					return nil, status.Errorf(codes.Internal, "delete snapshot in restore volume error: %v", err)
+				}
+			}
+		}
+
 		return &csi.CreateVolumeResponse{
 			Volume: &csi.Volume{
 				Id:            volumeInfo.Name,
@@ -414,7 +429,7 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		}
 	}
 
-	// 3. do create snapshot
+	// 4. do create snapshot
 	glog.Infof("Create snapshot [%s] in pool [%s] from volume [%s]...", req.GetName(), sc.Pool, req.GetSourceVolumeId())
 	snapInfo, err := manager.CreateSnapshot(req.GetName(), req.GetSourceVolumeId(), sc.Pool)
 	if err != nil {
