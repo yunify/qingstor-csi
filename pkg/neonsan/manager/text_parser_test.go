@@ -23,6 +23,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/yunify/qingstor-csi/pkg/neonsan/manager"
 	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
+	"reflect"
 )
 
 var _ = Describe("Parse Text", func() {
@@ -30,7 +31,7 @@ var _ = Describe("Parse Text", func() {
 		func(text string, volInfo []*manager.VolumeInfo, err error) {
 			resInfo, resErr := manager.ParseVolumeList(text)
 			Expect(resErr == nil).To(Equal(err == nil))
-			Expect(volInfo).To(Equal(resInfo))
+			Expect(reflect.DeepEqual(resInfo, volInfo)).To(Equal(true))
 		},
 		Entry("one volume list",
 			`Volume Count:  1
@@ -89,7 +90,7 @@ var _ = Describe("Parse Text", func() {
 		func(text string, snapInfo []*manager.SnapshotInfo, err error) {
 			resInfo, resErr := manager.ParseSnapshotList(text)
 			Expect(resErr == nil).To(Equal(err == nil))
-			Expect(resInfo).To(Equal(snapInfo))
+			Expect(reflect.DeepEqual(resInfo, snapInfo)).To(Equal(true))
 		},
 		Entry("two snapshot list",
 			`Snapshot Count:  2
@@ -127,7 +128,7 @@ var _ = Describe("Parse Text", func() {
 	)
 
 	DescribeTable("parse pool info",
-		func(text string, info []*manager.PoolInfo, err error) {
+		func(text string, info *manager.PoolInfo, err error) {
 			resInfo, resErr := manager.ParsePoolInfo(text)
 			Expect(resErr == nil).To(Equal(err == nil))
 			Expect(resInfo).To(Equal(info))

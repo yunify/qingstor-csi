@@ -31,7 +31,8 @@ var _ = Describe("Pool", func() {
 
 		By("fake pool")
 		poolInfo, err = manager.FindPool(TestPoolFake)
-		Expect(err).NotTo(BeNil())
+		Expect(err).To(BeNil())
+		Expect(poolInfo).To(BeNil())
 	})
 
 	It("can list pool", func() {

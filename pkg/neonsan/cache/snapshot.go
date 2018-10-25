@@ -84,12 +84,12 @@ func (snapCache *SnapshotCacheType) Sync() (err error) {
 		}
 		for _, volInfo := range vols {
 			// visit each volume
-			glog.Info(volInfo)
 			volSnapList, err := manager.ListSnapshotByVolume(volInfo.Name, volInfo.Pool)
-			glog.Info(volSnapList)
 			if err != nil {
 				return err
 			}
+			glog.Infof("try to add [%d] snapshot of volume [%s] in pool [%s] into cache...", len(volSnapList),
+				volInfo.Name, volInfo.Pool)
 			for i := range volSnapList {
 				if snapCache.Add(volSnapList[i]) {
 					glog.Infof("add snapshot [%s] into cache successfully", volSnapList[i].Name)

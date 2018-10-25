@@ -101,7 +101,7 @@ func ListVolumeByPool(poolName string) (volList []*VolumeInfo, err error) {
 	if err != nil {
 		return nil, err
 	}
-	glog.Infof("Found [%d] volume in [%v].", len(volList), args)
+	glog.Infof("Found [%d] volume in [%v].", len(volList), volList)
 	return volList, nil
 }
 
