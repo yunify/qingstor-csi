@@ -196,7 +196,7 @@ var _ = Describe("VolumeManager", func() {
 			Expect(volInfo.Name).To(Equal(TestVolume1))
 
 			By("cleaner")
-			err = manager.DetachVolume(TestVolume1,TestPool)
+			err = manager.DetachVolume(TestVolume1, TestPool)
 			Expect(err).To(BeNil())
 		})
 

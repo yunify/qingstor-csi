@@ -64,7 +64,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context,
 	}
 	volumeName := req.GetName()
 
-	// check is creating
+	// Ensure no more than one call "in-flight" per volume
 	if _, found := cs.creatingVolume[volumeName]; found {
 		return nil, status.Errorf(codes.Aborted, "no more than one call in-flight for volume [%v]", req)
 	} else {
@@ -88,13 +88,14 @@ func (cs *controllerServer) CreateVolume(ctx context.Context,
 		limitByte = util.Int64Max
 	}
 
-	// check volume range
+	// Check volume range
 	if requiredFormatByte > limitByte {
 		glog.Errorf("Request capacity range [%d, %d] bytes, format required size: [%d] gb.",
 			requiredByte, limitByte, requiredFormatByte)
 		return nil, status.Error(codes.OutOfRange, "Unsupported capacity range.")
 	}
 
+	// For idempotent:
 	// Find exist volume name
 	glog.Infof("Find duplicate volume name [%s].", volumeName)
 	exVol, err := manager.FindVolume(volumeName, sc.Pool)
@@ -121,7 +122,6 @@ func (cs *controllerServer) CreateVolume(ctx context.Context,
 	}
 	glog.Infof("Not Found duplicate volume name [%s].", volumeName)
 
-	// Create volume from snapshot
 	// Restore volume from snapshot
 	if req.GetVolumeContentSource() != nil && req.GetVolumeContentSource().GetSnapshot() != nil {
 		// create new volume
@@ -198,7 +198,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context,
 			return nil, status.Errorf(codes.Internal, "rollback snapshot error: %v", err)
 		}
 
-		// 4. remove snapshot from restore volume
+		// 4. delete snapshot in restore volume
 		if info, err := manager.FindSnapshot(snapInfo.Name, volumeInfo.Name, snapInfo.Pool); err != nil {
 			glog.Errorf("Find restore volume's snapshot error: %s", err.Error())
 			return nil, status.Errorf(codes.Internal, "find restore volume's snapshot error: %v", err)
@@ -221,7 +221,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context,
 		}, nil
 	}
 
-	// do create volume
+	// Do create volume
 	glog.Infof("Creating volume [%s] with [%d] bytes in pool [%s]...", volumeName, requiredFormatByte, sc.Pool)
 	volumeInfo, err := manager.CreateVolume(volumeName, sc.Pool, requiredFormatByte, sc.Replicas)
 	if err != nil {

@@ -30,7 +30,7 @@ const (
 	Int64Max              int64  = int64(^uint64(0) >> 1)
 	PluginFolder          string = "/var/lib/kubelet/plugins/"
 	TimeLayout            string = "2006-01-02T15:04:05+08:00"
-	ConfigFilepathDefault string = "/etc/neonsan/qbd.conf"
+	ConfigFilePathDefault string = "/etc/neonsan/qbd.conf"
 )
 
 const (
@@ -56,7 +56,7 @@ const (
 )
 
 var (
-	ConfigFilepath  string = ConfigFilepathDefault
+	ConfigFilePath  string = ConfigFilePathDefault
 	TempSnapshotDir string = "/tmp"
 )
 

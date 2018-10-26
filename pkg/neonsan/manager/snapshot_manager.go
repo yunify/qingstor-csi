@@ -60,7 +60,7 @@ func ListSnapshotByVolume(srcVolName, poolName string) (snaps []*SnapshotInfo, e
 	if !util.ContainsString(ListPoolName(), poolName) {
 		return nil, fmt.Errorf("invalid pool name [%s]", poolName)
 	}
-	args := []string{"list_snapshot", "--volume", srcVolName, "--pool", poolName, "-c", util.ConfigFilepath}
+	args := []string{"list_snapshot", "--volume", srcVolName, "--pool", poolName, "-c", util.ConfigFilePath}
 	output, err := util.ExecCommand(CmdNeonsan, args)
 	if err != nil {
 		return nil, err
@@ -86,7 +86,7 @@ func CreateSnapshot(snapName, srcVolName, poolName string) (outSnap *SnapshotInf
 		return nil, fmt.Errorf("invalid pool name [%s]", poolName)
 	}
 	args := []string{"create_snapshot", "--snapshot", fmt.Sprintf("%s@%s", srcVolName, snapName), "--pool", poolName,
-		"-c", util.ConfigFilepath}
+		"-c", util.ConfigFilePath}
 	_, err = util.ExecCommand(CmdNeonsan, args)
 	if err != nil {
 		return nil, err
@@ -111,7 +111,7 @@ func DeleteSnapshot(snapName, srcVolName, poolName string) (err error) {
 		return fmt.Errorf("invalid pool name [%s]", poolName)
 	}
 	args := []string{"delete_snapshot", "--snapshot", fmt.Sprintf("%s@%s", srcVolName, snapName), "--pool", poolName,
-		"-c", util.ConfigFilepath}
+		"-c", util.ConfigFilePath}
 	_, err = util.ExecCommand(CmdNeonsan, args)
 	if err != nil {
 		return err
@@ -170,7 +170,7 @@ func ExportSnapshot(req ExportSnapshotRequest) (err error) {
 	// Export snapshot
 	args := []string{"export_diff", "--snapshot", fmt.Sprintf("%s@%s", req.SrcVolName, req.SnapName),
 		"--of", req.FilePath, "--pool", req.PoolName,
-		"-t", req.Protocol, "-c", util.ConfigFilepath}
+		"-t", req.Protocol, "-c", util.ConfigFilePath}
 	_, err = util.ExecCommand(CmdNeonsan, args)
 	if err != nil {
 		return err
@@ -197,7 +197,7 @@ func ImportSnapshot(req ImportSnapshotRequest) (err error) {
 
 	// Import snapshot
 	args := []string{"import_diff", "--volume", req.VolName, "--pool", req.PoolName, "-if", req.FilePath,
-		"-t", req.Protocol, "-c", util.ConfigFilepath}
+		"-t", req.Protocol, "-c", util.ConfigFilePath}
 	_, err = util.ExecCommand(CmdNeonsan, args)
 	if err != nil {
 		return err
@@ -206,7 +206,7 @@ func ImportSnapshot(req ImportSnapshotRequest) (err error) {
 	return nil
 }
 
-// RollBack
+// RollBack roll back snapshot
 func RollbackSnapshot(req RollbackSnapshotRequest) (err error) {
 	// Check input args
 	if len(req.SnapName) == 0 || len(req.Pool) == 0 || len(req.VolumeName) == 0 {
@@ -215,7 +215,7 @@ func RollbackSnapshot(req RollbackSnapshotRequest) (err error) {
 
 	// Rollback snapshot
 	args := []string{"rollback_snapshot", "--pool", req.Pool,
-		"--snapshot", fmt.Sprintf("%s@%s", req.VolumeName, req.SnapName), "-c", util.ConfigFilepath}
+		"--snapshot", fmt.Sprintf("%s@%s", req.VolumeName, req.SnapName), "-c", util.ConfigFilePath}
 	_, err = util.ExecCommand(CmdNeonsan, args)
 	if err != nil {
 		return err

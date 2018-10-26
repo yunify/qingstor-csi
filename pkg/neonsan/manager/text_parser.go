@@ -53,8 +53,8 @@ func ParseVolumeList(input string) (vols []*VolumeInfo, err error) {
 	return vols, nil
 }
 
-// ParseSnapshotList
-// WARNING: Due to Neonsan CLI tool only returning volume ID, we replace
+// ParseSnapshotList parse snapshot list text
+// TODO: Due to Neonsan CLI tool only returning volume ID, we replace
 // volume name field of snapshotInfo by volume id.
 func ParseSnapshotList(input string) (snaps []*SnapshotInfo, err error) {
 	in := strings.Trim(input, "\n")
@@ -77,7 +77,7 @@ func ParseSnapshotList(input string) (snaps []*SnapshotInfo, err error) {
 	return snaps, nil
 }
 
-// ParsePoolInfo
+// ParsePoolInfo parse pool detail list text
 // Return case:
 //   pool info, nil:
 func ParsePoolInfo(input string) (poolInfo *PoolInfo, err error) {
@@ -91,7 +91,7 @@ func ParsePoolInfo(input string) (poolInfo *PoolInfo, err error) {
 	return poolInfo, nil
 }
 
-// ParsePoolNameList
+// ParsePoolNameList parse pool name list text
 func ParsePoolNameList(input string) (poolNames []string, err error) {
 	in := strings.Trim(input, "\n")
 	lines := strings.Split(in, "\n")
@@ -113,7 +113,7 @@ func ParsePoolNameList(input string) (poolNames []string, err error) {
 	return poolNames, nil
 }
 
-//	ParseAttachedVolume
+// ParseAttachedVolume parse attached volume list text
 func ParseAttachVolumeList(input string) (infoArr []*AttachInfo) {
 	in := strings.Trim(input, "\n")
 	lines := strings.Split(in, "\n")
@@ -144,7 +144,6 @@ func readCountNumber(line string) (cnt int, err error) {
 	return cnt, fmt.Errorf("cannot found count")
 }
 
-// WARNING: not set volume pool
 func readVolumeInfoContent(line string) (ret *VolumeInfo) {
 	curLine := strings.Replace(line, " ", "", -1)
 	curLine = strings.Trim(curLine, "|")
