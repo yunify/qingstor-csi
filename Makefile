@@ -36,6 +36,9 @@ fmt:
 fmt-deep: fmt
 	gofmt -s -w -l ./cmd/neonsan/ ./pkg/neonsan/ ./pkg/neonsan/manager/ ./pkg/neonsan/util/
 
+ut:
+	ginkgo ./pkg/neonsan/cache ./pkg/neonsan/manager ./pkg/neonsan/util -cover=true -- -hasCli=true
+
 clean:
 	go clean -r -x
 	rm -rf ./_output

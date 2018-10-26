@@ -1,11 +1,7 @@
 # NeonSAN CSI 插件用法-存储卷
 
-- 创建 StorageClass
-- 动态创建与删除 PVC
-- 静态创建与删除 PVC
-- 工作负载使用 PVC 持久化数据
-
-## 创建 StorageClass
+## 准备
+### 创建 StorageClass
 
 StorageClass 是 Kubernetes 的一种资源对象，用来存放存储卷的部分配置。创建此对象是使用 NeonSAN CSI 插件的前提。
 
@@ -124,7 +120,7 @@ persistentvolume "pv-neonsan" deleted
 
 - 通过 NeonSAN CLI 删除 image
 ```
-$ neonsan delete_volume -pool csi -volume pre-provisioning-volume
+$ neonsan delete_volume -pool kube -volume pre-provisioning-volume
 delete volume succeed.
 ```
 

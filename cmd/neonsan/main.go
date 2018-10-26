@@ -44,7 +44,7 @@ func main() {
 }
 
 func handle() {
-	util.ConfigFilepath = *configPath
+	util.ConfigFilePath = *configPath
 	manager.Pools = util.GetList(*pools)
 	manager.Protocol = *protocol
 	driver := neonsan.GetNeonsanDriver()
