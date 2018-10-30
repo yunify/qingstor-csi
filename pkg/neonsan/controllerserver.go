@@ -397,10 +397,9 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 
 	// 2. Check if the snapshot already exists.
 	// get storage class
-	sc, err := manager.NewNeonsanStorageClassFromMap(req.GetParameters())
+	exVol, err := manager.FindVolumeWithoutPool(req.GetSourceVolumeId())
 	if err != nil {
-		glog.Info("Failed to create StorageClass object.")
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	// 3. Snapshot already exist
@@ -430,8 +429,9 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	}
 
 	// 4. do create snapshot
-	glog.Infof("Create snapshot [%s] in pool [%s] from volume [%s]...", req.GetName(), sc.Pool, req.GetSourceVolumeId())
-	snapInfo, err := manager.CreateSnapshot(req.GetName(), req.GetSourceVolumeId(), sc.Pool)
+	glog.Infof("Create snapshot [%s] in pool [%s] from volume [%s]...", req.GetName(), exVol.Pool,
+		req.GetSourceVolumeId())
+	snapInfo, err := manager.CreateSnapshot(req.GetName(), req.GetSourceVolumeId(), exVol.Pool)
 	if err != nil {
 		glog.Errorf("Failed to create snapshot with error [%s].", err.Error())
 		return nil, status.Errorf(codes.Internal, err.Error())

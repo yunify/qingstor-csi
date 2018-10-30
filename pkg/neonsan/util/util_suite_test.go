@@ -17,10 +17,10 @@ limitations under the License.
 package util_test
 
 import (
+	"flag"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"testing"
-	"flag"
 )
 
 var hasCli bool = false

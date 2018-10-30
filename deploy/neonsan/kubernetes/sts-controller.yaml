@@ -102,7 +102,7 @@ spec:
         - name: socket-dir
           mountPath: /var/lib/csi/sockets/pluginproxy
       - name: csi-neonsan
-        image: dockerhub.qingcloud.com/csiplugin/csi-neonsan:latest
+        image: dockerhub.qingcloud.com/csiplugin/csi-neonsan:v0.3.0
         args :
         - "--nodeid=$(NODE_ID)"
         - "--endpoint=$(CSI_ENDPOINT)"

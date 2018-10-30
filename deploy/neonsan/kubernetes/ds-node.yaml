@@ -67,7 +67,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: dockerhub.qingcloud.com/csiplugin/csi-neonsan:latest
+          image: dockerhub.qingcloud.com/csiplugin/csi-neonsan:v0.3.0
           args :
             - "--nodeid=$(NODE_ID)"
             - "--endpoint=$(CSI_ENDPOINT)"
@@ -75,7 +75,7 @@ spec:
             - "--drivername=csi-neonsan"
             - "--config=/etc/config/qbd.conf"
             - "--pools=kube"
-            - “--protocol=TCP”
+            - "--protocol=TCP"
           env:
             - name: NODE_ID
               valueFrom:
