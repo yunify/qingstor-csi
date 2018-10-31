@@ -1,11 +1,11 @@
-# NeonSAN CSI 插件用法-快照
+# NeonSAN CSI plugin usage - snapshot
 
-## 准备
-### 创建 PVC
+## Prerequsite
+### Create PVC
 
-参照 [NeonSAN CSI 插件用法-存储卷](./usage_neonsan_volume_zh.md) 创建基于 NeonSAN 的 PVC，PVC 名为 pvc-test
+Please reference [NeonSAN CSI plugin usage - volume](./usage_neonsan_volume.md) to create NeonSAN based PVC named `pvc-test`.
 
-### 创建快照类型
+### Create snapshot class
 
 ```
 $ kubectl create -f https://raw.githubusercontent.com/yunify/qingstor-csi/master/deploy/neonsan/example/snapshot-class.yaml
@@ -15,8 +15,8 @@ NAME                    AGE
 csi-neonsan-snapclass   21h
 ```
 
-## 功能
-### 创建快照
+## Usage
+### Create snapshot
 
 ```
 $ kubectl create -f https://raw.githubusercontent.com/yunify/qingstor-csi/master/deploy/neonsan/example/volume-snapshot.yaml
@@ -26,7 +26,7 @@ NAME          AGE
 snap-test     21h
 ```
 
-### 从快照创建存储卷
+### Restore volume from snapshot
 
 ```
 $ kubectl create -f https://raw.githubusercontent.com/yunify/qingstor-csi/master/deploy/neonsan/example/pvc-restore.yaml
@@ -37,7 +37,7 @@ pvc-restore     Bound     pvc-14c8d0bc-d456-11e8-b49c-5254c1f1ffec   10Gi       
 pvc-test        Bound     pvc-14c8d0bc-d123-11e8-b49c-5254c1f1ffec   10Gi       RWO            csi-neonsan    21h
 ```
 
-### 删除快照
+### Delete snapshot
 
 ```
 $ kubectl delete -f https://raw.githubusercontent.com/yunify/qingstor-csi/master/deploy/neonsan/example/volume-snapshot.yaml

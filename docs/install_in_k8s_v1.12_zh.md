@@ -34,7 +34,7 @@ $ cd csi-qingstor-install
 
 ## 创建 ConfigMap
 
-- 编辑 NeonSAN CLI 的配置文件 [`qbd.conf`](./deploy/neonsan/kubernetes/qbd.conf)
+- 编辑 NeonSAN CLI 的配置文件 [`qbd.conf`](../deploy/neonsan/kubernetes/qbd.conf)
 ```
 $ vi ./qbd.conf
 [zookeeper]
