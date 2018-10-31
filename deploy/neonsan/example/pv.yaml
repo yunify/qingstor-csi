@@ -29,7 +29,7 @@ spec:
     fsType: ext4
     volumeAttributes:
       fsType: ext4
-      pool: csi
+      pool: kube
       replicas: "1"
       stepSize: "10"
     volumeHandle: pre-provisioning-volume

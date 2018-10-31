@@ -27,7 +27,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: csi-neonsan-node
   labels:
-    csi: "v0.4.0"
+    csi: "v0.3.0"
     owner: "yunify"
 rules:
   - apiGroups: [""]
@@ -55,7 +55,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: csi-neonsan-node
   labels:
-    csi: "v0.4.0"
+    csi: "v0.3.0"
     owner: "yunify"
 subjects:
   - kind: ServiceAccount

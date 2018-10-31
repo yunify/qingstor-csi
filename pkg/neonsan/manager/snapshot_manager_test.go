@@ -42,17 +42,21 @@ var _ = Describe("Snapshot", func() {
 		Expect(poolInfo).To(BeNil())
 
 		By("creating volumes")
-		volInfo, err := manager.CreateVolume(TestVolume1, TestPool, 10*util.Gib, 1)
+		info, err := manager.FindVolume(TestVolume1, TestPool)
 		Expect(err).To(BeNil())
-		Expect(volInfo).NotTo(BeNil())
-
-		volInfo, err = manager.CreateVolume(TestVolume2, TestPool, 10*util.Gib, 1)
+		if info == nil {
+			manager.CreateVolume(TestVolume1, TestPool, 10*util.Gib, 1)
+		}
+		info, err = manager.FindVolume(TestVolume2, TestPool)
 		Expect(err).To(BeNil())
-		Expect(volInfo).NotTo(BeNil())
-
-		volInfo, err = manager.FindVolume(TestVolumeFake, TestPool)
+		if info == nil {
+			manager.CreateVolume(TestVolume2, TestPool, 10*util.Gib, 1)
+		}
+		info, err = manager.FindVolume(TestVolumeFake, TestPool)
 		Expect(err).To(BeNil())
-		Expect(volInfo).To(BeNil())
+		if info != nil {
+			manager.DeleteVolume(TestVolumeFake, TestPool)
+		}
 	})
 
 	AfterEach(func() {

@@ -1,6 +1,6 @@
-# 如何卸载NeonSAN CSI插件
+# How to uninstall NeonSAN CSI plugin
 
-> 注：卸载前，请确保基于 NeonSAN 的 PVC，PV，VolumeSnapshot，VolumeSnapshotContent 已删除。
+> IMPORTANT: Before uninstalling, please ensure NeonSAN based objects, such as PVC, PV, VolumeSnapshot and VolumeSnapshotContent, have been deleted.
 
 ```
 kubectl delete -f ./sts-controller.yaml

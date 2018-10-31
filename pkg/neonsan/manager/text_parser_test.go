@@ -14,55 +14,58 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package manager
+package manager_test
 
-/*
-func TestParseVolumeList(t *testing.T) {
-	tests := []struct {
-		name   string
-		output string
-		pool   string
-		list   []*VolumeInfo
-		err    error
-	}{
-		{
-			name: "one volume list",
-			output: `Volume Count:  1
-+--------------+------+-------------+-----------+---------------+--------+---------------------+---------------------+
-|      ID      | NAME |    SIZE     | REP COUNT | MIN REP COUNT | STATUS |     STATUS TIME     |    CREATED TIME     |
-+--------------+------+-------------+-----------+---------------+--------+---------------------+---------------------+
-| 251188477952 | foo  | 10737418240 |         1 |             1 | OK     | 2018-07-09 12:18:34 | 2018-07-09 12:18:34 |
-+--------------+------+-------------+-----------+---------------+--------+---------------------+---------------------+`,
-			pool: "kube",
-			list: []*VolumeInfo{
+import (
+	"errors"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
+	. "github.com/onsi/gomega"
+	"github.com/yunify/qingstor-csi/pkg/neonsan/manager"
+	"github.com/yunify/qingstor-csi/pkg/neonsan/util"
+	"reflect"
+)
+
+var _ = Describe("Parse Text", func() {
+	DescribeTable("parse volume list",
+		func(text string, volInfo []*manager.VolumeInfo, err error) {
+			resInfo, resErr := manager.ParseVolumeList(text)
+			Expect(resErr == nil).To(Equal(err == nil))
+			Expect(reflect.DeepEqual(resInfo, volInfo)).To(Equal(true))
+		},
+		Entry("one volume list",
+			`Volume Count:  1
++--------------+--------------------------------------------+--------------+----------+-----------+---------------+--------+---------------------+---------------------+
+|      ID      |                    NAME                    |     SIZE     |   POOL   | REP COUNT | MIN REP COUNT | STATUS |     STATUS TIME     |    CREATED TIME     |
++--------------+--------------------------------------------+--------------+----------+-----------+---------------+--------+---------------------+---------------------+
+| 251188477952 | foo                                        |  10737418240 | kube     |         1 |             1 | OK     | 2018-07-09 12:18:34 | 2018-07-09 12:18:34 |
++--------------+--------------------------------------------+--------------+----------+-----------+---------------+--------+---------------------+---------------------+`,
+			[]*manager.VolumeInfo{
 				{
 					Id:       "251188477952",
 					Name:     "foo",
 					SizeByte: 10737418240,
-					Status:   VolumeStatusOk,
+					Status:   manager.VolumeStatusOk,
 					Replicas: 1,
 					Pool:     "kube",
 				},
 			},
-			err: nil,
-		},
-		{
-			name: "two volumes list",
-			output: `Volume Count:  2
-+--------------+-------------------------+------------+-----------+---------------+--------+---------------------+---------------------+
-|      ID      |          NAME           |    SIZE    | REP COUNT | MIN REP COUNT | STATUS |     STATUS TIME     |    CREATED TIME     |
-+--------------+-------------------------+------------+-----------+---------------+--------+---------------------+---------------------+
-| 395069882368 | foo                     | 2147483648 |         1 |             1 | OK     | 2018-09-03 20:49:46 | 2018-09-03 20:49:46 |
-| 395589976064 | pre-provisioning-volume | 5368709120 |         1 |             1 | OK     | 2018-09-03 22:50:03 | 2018-09-03 22:50:03 |
-+--------------+-------------------------+------------+-----------+---------------+--------+---------------------+---------------------+
+			nil),
+		Entry("two volumes list",
+			`Volume Count:  2
++--------------+-------------------------+------------+----------+-----------+---------------+--------+---------------------+---------------------+
+|      ID      |          NAME           |    SIZE    |  POOL    | REP COUNT | MIN REP COUNT | STATUS |     STATUS TIME     |    CREATED TIME     |
++--------------+-------------------------+------------+----------+-----------+---------------+--------+---------------------+---------------------+
+| 395069882368 | foo                     | 2147483648 |   kube   |         1 |             1 | OK     | 2018-09-03 20:49:46 | 2018-09-03 20:49:46 |
+| 395589976064 | pre-provisioning-volume | 5368709120 |   kube   |         1 |             1 | OK     | 2018-09-03 22:50:03 | 2018-09-03 22:50:03 |
++--------------+-------------------------+------------+----------+-----------+---------------+--------+---------------------+---------------------+
 `,
-			pool: "kube",
-			list: []*VolumeInfo{
+			[]*manager.VolumeInfo{
 				{
 					Id:       "395069882368",
 					Name:     "foo",
 					SizeByte: 2147483648,
-					Status:   VolumeStatusOk,
+					Status:   manager.VolumeStatusOk,
 					Replicas: 1,
 					Pool:     "kube",
 				},
@@ -70,43 +73,27 @@ func TestParseVolumeList(t *testing.T) {
 					Id:       "395589976064",
 					Name:     "pre-provisioning-volume",
 					SizeByte: 5368709120,
-					Status:   VolumeStatusOk,
+					Status:   manager.VolumeStatusOk,
 					Replicas: 1,
 					Pool:     "kube",
 				},
 			},
-			err: nil,
-		},
-		{
-			name: "no volume list",
-			output: `Volume Count:0
+			nil),
+		Entry("no volume list",
+			`Volume Count:0
 `,
-			pool: "kube",
-			list: nil,
-			err:  nil,
-		},
-	}
-	for _, v := range tests {
-		volList, err := ParseVolumeList(v.output, v.pool)
-		if (v.err == nil && err != nil) || (v.err != nil && err == nil) {
-			t.Errorf("name [%s]: error expect [%v], but actually [%v]", v.name, v.err, err)
-		}
-		if !reflect.DeepEqual(v.list, volList) {
-			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.list, volList)
-		}
-	}
-}
+			nil,
+			nil),
+	)
 
-func TestParseSnapshotList(t *testing.T) {
-	tests := []struct {
-		name   string
-		output string
-		list   []*SnapshotInfo
-		err    error
-	}{
-		{
-			name: "two snapshot list",
-			output: `Snapshot Count:  2
+	DescribeTable("parse snapshot list",
+		func(text string, snapInfo []*manager.SnapshotInfo, err error) {
+			resInfo, resErr := manager.ParseSnapshotList(text)
+			Expect(resErr == nil).To(Equal(err == nil))
+			Expect(reflect.DeepEqual(resInfo, snapInfo)).To(Equal(true))
+		},
+		Entry("two snapshot list",
+			`Snapshot Count:  2
 +--------------+-------------+---------------+---------------+---------------------------+--------+
 |  VOLUME ID   | SNAPSHOT ID | SNAPSHOT NAME | SNAPSHOT SIZE |        CREATE TIME        | STATUS |
 +--------------+-------------+---------------+---------------+---------------------------+--------+
@@ -114,12 +101,12 @@ func TestParseSnapshotList(t *testing.T) {
 | 274726912000 |       25464 | snapshot2     |    2147483648 | 2018-08-23T11:39:39+08:00 | OK     |
 +--------------+-------------+---------------+---------------+---------------------------+--------+
 `,
-			list: []*SnapshotInfo{
+			[]*manager.SnapshotInfo{
 				{
 					Name:        "snapshot",
 					Id:          "25463",
 					SizeByte:    2147483648,
-					Status:      SnapshotStatusOk,
+					Status:      manager.SnapshotStatusOk,
 					CreatedTime: 1535024299,
 					SrcVolName:  "274726912000",
 				},
@@ -127,86 +114,55 @@ func TestParseSnapshotList(t *testing.T) {
 					Name:        "snapshot2",
 					Id:          "25464",
 					SizeByte:    2147483648,
-					Status:      SnapshotStatusOk,
+					Status:      manager.SnapshotStatusOk,
 					CreatedTime: 1535024379,
 					SrcVolName:  "274726912000",
 				},
 			},
-			err: nil,
-		},
-		{
-			name: "no volume list",
-			output: `Volume Count:0
+			nil),
+		Entry("no volume list",
+			`Volume Count:0
 `,
-			list: nil,
-			err:  nil,
+			nil,
+			nil),
+	)
+
+	DescribeTable("parse pool info",
+		func(text string, info *manager.PoolInfo, err error) {
+			resInfo, resErr := manager.ParsePoolInfo(text)
+			Expect(resErr == nil).To(Equal(err == nil))
+			Expect(resInfo).To(Equal(info))
 		},
-	}
-	for _, v := range tests {
-		snapList, err := ParseSnapshotList(v.output)
-		if (v.err == nil && err != nil) || (v.err != nil && err == nil) {
-			t.Errorf("name [%s]: error expect [%v], but actually [%v]", v.name, v.err, err)
-		}
-		if !reflect.DeepEqual(v.list, snapList) {
-			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.list, snapList)
-		}
-	}
-
-}
-
-func TestParsePoolInfo(t *testing.T) {
-	tests := []struct {
-		name   string
-		output string
-		pools  *PoolInfo
-		err    error
-	}{
-		{
-			name: "find csi pool",
-			output: `+----------+-----------+-------+------+------+
+		Entry("find csi pool",
+			`+----------+-----------+-------+------+------+
 | POOL ID  | POOL NAME | TOTAL | FREE | USED |
 +----------+-----------+-------+------+------+
 | 67108864 | csi       |  2982 | 1222 | 1759 |
 +----------+-----------+-------+------+------+
 
 `,
-			pools: &PoolInfo{
+			&manager.PoolInfo{
 				Id:        "67108864",
 				Name:      "csi",
 				TotalByte: 2982 * util.Gib,
 				FreeByte:  1222 * util.Gib,
 				UsedByte:  1759 * util.Gib,
 			},
-			err: nil,
-		},
-		{
-			name:   "pool not found",
-			output: `Pool Count:  0`,
-			pools:  nil,
-			err:    nil,
-		},
-	}
-	for _, v := range tests {
-		poolNames, err := ParsePoolInfo(v.output)
-		if (v.err == nil && err != nil) || (v.err != nil && err == nil) {
-			t.Errorf("name [%s]: error expect [%v], but actually [%v]", v.name, v.err, err)
-		}
-		if !reflect.DeepEqual(v.pools, poolNames) {
-			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.pools, poolNames)
-		}
-	}
-}
+			nil),
+		Entry("pool not found",
+			`Pool Count:  0`,
+			nil,
+			nil),
+	)
 
-func TestParsePoolNameList(t *testing.T) {
-	tests := []struct {
-		name   string
-		output string
-		pools  []string
-		err    error
-	}{
-		{
-			name: "find csi pool",
-			output: `Pool Count:  4
+	DescribeTable("parse pool name list",
+		func(text string, pools []string, err error) {
+			resPools, resErr := manager.ParsePoolNameList(text)
+			Expect(resErr == nil).To(Equal(err == nil))
+			Expect(resPools).To(Equal(pools))
+		},
+		Entry("find csi pool",
+			`Pool Count:  4
 +----------+
 |   NAME   |
 +----------+
@@ -216,52 +172,35 @@ func TestParsePoolNameList(t *testing.T) {
 | csi      |
 +----------+
 `,
-			pools: []string{
+			[]string{
 				"pool",
 				"vol",
 				"neonpool",
 				"csi",
 			},
-			err: nil,
-		},
-		{
-			name:   "pool not found",
-			output: `Pool Count:  0`,
-			pools:  nil,
-			err:    nil,
-		},
-		{
-			name:   "wrong output",
-			output: `wrong output`,
-			pools:  nil,
-			err:    fmt.Errorf("wrong output"),
-		},
-	}
-	for _, v := range tests {
-		poolNames, err := ParsePoolNameList(v.output)
-		if (v.err == nil && err != nil) || (v.err != nil && err == nil) {
-			t.Errorf("name [%s]: error expect [%v], but actually [%v]", v.name, v.err, err)
-		}
-		if !reflect.DeepEqual(v.pools, poolNames) {
-			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.pools, poolNames)
-		}
-	}
-}
+			nil),
+		Entry("pool not found",
+			`Pool Count:  0`,
+			nil,
+			nil),
+		Entry("wrong output",
+			`wrong output`,
+			nil,
+			errors.New("wrong output")),
+	)
 
-func TestParseAttachedVolumeList(t *testing.T) {
-	tests := []struct {
-		name  string
-		input string
-		infos []*AttachInfo
-	}{
-		{
-			name: "two attached volume",
-			input: `dev_id  vol_id  device  volume  config  read_bps    write_bps   read_iops   write_iops
+	DescribeTable("parse attached volume list",
+		func(text string, info []*manager.AttachInfo) {
+			resInfo := manager.ParseAttachVolumeList(text)
+			Expect(resInfo).To(Equal(info))
+		},
+		Entry("two attached volume",
+			`dev_id  vol_id  device  volume  config  read_bps    write_bps   read_iops   write_iops
 0   0x3ff7000000    qbd0    csi/foo1    /etc/neonsan/qbd.conf   0   0   0   0
 1   0x3a7c000000    qbd1    csi/foo /etc/neonsan/qbd.conf   0   0   0   0
 
 `,
-			infos: []*AttachInfo{
+			[]*manager.AttachInfo{
 				{
 					Id:        "274726912000",
 					Name:      "foo1",
@@ -283,69 +222,7 @@ func TestParseAttachedVolumeList(t *testing.T) {
 					WriteIops: 0,
 				},
 			},
-		},
-	}
+		),
+	)
 
-	for _, v := range tests {
-		ret := ParseAttachVolumeList(v.input)
-		if len(v.infos) != len(ret) {
-			t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.infos, ret)
-		} else {
-			if !reflect.DeepEqual(v.infos, ret) {
-				t.Errorf("name [%s]: expect [%v], but actually [%v]", v.name, v.infos, ret)
-			}
-		}
-	}
-}
-
-func TestReadCountNumber(t *testing.T) {
-	tests := []struct {
-		name   string
-		output string
-		cnt    int
-		errStr string
-	}{
-		{
-			name:   "have 0 volume",
-			output: "Volume Count:  0",
-			cnt:    0,
-			errStr: "",
-		},
-		{
-			name:   "have 1 volume",
-			output: "Volume Count:  1",
-			cnt:    1,
-			errStr: "",
-		},
-		{
-			name:   "have 2 volumes",
-			output: "Volume Count:  2",
-			cnt:    2,
-			errStr: "",
-		},
-		{
-			name:   "not found count number",
-			output: "Volume Count:",
-			cnt:    0,
-			errStr: "strconv.Atoi: parsing \"\": invalid syntax",
-		},
-		{
-			name:   "not found volume count",
-			output: "fake",
-			cnt:    0,
-			errStr: "cannot found volume count",
-		},
-	}
-	for _, v := range tests {
-		exCnt, err := readCountNumber(v.output)
-		if err != nil {
-			if err.Error() != v.errStr {
-				t.Errorf("name [%s]: expect error [%s], but actually [%s]", v.name, v.errStr, err.Error())
-			}
-		}
-		if exCnt != v.cnt {
-			t.Errorf("name [%s]: expect [%d], but actually [%d]", v.name, v.cnt, exCnt)
-		}
-	}
-}
-*/
+})

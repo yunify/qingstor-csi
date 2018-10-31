@@ -21,6 +21,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/kubernetes-csi/drivers/pkg/csi-common"
 	"github.com/yunify/qingstor-csi/pkg/neonsan/cache"
+	"os"
 )
 
 const version = "0.3.0"
@@ -53,7 +54,11 @@ func NewIdentityServer(d *csicommon.CSIDriver) *identityServer {
 func NewControllerServer(d *csicommon.CSIDriver) *controllerServer {
 	var snapCache cache.SnapshotCacheType
 	snapCache.New()
-	snapCache.Sync()
+	err := snapCache.Sync()
+	if err != nil {
+		glog.Errorf("sync snapshot cache error: %v", err)
+		os.Exit(1)
+	}
 	return &controllerServer{
 		DefaultControllerServer: csicommon.NewDefaultControllerServer(d),
 		cache:                   &snapCache,

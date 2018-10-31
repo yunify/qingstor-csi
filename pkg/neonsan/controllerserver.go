@@ -64,7 +64,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context,
 	}
 	volumeName := req.GetName()
 
-	// check is creating
+	// Ensure no more than one call "in-flight" per volume
 	if _, found := cs.creatingVolume[volumeName]; found {
 		return nil, status.Errorf(codes.Aborted, "no more than one call in-flight for volume [%v]", req)
 	} else {
@@ -88,13 +88,14 @@ func (cs *controllerServer) CreateVolume(ctx context.Context,
 		limitByte = util.Int64Max
 	}
 
-	// check volume range
+	// Check volume range
 	if requiredFormatByte > limitByte {
 		glog.Errorf("Request capacity range [%d, %d] bytes, format required size: [%d] gb.",
 			requiredByte, limitByte, requiredFormatByte)
 		return nil, status.Error(codes.OutOfRange, "Unsupported capacity range.")
 	}
 
+	// For idempotent:
 	// Find exist volume name
 	glog.Infof("Find duplicate volume name [%s].", volumeName)
 	exVol, err := manager.FindVolume(volumeName, sc.Pool)
@@ -121,7 +122,6 @@ func (cs *controllerServer) CreateVolume(ctx context.Context,
 	}
 	glog.Infof("Not Found duplicate volume name [%s].", volumeName)
 
-	// Create volume from snapshot
 	// Restore volume from snapshot
 	if req.GetVolumeContentSource() != nil && req.GetVolumeContentSource().GetSnapshot() != nil {
 		// create new volume
@@ -197,6 +197,21 @@ func (cs *controllerServer) CreateVolume(ctx context.Context,
 			glog.Errorf("Rollback snapshot error: %s", err.Error())
 			return nil, status.Errorf(codes.Internal, "rollback snapshot error: %v", err)
 		}
+
+		// 4. delete snapshot in restore volume
+		if info, err := manager.FindSnapshot(snapInfo.Name, volumeInfo.Name, snapInfo.Pool); err != nil {
+			glog.Errorf("Find restore volume's snapshot error: %s", err.Error())
+			return nil, status.Errorf(codes.Internal, "find restore volume's snapshot error: %v", err)
+		} else {
+			if info != nil {
+				err = manager.DeleteSnapshot(info.Name, info.SrcVolName, info.Pool)
+				if err != nil {
+					glog.Errorf("Delete snapshot error: %s", err.Error())
+					return nil, status.Errorf(codes.Internal, "delete snapshot in restore volume error: %v", err)
+				}
+			}
+		}
+
 		return &csi.CreateVolumeResponse{
 			Volume: &csi.Volume{
 				Id:            volumeInfo.Name,
@@ -206,7 +221,7 @@ func (cs *controllerServer) CreateVolume(ctx context.Context,
 		}, nil
 	}
 
-	// do create volume
+	// Do create volume
 	glog.Infof("Creating volume [%s] with [%d] bytes in pool [%s]...", volumeName, requiredFormatByte, sc.Pool)
 	volumeInfo, err := manager.CreateVolume(volumeName, sc.Pool, requiredFormatByte, sc.Replicas)
 	if err != nil {
@@ -382,10 +397,9 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 
 	// 2. Check if the snapshot already exists.
 	// get storage class
-	sc, err := manager.NewNeonsanStorageClassFromMap(req.GetParameters())
+	exVol, err := manager.FindVolumeWithoutPool(req.GetSourceVolumeId())
 	if err != nil {
-		glog.Info("Failed to create StorageClass object.")
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	// 3. Snapshot already exist
@@ -414,9 +428,10 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 		}
 	}
 
-	// 3. do create snapshot
-	glog.Infof("Create snapshot [%s] in pool [%s] from volume [%s]...", req.GetName(), sc.Pool, req.GetSourceVolumeId())
-	snapInfo, err := manager.CreateSnapshot(req.GetName(), req.GetSourceVolumeId(), sc.Pool)
+	// 4. do create snapshot
+	glog.Infof("Create snapshot [%s] in pool [%s] from volume [%s]...", req.GetName(), exVol.Pool,
+		req.GetSourceVolumeId())
+	snapInfo, err := manager.CreateSnapshot(req.GetName(), req.GetSourceVolumeId(), exVol.Pool)
 	if err != nil {
 		glog.Errorf("Failed to create snapshot with error [%s].", err.Error())
 		return nil, status.Errorf(codes.Internal, err.Error())

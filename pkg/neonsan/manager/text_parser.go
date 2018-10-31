@@ -31,7 +31,7 @@ import (
 //   volumes, nil: found volumes info
 //   nil, nil: volumes not found
 //   nil, err: error
-func ParseVolumeList(input string, poolName string) (vols []*VolumeInfo, err error) {
+func ParseVolumeList(input string) (vols []*VolumeInfo, err error) {
 	in := strings.Trim(input, "\n")
 	lines := strings.Split(in, "\n")
 	for i, v := range lines {
@@ -47,15 +47,14 @@ func ParseVolumeList(input string, poolName string) (vols []*VolumeInfo, err err
 			}
 		} else if i >= 4 && v[0] != '+' {
 			volInfo := readVolumeInfoContent(v)
-			volInfo.Pool = poolName
 			vols = append(vols, volInfo)
 		}
 	}
 	return vols, nil
 }
 
-// ParseSnapshotList
-// WARNING: Due to Neonsan CLI tool only returning volume ID, we replace
+// ParseSnapshotList parse snapshot list text
+// TODO: Due to Neonsan CLI tool only returning volume ID, we replace
 // volume name field of snapshotInfo by volume id.
 func ParseSnapshotList(input string) (snaps []*SnapshotInfo, err error) {
 	in := strings.Trim(input, "\n")
@@ -78,7 +77,7 @@ func ParseSnapshotList(input string) (snaps []*SnapshotInfo, err error) {
 	return snaps, nil
 }
 
-// ParsePoolInfo
+// ParsePoolInfo parse pool detail list text
 // Return case:
 //   pool info, nil:
 func ParsePoolInfo(input string) (poolInfo *PoolInfo, err error) {
@@ -92,7 +91,7 @@ func ParsePoolInfo(input string) (poolInfo *PoolInfo, err error) {
 	return poolInfo, nil
 }
 
-// ParsePoolNameList
+// ParsePoolNameList parse pool name list text
 func ParsePoolNameList(input string) (poolNames []string, err error) {
 	in := strings.Trim(input, "\n")
 	lines := strings.Split(in, "\n")
@@ -114,7 +113,7 @@ func ParsePoolNameList(input string) (poolNames []string, err error) {
 	return poolNames, nil
 }
 
-//	ParseAttachedVolume
+// ParseAttachedVolume parse attached volume list text
 func ParseAttachVolumeList(input string) (infoArr []*AttachInfo) {
 	in := strings.Trim(input, "\n")
 	lines := strings.Split(in, "\n")
@@ -145,7 +144,6 @@ func readCountNumber(line string) (cnt int, err error) {
 	return cnt, fmt.Errorf("cannot found count")
 }
 
-// WARNING: not set volume pool
 func readVolumeInfoContent(line string) (ret *VolumeInfo) {
 	curLine := strings.Replace(line, " ", "", -1)
 	curLine = strings.Trim(curLine, "|")
@@ -165,13 +163,15 @@ func readVolumeInfoContent(line string) (ret *VolumeInfo) {
 			}
 			ret.SizeByte = size64
 		case 3:
+			ret.Pool = v
+		case 4:
 			rep, err := strconv.Atoi(v)
 			if err != nil {
 				glog.Errorf("parse int [%s] error in string [%s]", v, line)
 				return nil
 			}
 			ret.Replicas = rep
-		case 5:
+		case 6:
 			ret.Status = v
 		}
 	}

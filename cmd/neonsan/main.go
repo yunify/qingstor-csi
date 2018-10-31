@@ -32,7 +32,7 @@ var (
 	endpoint   = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
 	driverName = flag.String("drivername", "csi-neonsan", "name of the driver")
 	nodeId     = flag.String("nodeid", "", "node id")
-	configPath = flag.String("config", util.ConfigFilepathDefault, "Neonsan server config file path")
+	configPath = flag.String("config", util.ConfigFilePathDefault, "Neonsan server config file path")
 	pools      = flag.String("pools", manager.PoolNameDefault, "pools list for managing volumes and snapshots")
 	protocol   = flag.String("protocol", util.ProtocolDefault, "transport protocol, RDMA (default) or TCP")
 )
@@ -44,7 +44,7 @@ func main() {
 }
 
 func handle() {
-	util.ConfigFilepath = *configPath
+	util.ConfigFilePath = *configPath
 	manager.Pools = util.GetList(*pools)
 	manager.Protocol = *protocol
 	driver := neonsan.GetNeonsanDriver()

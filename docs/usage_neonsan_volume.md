@@ -1,15 +1,15 @@
-# NeonSAN CSI 插件用法-存储卷
+# NeonSAN CSI plugin usage - volume
 
-## 准备
-### 创建 StorageClass
+## Prerequsite
+### Create StorageClass
 
-StorageClass 是 Kubernetes 的一种资源对象，用来存放存储卷的部分配置。创建此对象是使用 NeonSAN CSI 插件的前提。
+StorageClass is a kind of Kubernetes resource object to store a part of volume setting. Before using NeonSAN CSI plugin, please create StorageClass. 
 
 ```
 $ kubectl apply -f https://raw.githubusercontent.com/yunify/qingstor-csi/master/deploy/neonsan/example/sc.yaml
 ```
 
-- 查询创建的 StorageClass
+- Find StorageClass
 
 ```
 $ kubectl get sc
@@ -17,19 +17,19 @@ NAME              PROVISIONER                    AGE
 csi-neonsan       csi-neonsan                    1m
 ```
 
-## 动态创建与删除 PVC
+## Dynamic volume provisioning
 
 
-### 创建 PVC
+### Create PVC
 
 
-- 创建 PVC
+- Create PVC
 ```
 $ kubectl apply -f https://raw.githubusercontent.com/yunify/qingstor-csi/master/deploy/neonsan/example/pvc.yaml
 persistentvolumeclaim "pvc-test" created
 ```
 
-- 查询创建的 PVC 与 PV
+- Find PVC and PV
 
 ```
 $ kubectl get pvc
@@ -43,15 +43,15 @@ NAME                   CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CL
 pvc-e281cbd3a9c511e8   10Gi       RWO            Delete           Bound       kube-system/pvc-test   csi-neonsan              18s
 ```
 
-### 删除 PVC
+### Delete PVC
 
-- 删除 PVC
+- Delete PVC
 ```
 $ kubectl delete -f https://raw.githubusercontent.com/yunify/qingstor-csi/master/deploy/neonsan/example/pvc.yaml
 persistentvolumeclaim "pvc-test" deleted
 ```
 
-- 查询删除的 PVC 和 PV
+- Find PVC and PV
 ```
 $ kubectl get pvc
 No resources found.
@@ -62,36 +62,36 @@ $ kubectl get pv
 No resources found.
 ```
 
-## 静态创建与删除 PVC
+## Static volume provisioning
 
-### 创建 PVC
+### Create PVC
 
-- 通过 NeonSAN CLI 创建 image
+-  Create NeonSAN volume
 ```
 $ neonsan create_volume -volume pre-provisioning-volume -pool csi -size 5G -repcount 1
 INFO[0000] create volume succeed.                       
 ```
 
-- 创建 PV
+- Create PV
 ```
 $ kubectl create -f https://raw.githubusercontent.com/yunify/qingstor-csi/master/deploy/neonsan/example/pv.yaml
 persistentvolume "pv-neonsan" created
 ```
 
-- 查询 PV
+- Find PV
 ```
 $ kubectl get pv
 NAME                   CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM     STORAGECLASS   REASON    AGE
 pv-neonsan             5Gi        RWO            Delete           Available             csi-neonsan              13s
 ```
 
-- 创建 PVC
+- Create PVC
 ```
 $ kubectl create -f https://raw.githubusercontent.com/yunify/qingstor-csi/master/deploy/neonsan/example/pvc.yaml
 persistentvolumeclaim "pvc-test" created
 ```
 
-- 查询 PVC 和 PV
+- Find PVC and PV
 ```
 $ kubectl get pvc
 NAME       STATUS    VOLUME       CAPACITY   ACCESS MODES   STORAGECLASS   AGE
@@ -104,31 +104,31 @@ NAME         CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM       
 pv-neonsan   5Gi        RWO            Delete           Bound       kube-system/pvc-test     csi-neonsan              3m
 ```
 
-### 删除 PVC
+### Delete PVC
 
-- 删除 PVC
+- Delete PVC
 ```
 $ kubectl delete pvc pvc-test
 persistentvolumeclaim "pvc-test" deleted
 ```
 
-- 删除 PV
+- Delete PV
 ```
 $ kubectl delete pv pv-neonsan
 persistentvolume "pv-neonsan" deleted
 ```
 
-- 通过 NeonSAN CLI 删除 image
+- Delete NeonSAN volume
 ```
 $ neonsan delete_volume -pool kube -volume pre-provisioning-volume
 delete volume succeed.
 ```
 
-## 工作负载使用 PVC 持久化数据
+## Mount PVC on workload
 
-### 创建工作负载
+### Create workload
 
-- 查询 PVC
+- Find PVC
 ```
 $ kubectl get pvc
 NAME       STATUS    VOLUME       CAPACITY   ACCESS MODES   STORAGECLASS   AGE
@@ -136,30 +136,30 @@ pvc-test   Bound     pv-neonsan   5Gi        RWO            csi-neonsan    3m
 
 ```
 
-- 创建 Deployment 挂载 PVC
+- Create Deployment mounting PVC
 
 ```
 $ kubectl apply -f https://raw.githubusercontent.com/yunify/qingstor-csi/master/deploy/neonsan/example/deploy.yaml
 deployment.apps "nginx" created
 ```
 
-- 查询 Pod 状态
+- Find Pod
 ```
 $ kubectl get po --selector=app=nginx
 NAME                    READY     STATUS    RESTARTS   AGE
 nginx-7cb56987d-582bx   1/1       Running   0          5m
 ```
 
-- 查看挂载 PVC 状态
+- Check PVC in workload
 ```
 $ kubectl exec -ti nginx-7cb56987d-582bx /bin/bash
 # ls mnt/
 lost+found
 ```
 
-### 删除工作负载
+### Delete workload
 
-- 删除 Deployment
+- Delete Deployment
 ```
 $ kubectl delete -f https://raw.githubusercontent.com/yunify/qingstor-csi/master/deploy/neonsan/example/deploy.yaml
 deployment.apps "nginx" deleted
