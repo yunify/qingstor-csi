@@ -67,8 +67,10 @@ No resources found.
 ### Create PVC
 
 -  Create NeonSAN volume
+
+> IMPORTANT: Please ensure `qbd.conf` file, the config file of NeonSAN CLI, is in the current directory.
 ```
-$ neonsan create_volume -volume pre-provisioning-volume -pool csi -size 5G -repcount 1
+$ neonsan create_volume -volume pre-provisioning-volume -pool kube -size 5G -repcount 1 -c ./qbd.conf
 INFO[0000] create volume succeed.                       
 ```
 
