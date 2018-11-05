@@ -5,7 +5,7 @@
 
 > English | [中文](README_zh.md)
 ## Description
-QingStor CSI plugin implements an interface between Container Storage Interface ([CSI](https://github.com/container-storage-interface/)) enabled Container Orchestrator (CO) and the storage of NeonSAN. Currently, QingCloud CSI plugin has volume manager and snapshot manager capabilities, and passed [CSI sanity test](https://github.com/kubernetes-csi/csi-test) in Kubernetes v1.12 environment.
+QingStor CSI plugin implements an interface between Container Storage Interface ([CSI](https://github.com/container-storage-interface/)) enabled Container Orchestrator (CO) and the storage of NeonSAN. Currently, QingCloud CSI plugin has **volume manager** and **snapshot manager** capabilities, and passed [CSI sanity test](https://github.com/kubernetes-csi/csi-test) in Kubernetes v1.12 environment.
 
 ## Installation
 
