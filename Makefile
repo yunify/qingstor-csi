@@ -14,32 +14,53 @@
 # | limitations under the License.
 # +-------------------------------------------------------------------------
 
-.PHONY: all neonsan
+.PHONY: all disk
 
-NEONSAN_IMAGE_NAME=dockerhub.qingcloud.com/csiplugin/csi-neonsan
-NEONSAN_IMAGE_VERSION=v0.3.0
-NEONSAN_PLUGIN_NAME=neonsan-plugin
+DISK_IMAGE_NAME=csiplugin/csi-qingcloud
+DISK_VERSION=v1.1.0-rc.1
+NEONSAN_IMAGE_NAME=csi-neonsan
+NEONSAN_VERSION=v0.4.0.1
+ROOT_PATH=$(pwd)
+PACKAGE_LIST=./cmd/... ./pkg/...
 
-neonsan:
-	if [ ! -d ./vendor ]; then dep ensure; fi
-	CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o  _output/${NEONSAN_PLUGIN_NAME} ./cmd/neonsan
+disk: mod
+	docker build -t ${DISK_IMAGE_NAME}-builder:${DISK_VERSION} -f deploy/disk/docker/Dockerfile . --target builder
 
-neonsan-container: neonsan
-	cp _output/${NEONSAN_PLUGIN_NAME} deploy/neonsan/docker
-	docker build -t $(NEONSAN_IMAGE_NAME):latest deploy/neonsan/docker
-	docker tag  $(NEONSAN_IMAGE_NAME):latest $(NEONSAN_IMAGE_NAME):$(NEONSAN_IMAGE_VERSION)
+disk-container:
+	docker build -t ${DISK_IMAGE_NAME}:${DISK_VERSION} -f deploy/disk/docker/Dockerfile  .
+
+neonsan-container:
+	docker build -t ${NEONSAN_IMAGE_NAME} -f deploy/neonsan/docker/Dockerfile  .
+
+install-dev:
+	cp /root/.qingcloud/config.yaml deploy/disk/kubernetes/base/config.yaml
+	kustomize build  deploy/disk/kubernetes/overlays/dev|kubectl apply -f -
+
+uninstall-dev:
+	kustomize build  deploy/disk/kubernetes/overlays/dev|kubectl delete -f -
+
+gen-dev:
+	cp /root/.qingcloud/config.yaml deploy/disk/kubernetes/base/config.yaml
+	kustomize build deploy/disk/kubernetes/overlays/dev
+
+gen-prod:
+	kustomize build deploy/disk/kubernetes/overlays/prod > deploy/disk/kubernetes/releases/qingcloud-csi-disk-${DISK_VERSION}.yaml
+
+mod:
+	go build ./...
+	go mod download
+	go mod tidy
+	go mod vendor
 
 fmt:
-	go fmt ./cmd/neonsan
-	go fmt ./pkg/neonsan/ ./pkg/neonsan/manager/ ./pkg/neonsan/util/
+	go fmt ${PACKAGE_LIST}
 
 fmt-deep: fmt
-	gofmt -s -w -l ./cmd/neonsan/ ./pkg/neonsan/ ./pkg/neonsan/manager/ ./pkg/neonsan/util/
+	gofmt -s -w -l ./pkg/cloud/ ./pkg/common/ ./pkg/disk/driver ./pkg/disk/rpcserver
 
-ut:
-	ginkgo ./pkg/neonsan/cache ./pkg/neonsan/manager ./pkg/neonsan/util -cover=true -- -hasCli=true
+sanity-test:
+	nohup ${ROOT_PATH}/csi-sanity --csi.endpoint /var/lib/kubelet/plugins/disk.csi.qingcloud.com/csi.sock -csi.testvolumeexpandsize 21474836480  -ginkgo.noColor &
 
 clean:
-	go clean -r -x
+	go clean -r -x ./...
 	rm -rf ./_output
-	rm -rf deploy/block/docker/${NEONSAN_PLUGIN_NAME}
