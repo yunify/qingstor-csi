@@ -14,17 +14,16 @@
 # | limitations under the License.
 # +-------------------------------------------------------------------------
 
+FROM golang:1.12.7-alpine as builder
+WORKDIR /qingstor-csi
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -mod=vendor  -ldflags "-s -w" -o  _output/neonsan-csi-driver ./cmd/neonsan
 
-FROM ubuntu:16.04
+FROM k8s.gcr.io/debian-base:v1.0.0
 LABEL maintainers="Yunify"
 LABEL description="Neonsan CSI plugin"
-
-RUN apt-get update && \
-    apt-get install -y ca-certificates ca-certificates-java && \
-    apt-get install -y xfsprogs
-
-COPY neonsan-plugin /neonsan-plugin
-RUN chmod +x /neonsan-plugin && \
-   mkdir -p /var/log/neonsan-plugin
-
-ENTRYPOINT ["/neonsan-plugin"]
+RUN clean-install util-linux e2fsprogs xfsprogs  mount ca-certificates udev
+COPY --from=builder /qingstor-csi/_output/neonsan-csi-driver /neonsan-csi-driver
+RUN chmod +x /neonsan-csi-driver && \
+    mkdir -p /var/log/neonsan-csi-driver
+ENTRYPOINT ["/neonsan-csi-driver"]
