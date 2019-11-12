@@ -21,9 +21,19 @@ package common
 import "k8s.io/kubernetes/pkg/util/mount"
 
 func NewSafeMounter() *mount.SafeFormatAndMount {
-	return nil
+	realMounter := mount.New("")
+	realExec := mount.NewOsExec()
+	return &mount.SafeFormatAndMount{
+		Interface: realMounter,
+		Exec:      realExec,
+	}
 }
 
 func NewFakeFormatAndMount()*mount.SafeFormatAndMount  {
-	return nil
+	return &mount.SafeFormatAndMount{
+		Interface: &mount.FakeMounter{},
+		Exec: &mount.FakeExec{},
+	}
 }
+
+

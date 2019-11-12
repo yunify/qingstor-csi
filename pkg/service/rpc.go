@@ -21,7 +21,6 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/yunify/qingstor-csi/pkg/storage"
 	"google.golang.org/grpc"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/util/mount"
 	"net"
@@ -87,6 +86,7 @@ func (s *nonBlockingGRPCServer) serve(endpoint string, service Service) {
 
 	if service == nil {
 		klog.Fatalf("service is nil")
+		return
 	}
 
 	listener, err := net.Listen(proto, addr)
@@ -106,7 +106,7 @@ func (s *nonBlockingGRPCServer) serve(endpoint string, service Service) {
 
 	klog.Infof("Listening for connections on address: %#v", listener.Addr())
 
-	server.Serve(listener)
+	_ = server.Serve(listener)
 
 }
 
@@ -122,10 +122,10 @@ func parseEndpoint(ep string) (string, string, error) {
 
 // Run
 // Initial and start CSI driver
-func Run(option *Option, storageProvider storage.Provider, mounter *mount.SafeFormatAndMount,
-	endpoint string, retryTime wait.Backoff) {
+func Run(option *Option, storageProvider storage.Provider, formatAndMount *mount.SafeFormatAndMount,
+	endpoint string) {
 	s := NewNonBlockingGRPCServer()
-	service := New(option, storageProvider, mounter, retryTime)
+	service := New(option, storageProvider, formatAndMount)
 	s.Start(endpoint, service)
 	s.Wait()
 }

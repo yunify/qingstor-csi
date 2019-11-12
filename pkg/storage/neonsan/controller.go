@@ -2,7 +2,7 @@ package neonsan
 
 import (
 	"errors"
-	"github.com/yunify/qingstor-csi/pkg/storage"
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/yunify/qingstor-csi/pkg/storage/neonsan/api"
 )
 
@@ -11,8 +11,7 @@ var (
 	errorNotToCalled  = errors.New("method should not to be called")
 )
 
-//requestSize G
-func (v *neonsan) CreateVolume(volName string, requestSize int, replicas int) (string, error) {
+func (v *neonsan) CreateVolume(volName string, requestSize int64, replicas int) (string, error) {
 	_, err := api.CreateVolume(v.confFile, v.poolName, volName, requestSize, replicas)
 	if err != nil {
 		return "", err
@@ -26,11 +25,11 @@ func (v *neonsan) DeleteVolume(volId string) (err error) {
 	return err
 }
 
-func (v *neonsan) FindVolume(volId string) (volInfo *storage.Volume, err error) {
+func (v *neonsan) FindVolume(volId string) (*csi.Volume, error) {
 	return v.FindVolumeByName(volId)
 }
 
-func (v *neonsan) FindVolumeByName(volName string) (volInfo *storage.Volume, err error) {
+func (v *neonsan) FindVolumeByName(volName string) (*csi.Volume, error) {
 	vol, err := api.ListVolume(v.confFile, v.poolName, volName)
 	if err != nil {
 		return nil, err
@@ -38,7 +37,10 @@ func (v *neonsan) FindVolumeByName(volName string) (volInfo *storage.Volume, err
 	if vol == nil {
 		return nil, nil
 	}
-	return volumeOfNeonsan(vol), nil
+	return &csi.Volume{
+		VolumeId:      vol.Name,
+		CapacityBytes: int64(vol.Size),
+	}, nil
 }
 
 func (*neonsan) AttachVolume(volId string, instanceId string) (err error) {

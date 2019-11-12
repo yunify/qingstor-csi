@@ -36,17 +36,13 @@ func GetInstanceIdFromFile(filepath string) (instanceId string, err error) {
 	return instanceId, nil
 }
 
-func NewVolumeCapabilityAccessMode(mode csi.VolumeCapability_AccessMode_Mode) *csi.VolumeCapability_AccessMode {
-	return &csi.VolumeCapability_AccessMode{Mode: mode}
-}
-
 func NewControllerServiceCapability(cap csi.ControllerServiceCapability_RPC_Type) *csi.ControllerServiceCapability {
 	return &csi.ControllerServiceCapability{
-		Type: &csi.ControllerServiceCapability_Rpc{
-			Rpc: &csi.ControllerServiceCapability_RPC{
-				Type: cap,
+			Type: &csi.ControllerServiceCapability_Rpc{
+				Rpc: &csi.ControllerServiceCapability_RPC{
+					Type: cap,
+				},
 			},
-		},
 	}
 }
 

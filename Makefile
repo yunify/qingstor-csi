@@ -53,9 +53,8 @@ fmt:
 fmt-deep: fmt
 	gofmt -s -w -l ./pkg/cloud/ ./pkg/common/ ./pkg/disk/driver ./pkg/disk/rpcserver
 
-sanity-test:
-	#csi-sanity --csi.endpoint /var/lib/kubelet/plugins/disk.csi.qingcloud.com/csi.sock -csi.testvolumeexpandsize 21474836480  -ginkgo.noColor
-	csi-sanity --csi.endpoint /tmp/csi.sock -csi.testvolumeexpandsize 21474836480
+test:
+	go test -cover -mod=vendor -gcflags=-l ./pkg/...
 
 clean:
 	go clean -r -x ./...

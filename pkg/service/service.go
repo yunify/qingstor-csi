@@ -21,17 +21,9 @@ import (
 	"github.com/yunify/qingstor-csi/pkg/common"
 	"github.com/yunify/qingstor-csi/pkg/storage"
 	"google.golang.org/grpc"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/kubernetes/pkg/util/mount"
-	"time"
 )
 
-var DefaultBackOff = wait.Backoff{
-	Duration: time.Second,
-	Factor:   1.5,
-	Steps:    20,
-	Cap:      time.Minute * 2,
-}
 
 type Service interface {
 	csi.ControllerServer
@@ -45,15 +37,13 @@ type service struct {
 	storageProvider storage.Provider
 	mounter         *mount.SafeFormatAndMount
 	locks           *common.ResourceLocks
-	retryTime       wait.Backoff
 }
 
-func New(option *Option, cloud storage.Provider, mounter *mount.SafeFormatAndMount, retryTime wait.Backoff) Service {
+func New(option *Option, cloud storage.Provider, mounter *mount.SafeFormatAndMount) Service {
 	return &service{
 		option:          option,
 		storageProvider: cloud,
 		mounter:         mounter,
 		locks:           common.NewResourceLocks(),
-		retryTime:       retryTime,
 	}
 }

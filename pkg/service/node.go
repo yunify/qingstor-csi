@@ -19,7 +19,6 @@ package service
 import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/yunify/qingstor-csi/pkg/common"
-	"github.com/yunify/qingstor-csi/pkg/service/neonsan"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -33,8 +32,7 @@ import (
 // csi.NodeStageVolumeRequest: 	volume id			+ Required
 //								stage target path	+ Required
 //								volume capability	+ Required
-func (s *service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.
-	NodeStageVolumeResponse, error) {
+func (s *service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	// set parameter
 	volumeId := req.GetVolumeId()
 	targetPath := req.GetStagingTargetPath()
@@ -44,7 +42,7 @@ func (s *service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeR
 	}
 	defer s.locks.Release(volumeId)
 	// set fsType
-	sc, err := neonsan.NewStorageClassFromMap(req.GetPublishContext())
+	sc, err := NewStorageClass(req.GetPublishContext())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -78,7 +76,7 @@ func (s *service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeR
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	// do mount
-	klog.Infof("Mounting %s to %s format %s...", volumeId, targetPath)
+	klog.Infof("Mounting %s to %s format ...", volumeId, targetPath)
 	if err := s.mounter.FormatAndMount(devicePath, targetPath, sc.FsType, []string{}); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -137,7 +135,7 @@ func (s *service) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVol
 	cnt--
 	klog.Infof("Disk volume mount count: %d", cnt)
 	if cnt > 0 {
-		klog.Errorf("Volume %s still mounted in instance %s", volumeId, s.option.GetInstanceId())
+		klog.Errorf("Volume %s still mounted in instance %s", volumeId, s.option.NodeId)
 		return nil, status.Error(codes.Internal, "unmount failed")
 	}
 
@@ -171,7 +169,7 @@ func (s *service) NodePublishVolume(ctx context.Context, req *csi.NodePublishVol
 	defer s.locks.Release(volumeId)
 
 	// set fsType
-	sc, err := neonsan.NewStorageClassFromMap(req.GetVolumeContext())
+	sc, err := NewStorageClass(req.GetVolumeContext())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -253,14 +251,14 @@ func (s *service) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublis
 func (s *service) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.
 	NodeGetCapabilitiesResponse, error) {
 	return &csi.NodeGetCapabilitiesResponse{
-		Capabilities: s.option.GetNodeCapability(),
+		Capabilities: s.option.NodeCap,
 	}, nil
 }
 
 func (s *service) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
 	return &csi.NodeGetInfoResponse{
-		NodeId:            s.option.GetInstanceId(),
-		MaxVolumesPerNode: s.option.GetMaxVolumePerNode(),
+		NodeId:            s.option.NodeId,
+		MaxVolumesPerNode: s.option.MaxVolume,
 	}, nil
 }
 
@@ -268,8 +266,7 @@ func (s *service) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) 
 // Input Parameters:
 //  volume id: REQUIRED
 //  volume path: REQUIRED
-func (s *service) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (
-	*csi.NodeExpandVolumeResponse, error) {
+func (s *service) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "expand volume not implement")
 }
 

@@ -19,7 +19,6 @@ package service
 import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/yunify/qingstor-csi/pkg/common"
-	"github.com/yunify/qingstor-csi/pkg/service/neonsan"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -34,12 +33,11 @@ import (
 // 3. Clone volume: CREATE_DELETE_VOLUME and CLONE_VOLUME
 // csi.CreateVolumeRequest: name 				+Required
 //							capability			+Required
-func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse,
-	error) {
+func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	hash := common.GetContextHash(ctx)
 	volName := req.GetName()
 	// create StorageClass object
-	sc, err := neonsan.NewStorageClassFromMap(req.GetParameters())
+	sc, err := NewStorageClass(req.GetParameters())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -61,21 +59,19 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 	}
 	if exVol != nil {
 		klog.Infof("%s: Request volume name: %s, request size %d bytes", hash, volName, requiredSizeByte)
-		klog.Infof("%s: Exist volume name: %s, id: %s, capacity: %d bytes",
-			hash, *exVol.VolumeName, *exVol.VolumeID, common.GibToByte(*exVol.Size))
-		exVolSizeByte := common.GibToByte(*exVol.Size)
-		if common.IsValidCapacityBytes(exVolSizeByte, req.GetCapacityRange()) {
+		klog.Infof("%s: Exist volume id: %s, capacity: %d bytes", hash, exVol.VolumeId, exVol.CapacityBytes)
+		if common.IsValidCapacityBytes(exVol.CapacityBytes, req.GetCapacityRange()) {
 			// existing volume is compatible with new request and should be reused.
-			klog.Infof("Volume %s already exists and compatible with %s", volName, *exVol.VolumeID)
+			klog.Infof("Volume %s already exists and compatible with %s", volName, exVol.VolumeId)
 			return &csi.CreateVolumeResponse{
 				Volume: &csi.Volume{
-					VolumeId:      *exVol.VolumeID,
-					CapacityBytes: exVolSizeByte,
+					VolumeId:      exVol.VolumeId,
+					CapacityBytes: exVol.CapacityBytes,
 					VolumeContext: req.GetParameters(),
 				},
 			}, nil
 		} else {
-			klog.Errorf("%s: volume %s/%s already exist but is incompatible", hash, volName, *exVol.VolumeID)
+			klog.Errorf("%s: volume %s/%s already exist but is incompatible", hash, volName, exVol.VolumeId)
 			return nil, status.Errorf(codes.AlreadyExists, "volume %s already exist but is incompatible", volName)
 		}
 	}
@@ -89,9 +85,8 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 		}
 	} else {
 		// create an empty volume
-		requiredSizeGib := common.ByteCeilToGib(requiredSizeByte)
-		klog.Infof("%s: Creating empty volume %s with %d Gib ", hash, volName, requiredSizeGib)
-		newVolId, err := s.storageProvider.CreateVolume(volName, requiredSizeGib, sc.Replica)
+		klog.Infof("%s: Creating empty volume %s with %d Gib ", hash, volName, requiredSizeByte>>30)
+		newVolId, err := s.storageProvider.CreateVolume(volName, requiredSizeByte, sc.Replica)
 		if err != nil {
 			klog.Errorf("%s: Failed to create volume %s, error: %v", hash, volName, err)
 			return nil, status.Error(codes.Internal, err.Error())
@@ -140,22 +135,22 @@ func (s *service) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest
 	if volInfo == nil {
 		return &csi.DeleteVolumeResponse{}, nil
 	}
+
+	retryCnt := 0
+	retryFun := func(e error) bool{
+		retryCnt++
+		return err != nil && retryCnt <= s.option.RetryCnt
+	}
 	// Do delete volume
-	err = retry.OnError(s.retryTime, func(e error) bool { return true }, func() error {
+	err = retry.OnError(s.option.RetryTime, retryFun, func() error {
 		klog.Infof("Try to delete volume %s", volumeId)
-		if err = s.storageProvider.DeleteVolume(volumeId); err != nil {
-			klog.Errorf("Failed to delete volume %s, error: %v", volumeId, err)
-			return err
-		} else {
-			klog.Infof("Succeed to delete volume %s", volumeId)
-			return nil
-		}
+		return s.storageProvider.DeleteVolume(volumeId)
 	})
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Exceed retry times: "+err.Error())
-	} else {
-		return &csi.DeleteVolumeResponse{}, nil
 	}
+
+	return &csi.DeleteVolumeResponse{}, nil
 }
 
 // csi.ControllerPublishVolumeRequest: 	volume id 			+ Required
@@ -189,19 +184,9 @@ func (s *service) ValidateVolumeCapabilities(ctx context.Context, req *csi.Valid
 		return nil, status.Errorf(codes.NotFound, "volume %s does not exist", volumeId)
 	}
 
-	// check capability
-	for _, c := range req.GetVolumeCapabilities() {
-		found := false
-		for _, c1 := range s.option.GetVolumeCapability() {
-			if c1.GetMode() == c.GetAccessMode().GetMode() {
-				found = true
-			}
-		}
-		if !found {
-			return &csi.ValidateVolumeCapabilitiesResponse{
-				Message: "Driver does not support mode:" + c.GetAccessMode().GetMode().String(),
-			}, status.Error(codes.InvalidArgument, "Driver does not support mode:"+c.GetAccessMode().GetMode().String())
-		}
+	valid := s.option.ValidateVolumeCapabilities(req.GetVolumeCapabilities())
+	if !valid{
+		return nil, status.Errorf(codes.InvalidArgument, "Driver does not support volume capabilities:%v",req.GetVolumeCapabilities())
 	}
 	return &csi.ValidateVolumeCapabilitiesResponse{}, nil
 }
@@ -239,8 +224,7 @@ func (s *service) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotReq
 // CreateSnapshot allows the CO to delete a snapshot.
 // This operation MUST be idempotent.
 // Snapshot id is REQUIRED
-func (s *service) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse,
-	error) {
+func (s *service) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
@@ -251,6 +235,6 @@ func (s *service) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsReque
 func (s *service) ControllerGetCapabilities(ctx context.Context,
 	req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
 	return &csi.ControllerGetCapabilitiesResponse{
-		Capabilities: s.option.GetControllerCapability(),
+		Capabilities: s.option.ControllerCap,
 	}, nil
 }

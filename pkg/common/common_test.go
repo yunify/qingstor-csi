@@ -17,6 +17,7 @@ limitations under the License.
 package common
 
 import (
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"testing"
 )
 
@@ -41,6 +42,84 @@ func TestGenerateHashInEightBytes(t *testing.T) {
 		res := GenerateHashInEightBytes(v.input)
 		if v.hash != res {
 			t.Errorf("name %s: expect %s but actually %s", v.name, v.hash, res)
+		}
+	}
+}
+
+func TestIsValidCapacityBytes(t *testing.T) {
+	tests := []struct {
+		name     string
+		bytes    int64
+		capRange *csi.CapacityRange
+		isValid  bool
+	}{
+		{
+			name:  "normal",
+			bytes: 10 * Gib,
+			capRange: &csi.CapacityRange{
+				RequiredBytes: 10 * Gib,
+				LimitBytes:    10 * Gib,
+			},
+			isValid: true,
+		},
+		{
+			name:  "invalid range",
+			bytes: 10 * Gib,
+			capRange: &csi.CapacityRange{
+				RequiredBytes: 11 * Gib,
+				LimitBytes:    10 * Gib,
+			},
+			isValid: false,
+		},
+		{
+			name:     "empty range",
+			bytes:    10 * Gib,
+			capRange: &csi.CapacityRange{},
+			isValid:  true,
+		},
+		{
+			name:     "nil range",
+			bytes:    10 * Gib,
+			capRange: nil,
+			isValid:  true,
+		},
+		{
+			name:  "without floor",
+			bytes: 10 * Gib,
+			capRange: &csi.CapacityRange{
+				LimitBytes: 10*Gib + 1,
+			},
+			isValid: true,
+		},
+		{
+			name:  "invalid floor",
+			bytes: 11 * Gib,
+			capRange: &csi.CapacityRange{
+				RequiredBytes: 11*Gib + 1,
+			},
+			isValid: false,
+		},
+		{
+			name:  "without ceil",
+			bytes: 14 * Gib,
+			capRange: &csi.CapacityRange{
+				RequiredBytes: 14 * Gib,
+			},
+			isValid: true,
+		},
+		{
+			name:  "invalid ceil",
+			bytes: 14 * Gib,
+			capRange: &csi.CapacityRange{
+				LimitBytes: 14*Gib - 1,
+			},
+			isValid: false,
+		},
+	}
+	for _, test := range tests {
+		res := IsValidCapacityBytes(test.bytes, test.capRange)
+		if test.isValid != res {
+			t.Errorf("name %s: expect %t, but actually %t", test.name, test.isValid, res)
 		}
 	}
 }

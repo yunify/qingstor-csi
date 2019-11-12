@@ -17,180 +17,131 @@ limitations under the License.
 package service
 
 import (
-	"fmt"
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
+	"time"
+)
+
+var (
+	DefaultBackOff = wait.Backoff{
+		Duration: time.Second,
+		Factor:   1.5,
+		Steps:    20,
+		Cap:      time.Minute * 2,
+	}
+
+	DefaultRetryCnt = 10
 )
 
 type Option struct {
-	name          string
-	version       string
-	nodeId        string
-	maxVolume     int64
-	volumeCap     []*csi.VolumeCapability_AccessMode
-	controllerCap []*csi.ControllerServiceCapability
-	nodeCap       []*csi.NodeServiceCapability
-	pluginCap     []*csi.PluginCapability
-}
-
-type OptionInput struct {
 	Name          string
 	Version       string
 	NodeId        string
 	MaxVolume     int64
-	VolumeCap     []csi.VolumeCapability_AccessMode_Mode
-	ControllerCap []csi.ControllerServiceCapability_RPC_Type
-	NodeCap       []csi.NodeServiceCapability_RPC_Type
+	VolumeCap     []*csi.VolumeCapability_AccessMode
+	ControllerCap []*csi.ControllerServiceCapability
+	NodeCap       []*csi.NodeServiceCapability
+	NodeCapType   []csi.NodeServiceCapability_RPC_Type
 	PluginCap     []*csi.PluginCapability
+
+	RetryTime wait.Backoff
+	RetryCnt  int
 }
 
-// GetOption
-// Create disk driver
-func GetOption() *Option {
-	return &Option{}
+// NewOption
+func NewOption() *Option {
+	return &Option{
+		RetryTime: DefaultBackOff,
+		RetryCnt:  DefaultRetryCnt,
+	}
 }
 
-func (d *Option) InitOption(input *OptionInput) {
-	d.name = input.Name
-	d.version = input.Version
-	// Setup Node Id
-	d.nodeId = input.NodeId
-	// Setup max volume
-	d.maxVolume = input.MaxVolume
-	// Setup cap
-	d.addVolumeCapabilityAccessModes(input.VolumeCap)
-	d.addControllerServiceCapabilities(input.ControllerCap)
-	d.addNodeServiceCapabilities(input.NodeCap)
-	d.addPluginCapabilities(input.PluginCap)
+func (o *Option) SetName(name string) *Option {
+	o.Name = name
+	return o
 }
 
-func (d *Option) addVolumeCapabilityAccessModes(vc []csi.VolumeCapability_AccessMode_Mode) {
+func (o *Option) SetVersion(version string) *Option {
+	o.Version = version
+	return o
+}
+
+func (o *Option) SetNodeId(nodeId string) *Option {
+	o.NodeId = nodeId
+	return o
+}
+
+func (o *Option) SetMaxVolume(maxVolume int64) *Option {
+	o.MaxVolume = maxVolume
+	return o
+}
+
+func (o *Option) SetVolumeCapabilityAccessNodes(vc []csi.VolumeCapability_AccessMode_Mode) *Option {
 	var vca []*csi.VolumeCapability_AccessMode
 	for _, c := range vc {
-		klog.V(4).Infof("Enabling volume access mode: %v", c.String())
-		vca = append(vca, NewVolumeCapabilityAccessMode(c))
+		vca = append(vca, &csi.VolumeCapability_AccessMode{Mode: c})
 	}
-	d.volumeCap = vca
+	o.VolumeCap = vca
+	return o
 }
 
-func (d *Option) addControllerServiceCapabilities(cl []csi.ControllerServiceCapability_RPC_Type) {
+func (o *Option) SetControllerServiceCapabilities(cl []csi.ControllerServiceCapability_RPC_Type) *Option {
 	var csc []*csi.ControllerServiceCapability
 	for _, c := range cl {
 		klog.V(4).Infof("Enabling controller service capability: %v", c.String())
 		csc = append(csc, NewControllerServiceCapability(c))
 	}
-	d.controllerCap = csc
+	o.ControllerCap = csc
+	return o
 }
 
-func (d *Option) addNodeServiceCapabilities(nl []csi.NodeServiceCapability_RPC_Type) {
+func (o *Option) SetNodeServiceCapabilities(nl []csi.NodeServiceCapability_RPC_Type) *Option {
 	var nsc []*csi.NodeServiceCapability
 	for _, n := range nl {
 		klog.V(4).Infof("Enabling node service capability: %v", n.String())
 		nsc = append(nsc, NewNodeServiceCapability(n))
 	}
-	d.nodeCap = nsc
+	o.NodeCap = nsc
+	return o
 }
 
-func (d *Option) addPluginCapabilities(cap []*csi.PluginCapability) {
-	d.pluginCap = cap
+func (o *Option) SetPluginCapabilities(cap []*csi.PluginCapability) *Option {
+	o.PluginCap = cap
+	return o
 }
 
-func (d *Option) ValidateControllerServiceRequest(c csi.ControllerServiceCapability_RPC_Type) bool {
-	if c == csi.ControllerServiceCapability_RPC_UNKNOWN {
-		return true
-	}
-
-	for _, cap := range d.controllerCap {
-		if c == cap.GetRpc().Type {
-			return true
-		}
-	}
-	return false
+func (o *Option) SetRetryTime(retryTime wait.Backoff) *Option {
+	o.RetryTime = retryTime
+	return o
 }
 
-func (d *Option) ValidateNodeServiceRequest(c csi.NodeServiceCapability_RPC_Type) bool {
-	if c == csi.NodeServiceCapability_RPC_UNKNOWN {
-		return true
-	}
-	for _, cap := range d.nodeCap {
-		if c == cap.GetRpc().Type {
-			return true
-		}
-	}
-	return false
-
+func (o *Option) SetRetryCnt(cnt int) *Option {
+	o.RetryCnt = cnt
+	return o
 }
 
-func (d *Option) ValidateVolumeCapability(cap *csi.VolumeCapability) bool {
-	if !d.ValidateVolumeAccessMode(cap.GetAccessMode().GetMode()) {
+func (o *Option) ValidateVolumeCapability(cap *csi.VolumeCapability) bool {
+	if !o.ValidateVolumeAccessMode(cap.GetAccessMode().GetMode()) {
 		return false
 	}
 	return true
 }
 
-func (d *Option) ValidateVolumeCapabilities(caps []*csi.VolumeCapability) bool {
-	for _, cap := range caps {
-		if !d.ValidateVolumeAccessMode(cap.GetAccessMode().GetMode()) {
+func (o *Option) ValidateVolumeCapabilities(caps []*csi.VolumeCapability) bool {
+	for _, capability := range caps {
+		if !o.ValidateVolumeAccessMode(capability.GetAccessMode().GetMode()) {
 			return false
 		}
 	}
 	return true
 }
 
-func (d *Option) ValidateVolumeAccessMode(c csi.VolumeCapability_AccessMode_Mode) bool {
-	for _, mode := range d.volumeCap {
+func (o *Option) ValidateVolumeAccessMode(c csi.VolumeCapability_AccessMode_Mode) bool {
+	for _, mode := range o.VolumeCap {
 		if c == mode.GetMode() {
 			return true
 		}
 	}
 	return false
-}
-
-func (d *Option) ValidatePluginCapabilityService(cap csi.PluginCapability_Service_Type) bool {
-	for _, v := range d.GetPluginCapability() {
-		if v.GetService() != nil && v.GetService().GetType() == cap {
-			return true
-		}
-	}
-	return false
-}
-
-func (d *Option) GetName() string {
-	return d.name
-}
-
-func (d *Option) GetVersion() string {
-	return d.version
-}
-
-func (d *Option) GetInstanceId() string {
-	return d.nodeId
-}
-
-func (d *Option) GetMaxVolumePerNode() int64 {
-	return d.maxVolume
-}
-
-func (d *Option) GetControllerCapability() []*csi.ControllerServiceCapability {
-	return d.controllerCap
-}
-
-func (d *Option) GetNodeCapability() []*csi.NodeServiceCapability {
-	return d.nodeCap
-}
-
-func (d *Option) GetPluginCapability() []*csi.PluginCapability {
-	return d.pluginCap
-}
-
-func (d *Option) GetVolumeCapability() []*csi.VolumeCapability_AccessMode {
-	return d.volumeCap
-}
-
-func (d *Option) GetTopologyZoneKey() string {
-	return fmt.Sprintf("topology.%s/zone", d.GetName())
-}
-
-func (d *Option) GetTopologyInstanceTypeKey() string {
-	return fmt.Sprintf("topology.%s/instance-type", d.GetName())
 }

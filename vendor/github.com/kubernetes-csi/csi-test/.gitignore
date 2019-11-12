@@ -1,0 +1,4 @@
+
+#ignore files specific to csi-test
+bin/mock-driver
+cmd/csi-sanity/csi-sanity

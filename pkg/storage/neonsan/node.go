@@ -11,7 +11,7 @@ func (v *neonsan) NodeDetachVolume(volId string) error {
 }
 
 func (v *neonsan) NodeGetDevice(volId string) (string, error) {
-	attachInfo, err := qbd.FindAttachedVolumeWithoutPool(volId)
+	attachInfo, err := qbd.ListVolume(v.confFile, v.poolName, volId)
 	if err != nil {
 		return "", err
 	}
