@@ -19,8 +19,6 @@ package service
 import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"k8s.io/klog"
 )
 
@@ -31,28 +29,18 @@ func (s *service) Probe(ctx context.Context, req *csi.ProbeRequest) (*csi.ProbeR
 }
 
 // Get plugin capabilities: CONTROLLER, ACCESSIBILITY, EXPANSION
-func (s *service) GetPluginCapabilities(ctx context.Context, req *csi.GetPluginCapabilitiesRequest) (*csi.
-	GetPluginCapabilitiesResponse, error) {
+func (s *service) GetPluginCapabilities(ctx context.Context, req *csi.GetPluginCapabilitiesRequest) (*csi.GetPluginCapabilitiesResponse, error) {
 	klog.V(5).Infof("Using default capabilities")
 	return &csi.GetPluginCapabilitiesResponse{
-		Capabilities: s.option.GetPluginCapability(),
+		Capabilities: s.option.PluginCap,
 	}, nil
 }
 
-func (s *service) GetPluginInfo(ctx context.Context,
-	req *csi.GetPluginInfoRequest) (*csi.GetPluginInfoResponse, error) {
+func (s *service) GetPluginInfo(ctx context.Context, req *csi.GetPluginInfoRequest) (*csi.GetPluginInfoResponse, error) {
 	klog.V(5).Infof("Using GetPluginInfo")
 
-	if s.option.GetName() == "" {
-		return nil, status.Error(codes.Unavailable, "Driver name not configured")
-	}
-
-	if s.option.GetVersion() == "" {
-		return nil, status.Error(codes.Unavailable, "Driver is missing version")
-	}
-
 	return &csi.GetPluginInfoResponse{
-		Name:          s.option.GetName(),
-		VendorVersion: s.option.GetVersion(),
+		Name:          s.option.Name,
+		VendorVersion: s.option.Version,
 	}, nil
 }

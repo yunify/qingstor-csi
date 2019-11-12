@@ -3,18 +3,22 @@ module github.com/yunify/qingstor-csi
 go 1.12
 
 require (
+	bou.ke/monkey v1.0.1
 	github.com/container-storage-interface/spec v1.1.0
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6 // indirect
 	github.com/googleapis/gnostic v0.3.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.1 // indirect
 	github.com/kubernetes-csi/csi-lib-utils v0.2.0
+	github.com/kubernetes-csi/csi-test v2.2.0+incompatible
+	github.com/onsi/ginkgo v1.8.0
+	github.com/onsi/gomega v1.5.0
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/pelletier/go-toml v1.2.0
 	github.com/prometheus/client_golang v1.1.0 // indirect
 	github.com/samuel/go-zookeeper v0.0.0-20190923202752-2cc03de413da
+	github.com/smartystreets/goconvey v1.6.4
 	github.com/stretchr/testify v1.4.0 // indirect
-	github.com/yunify/qingcloud-sdk-go v0.0.0-20190806070725-5b519baeba90
 	golang.org/x/net v0.0.0-20190812203447-cdfb69ac37fc
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45 // indirect
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4 // indirect

@@ -16,13 +16,7 @@ limitations under the License.
 
 package storage
 
-type Volume struct {
-	Status *string
-	Size   *int
-
-	VolumeName *string
-	VolumeID   *string
-}
+import "github.com/container-storage-interface/spec/lib/go/csi"
 
 type ControllerOperator interface {
 	// Volume Management
@@ -31,39 +25,39 @@ type ControllerOperator interface {
 	//   nil,  nil:  volume does not exist
 	//   volume, nil: found volume and return volume info
 	//   nil,  error: storage system internal error
-	FindVolume(volId string) (volInfo *Volume, err error)
+	FindVolume(volId string) (*csi.Volume, error)
 	// FindVolumeByName finds and gets volume information by its name.
 	// It will filter volume in deleted and ceased status and return first discovered item.
 	// Return:
 	//   nil, nil: volume does not exist
 	//   volume, nil: found volume and return first discovered volume info
 	//   nil, error: storage system internal error
-	FindVolumeByName(volName string) (volInfo *Volume, err error)
+	FindVolumeByName(volName string) (*csi.Volume, error)
 	// CreateVolume creates volume with specified name, size, replicas, type and zone and returns volume id.
 	// Return:
 	//   volume id, nil: succeed to create volume and return volume id
 	//   nil, error: failed to create volume
-	CreateVolume(volName string, requestSize int, replicas int) (volId string, err error)
+	CreateVolume(volName string, requestSize int64, replicas int) (volId string, err error)
 	// DeleteVolume deletes volume by id.
 	// Return:
 	//   nil: succeed to delete volume
 	//   error: failed to delete volume
-	DeleteVolume(volId string) (err error)
+	DeleteVolume(volId string) error
 	// AttachVolume attaches volume on specified node.
 	// Return:
 	//   nil: succeed to attach volume
 	//   error: failed to attach volume
-	AttachVolume(volId string, instanceId string) (err error)
+	AttachVolume(volId string, instanceId string) error
 	// DetachVolume detaches volume from node.
 	// Return:
 	//   nil: succeed to detach volume
 	//   error: failed to detach volume
-	DetachVolume(volId string, instanceId string) (err error)
+	DetachVolume(volId string, instanceId string) error
 	// ResizeVolume expands volume to specified capacity.
 	// Return:
 	//   nil: succeed to expand volume
 	//   error: failed to expand volume
-	ResizeVolume(volId string, requestSize int) (err error)
+	ResizeVolume(volId string, requestSize int) error
 	// CloneVolume clones a volume
 	// Return:
 	//   volume id, nil: succeed to clone volume and return volume id
@@ -74,7 +68,7 @@ type ControllerOperator interface {
 type NodeOperator interface {
 	NodeAttachVolume(volId string) error
 	NodeDetachVolume(volId string) error
-	NodeGetDevice(volId string) (string, error)
+	NodeGetDevice(volId string) (device string, err error)
 }
 
 type Provider interface {
