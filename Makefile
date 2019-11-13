@@ -17,7 +17,7 @@
 .PHONY: all disk
 
 NEONSAN_IMAGE_NAME=neonsan-csi
-NEONSAN_VERSION=v0.4.0.1
+NEONSAN_VERSION=v1.1.0
 ROOT_PATH=$(pwd)
 PACKAGE_LIST=./cmd/... ./pkg/...
 
@@ -27,31 +27,14 @@ neonsan-plugin:
 neonsan-container:
 	docker build -t ${NEONSAN_IMAGE_NAME} -f deploy/neonsan/docker/Dockerfile  .
 
-install-dev:
-	cp /root/.qingcloud/config.yaml deploy/disk/kubernetes/base/config.yaml
-	kustomize build  deploy/disk/kubernetes/overlays/dev|kubectl apply -f -
-
-uninstall-dev:
-	kustomize build  deploy/disk/kubernetes/overlays/dev|kubectl delete -f -
-
-gen-dev:
-	cp /root/.qingcloud/config.yaml deploy/disk/kubernetes/base/config.yaml
-	kustomize build deploy/disk/kubernetes/overlays/dev
-
-gen-prod:
-	kustomize build deploy/disk/kubernetes/overlays/prod > deploy/disk/kubernetes/releases/qingcloud-csi-disk-${DISK_VERSION}.yaml
+release:
+	kustomize build deploy/neonsan/kubernetes/base > deploy/neonsan/kubernetes/release/csi-neonsan-${NEONSAN_VERSION}.yaml
 
 mod:
 	go build ./...
 	go mod download
 	go mod tidy
 	go mod vendor
-
-fmt:
-	go fmt ${PACKAGE_LIST}
-
-fmt-deep: fmt
-	gofmt -s -w -l ./pkg/cloud/ ./pkg/common/ ./pkg/disk/driver ./pkg/disk/rpcserver
 
 test:
 	go test -cover -mod=vendor -gcflags=-l ./pkg/...

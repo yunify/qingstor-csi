@@ -28,7 +28,7 @@ spec:
       labels:
         role: "node"
     spec:
-      serviceAccount: csi-qingstor-node
+      serviceAccount: csi-neonsan-node
       tolerations:
       - key: CriticalAddonsOnly
         operator: Exists
