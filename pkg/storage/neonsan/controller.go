@@ -1,3 +1,19 @@
+/*
+Copyright (C) 2018 Yunify, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this work except in compliance with the License.
+You may obtain a copy of the License in the LICENSE file, or at:
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package neonsan
 
 import (
@@ -43,16 +59,16 @@ func (v *neonsan) FindVolumeByName(volName string) (*csi.Volume, error) {
 	}, nil
 }
 
-func (*neonsan) AttachVolume(volId string, instanceId string) (err error) {
+func (v *neonsan) AttachVolume(volId string, instanceId string) (err error) {
 	return errorNotToCalled
 }
 
-func (*neonsan) DetachVolume(volId string, instanceId string) (err error) {
+func (v *neonsan) DetachVolume(volId string, instanceId string) (err error) {
 	return errorNotToCalled
 }
 
-func (*neonsan) ResizeVolume(volId string, requestSize int) (err error) {
-	return errorNotImplement
+func (v *neonsan) ResizeVolume(volId string, requestSize int64) (err error) {
+	return api.ResizeVolume(v.confFile, v.poolName, volId, requestSize)
 }
 
 func (v *neonsan) CloneVolume(volName string, volType int, srcVolId string, zone string) (volId string, err error) {

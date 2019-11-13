@@ -196,7 +196,38 @@ func (s *service) ValidateVolumeCapabilities(ctx context.Context, req *csi.Valid
 // capacity range is REQUIRED in csi.ControllerExpandVolumeRequest
 func (s *service) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest,
 ) (*csi.ControllerExpandVolumeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "expand volume not implement")
+	volumeId := req.GetVolumeId()
+	if acquired := s.locks.TryAcquire(volumeId); !acquired {
+		return nil, status.Errorf(codes.Aborted, common.OperationPendingFmt, volumeId)
+	}
+	defer s.locks.Release(volumeId)
+
+	// 2. Get capacity
+	requiredSizeBytes, err := GetRequiredVolumeSizeByte(req.GetCapacityRange())
+	if err != nil {
+		return nil, status.Errorf(codes.OutOfRange, err.Error())
+	}
+
+	retryCnt := 0
+	retryFun := func(e error) bool{
+		retryCnt++
+		return err != nil && retryCnt <= s.option.RetryCnt
+	}
+	// Do delete volume
+	err = retry.OnError(s.option.RetryTime, retryFun, func() error {
+		klog.Infof("Try to expand volume %s", volumeId)
+		return  s.storageProvider.ResizeVolume(volumeId, requiredSizeBytes)
+	})
+
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	} else {
+		return &csi.ControllerExpandVolumeResponse{
+			CapacityBytes:         requiredSizeBytes,
+			NodeExpansionRequired: true,
+		}, nil
+	}
+
 }
 
 func (s *service) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-cat <<EOF > /etc/systemd/system/neonsan-plugin.service
+cat <<EOF> /etc/systemd/system/neonsan-plugin.service
 [Unit]
 Description=NeonSAN CSI Plugin
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/neonsan-plugin  \
+ExecStart=/usr/bin/neonsan-plugin  --poolname=kube \
            --endpoint=unix:///var/lib/kubelet/plugins/neonsan.csi.qingcloud.com/csi.sock
 
 Restart=on-failure

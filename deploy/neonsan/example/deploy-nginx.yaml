@@ -22,13 +22,11 @@ spec:
   selector:
     matchLabels:
       app: nginx
-      tier: csi-qingcloud
   replicas: 1
   template:
     metadata:
       labels:
         app: nginx
-        tier: csi-qingcloud
     spec:
       containers:
         - name: nginx

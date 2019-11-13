@@ -1,3 +1,19 @@
+/*
+Copyright (C) 2018 Yunify, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this work except in compliance with the License.
+You may obtain a copy of the License in the LICENSE file, or at:
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package mock
 
 import (
@@ -13,8 +29,8 @@ var (
 )
 
 //requestSize G
-func (v *mockStorageProvider) CreateVolume(volName string, requestSize int64, replicas int) (volId string, err error) {
-	vol, err := v.FindVolumeByName(volName)
+func (p *mockStorageProvider) CreateVolume(volName string, requestSize int64, replicas int) (volId string, err error) {
+	vol, err := p.FindVolumeByName(volName)
 	if err != nil{
 		return "",err
 	}
@@ -27,21 +43,21 @@ func (v *mockStorageProvider) CreateVolume(volName string, requestSize int64, re
 		CapacityBytes: requestSize,
 		VolumeId:volId,
 	}
-	v.volumes[volName] = vol
+	p.volumes[volName] = vol
 	return volId,nil
 }
 
-func (v *mockStorageProvider) DeleteVolume(volId string) (err error) {
-	vol,err := v.FindVolume(volId)
+func (p *mockStorageProvider) DeleteVolume(volId string) (err error) {
+	vol,err := p.FindVolume(volId)
 	if vol == nil{
 		return errors.New("delete not exist volume")
 	}
-	delete(v.volumes, volId)
+	delete(p.volumes, volId)
 	return nil
 }
 
-func (v *mockStorageProvider) FindVolume(volId string) (*csi.Volume, error) {
-	for _,vol := range v.volumes {
+func (p *mockStorageProvider) FindVolume(volId string) (*csi.Volume, error) {
+	for _,vol := range p.volumes {
 		if vol.VolumeId == volId{
 			return vol,nil
 		}
@@ -49,22 +65,30 @@ func (v *mockStorageProvider) FindVolume(volId string) (*csi.Volume, error) {
 	return nil,nil
 }
 
-func (v *mockStorageProvider) FindVolumeByName(volName string) (*csi.Volume, error) {
-	return v.volumes[volName],nil
+func (p *mockStorageProvider) FindVolumeByName(volName string) (*csi.Volume, error) {
+	return p.volumes[volName],nil
 }
 
-func (*mockStorageProvider) AttachVolume(volId string, instanceId string) (err error) {
+func (p *mockStorageProvider) AttachVolume(volId string, instanceId string) (err error) {
 	return errorNotToCalled
 }
 
-func (*mockStorageProvider) DetachVolume(volId string, instanceId string) (err error) {
+func (p *mockStorageProvider) DetachVolume(volId string, instanceId string) (err error) {
 	return errorNotToCalled
 }
 
-func (*mockStorageProvider) ResizeVolume(volId string, requestSize int) (err error) {
-	return errorNotImplement
+func (p *mockStorageProvider) ResizeVolume(volId string, requestSize int64) (err error) {
+	v, err := p.FindVolume(volId)
+	if err != nil {
+		return err
+	}
+	if v == nil{
+		return errors.New("not found")
+	}
+	v.CapacityBytes = requestSize
+	return nil
 }
 
-func (v *mockStorageProvider) CloneVolume(volName string, volType int, srcVolId string, zone string) (volId string, err error) {
+func (p *mockStorageProvider) CloneVolume(volName string, volType int, srcVolId string, zone string) (volId string, err error) {
 	return "", errorNotImplement
 }

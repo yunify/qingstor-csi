@@ -15,7 +15,7 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: csi-qingstor-controller
+  name: csi-neonsan-controller
   namespace: kube-system
   labels:
     role: "controller"
@@ -23,7 +23,7 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-qingstor-provisioner
+  name: csi-neonsan-provisioner
   labels:
     role: "controller"
 rules:
@@ -55,7 +55,7 @@ rules:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-qingstor-attacher
+  name: csi-neonsan-attacher
   labels:
     role: "controller"
 rules:
@@ -75,13 +75,74 @@ rules:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-qingstor-controller
+  name: csi-neonsan-snapshotter
+  labels:
+    role: "controller"
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["list", "watch", "create", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshotclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshotcontents"]
+    verbs: ["create", "get", "list", "watch", "update", "delete"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshots"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshots/status"]
+    verbs: ["update"]
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["create", "list", "watch", "delete", "get", "update"]
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-neonsan-resizer
+  labels:
+    role: "controller"
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims/status"]
+    verbs: ["update", "patch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["list", "watch", "create", "update", "patch"]
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-neonsan-controller
   labels:
     role: "controller"
 aggregationRule:
   clusterRoleSelectors:
   - matchLabels:
-      app: "csi-qingstor"
+      app: "csi-neonsan"
   - matchLabels:
       role: "controller"
   - matchLabels:
@@ -93,23 +154,23 @@ rules: []
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-qingstor-controller
+  name: csi-neonsan-controller
   labels:
     role: "controller"
 subjects:
   - kind: ServiceAccount
-    name: csi-qingstor-controller
+    name: csi-neonsan-controller
     namespace: kube-system
 roleRef:
   kind: ClusterRole
-  name: csi-qingstor-controller
+  name: csi-neonsan-controller
   apiGroup: rbac.authorization.k8s.io
 ---
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   namespace: kube-system
-  name: csi-qingstor-provisioner
+  name: csi-neonsan-provisioner
   labels:
     role: "controller"
 rules:
@@ -123,25 +184,24 @@ rules:
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-qingstor-provsioner
+  name: csi-neonsan-provsioner
   namespace: kube-system
   labels:
     role: "controller"
 subjects:
   - kind: ServiceAccount
-    name: csi-qingstor-controller
+    name: csi-neonsan-controller
     namespace: kube-system
 roleRef:
   kind: Role
-  name: csi-qingstor-provisioner
+  name: csi-neonsan-provisioner
   apiGroup: rbac.authorization.k8s.io
 ---
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  # replace with non-default namespace name
   namespace: kube-system
-  name: csi-qingstor-attacher
+  name: csi-neonsan-attacher
   labels:
     role: "controller"
 rules:
@@ -155,15 +215,71 @@ rules:
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-qingstor-attacher
+  name: csi-neonsan-attacher
   namespace: kube-system
   labels:
     role: "controller"
 subjects:
   - kind: ServiceAccount
-    name: csi-qingstor-controller
+    name: csi-neonsan-controller
     namespace: kube-system
 roleRef:
   kind: Role
-  name: csi-qingstor-attacher
+  name: csi-neonsan-attacher
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-neonsan-snapshotter
+  namespace: kube-system
+  labels:
+    role: "controller"
+rules:
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "watch", "list", "delete", "update", "create"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-neonsan-snapshotter
+  namespace: kube-system
+  labels:
+    role: "controller"
+subjects:
+  - kind: ServiceAccount
+    name: csi-snapshotter
+    namespace: kube-system
+roleRef:
+  kind: Role
+  name: csi-neonsan-snapshotter
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-neonsan-resizer
+  namespace: kube-system
+  labels:
+    role: "controller"
+rules:
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "watch", "list", "delete", "update", "create"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-neonsan-resizer
+  namespace: kube-system
+  labels:
+    role: "controller"
+subjects:
+  - kind: ServiceAccount
+    name: csi-resizer
+    namespace: kube-system
+roleRef:
+  kind: Role
+  name: csi-neonsan-resizer
   apiGroup: rbac.authorization.k8s.io

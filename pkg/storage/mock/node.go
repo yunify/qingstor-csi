@@ -1,3 +1,19 @@
+/*
+Copyright (C) 2018 Yunify, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this work except in compliance with the License.
+You may obtain a copy of the License in the LICENSE file, or at:
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package mock
 
 import (
@@ -8,35 +24,34 @@ import (
 
 //var deviceNo = 50
 
-func (v *mockStorageProvider) NodeAttachVolume(volId string) error {
-	_, ok := v.attachedVolumes[volId]
+func (p *mockStorageProvider) NodeAttachVolume(volId string) error {
+	_, ok := p.attachedVolumes[volId]
 	if ok {
 		return errors.New("volume already attached")
 	}
-	vol, err := v.FindVolume(volId)
+	vol, err := p.FindVolume(volId)
 	if err != nil{
 		return err
 	}
 	//deviceNo ++
-	v.attachedVolumes[volId] = &attachVolume{
+	p.attachedVolumes[volId] = &attachVolume{
 		vol:vol,
 		device: common.GenerateHashInEightBytes(time.Now().UTC().String()),
-		//device: strconv.Itoa(deviceNo),
 	}
 	return nil
 }
 
-func (v *mockStorageProvider) NodeDetachVolume(volId string) error {
-	_, ok := v.attachedVolumes[volId]
+func (p *mockStorageProvider) NodeDetachVolume(volId string) error {
+	_, ok := p.attachedVolumes[volId]
 	if !ok {
 		return errors.New("volume not attached")
 	}
-	delete(v.attachedVolumes,volId)
+	delete(p.attachedVolumes,volId)
 	return nil
 }
 
-func (v *mockStorageProvider) NodeGetDevice(volId string) (string, error) {
-	attachVol, ok := v.attachedVolumes[volId]
+func (p *mockStorageProvider) NodeGetDevice(volId string) (string, error) {
+	attachVol, ok := p.attachedVolumes[volId]
 	if ok && attachVol != nil{
 		return  attachVol.device,nil
 	}

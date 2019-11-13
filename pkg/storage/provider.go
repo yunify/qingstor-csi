@@ -57,7 +57,7 @@ type ControllerOperator interface {
 	// Return:
 	//   nil: succeed to expand volume
 	//   error: failed to expand volume
-	ResizeVolume(volId string, requestSize int) error
+	ResizeVolume(volId string, requestSize int64) error
 	// CloneVolume clones a volume
 	// Return:
 	//   volume id, nil: succeed to clone volume and return volume id
