@@ -16,10 +16,6 @@ limitations under the License.
 
 package common
 
-const Int64Max = int64(^uint64(0) >> 1)
-
-const DefaultTimeFormat = "2006-01-02 15:04:05"
-
 const (
 	Gib = 1 << 30
 )
@@ -31,6 +27,5 @@ const (
 	DefaultFileSystem        = FileSystemExt4
 
 	DefaultDiskReplica = 1
-
 	Hash = "Hash"
 )

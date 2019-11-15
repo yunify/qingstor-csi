@@ -44,8 +44,9 @@ func (s *service) validateRequest(request interface{}) error {
 	}
 	switch req := request.(type) {
 	case *csi.CreateVolumeRequest:
-		if isValid := s.option.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); isValid != true {
-			return status.Error(codes.Unimplemented, "unsupported controller server capability")
+		// Check sanity of request Name, Volume Capabilities
+		if len(req.GetName()) == 0 {
+			return status.Error(codes.InvalidArgument, "volume name missing in request")
 		}
 		// Required volume capability
 		if req.GetVolumeCapabilities() == nil {
@@ -53,44 +54,12 @@ func (s *service) validateRequest(request interface{}) error {
 		} else if !s.option.ValidateVolumeCapabilities(req.GetVolumeCapabilities()) {
 			return status.Error(codes.InvalidArgument, "volume capabilities not match")
 		}
-		// Check sanity of request Name, Volume Capabilities
-		if len(req.GetName()) == 0 {
-			return status.Error(codes.InvalidArgument, "volume name missing in request")
-		}
 	case *csi.DeleteVolumeRequest:
-		if isValid := s.option.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); isValid != true {
-			klog.Errorf("invalid delete volume req: %v", req)
-			return status.Error(codes.Unimplemented, "")
-		}
 		// Check sanity of request Name, Volume Capabilities
 		if len(req.GetVolumeId()) == 0 {
 			return status.Error(codes.InvalidArgument, "Volume id missing in request")
 		}
-	case *csi.ControllerPublishVolumeRequest:
-		if isValid := s.option.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME); isValid != true {
-			return status.Error(codes.Unimplemented, "")
-		}
-		// check volume id arguments
-		if len(req.GetVolumeId()) == 0 {
-			return status.Error(codes.InvalidArgument, "Volume ID missing in request")
-		}
-		// check nodeId arguments
-		if len(req.GetNodeId()) == 0 {
-			return status.Error(codes.InvalidArgument, "Node ID missing in request")
-		}
-		// check volume capability
-		if req.GetVolumeCapability() == nil {
-			return status.Error(codes.InvalidArgument, "No volume capability is provided ")
-		}
 
-	case *csi.ControllerUnpublishVolumeRequest:
-		if isValid := s.option.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME); isValid != true {
-			klog.Errorf("Invalid unpublish volume req: %v", req)
-			return status.Error(codes.Unimplemented, "")
-		}
-		if len(req.GetVolumeId()) == 0 {
-			return status.Error(codes.InvalidArgument, "Volume ID missing in request")
-		}
 	case *csi.ValidateVolumeCapabilitiesRequest:
 		// require volume id parameter
 		if len(req.GetVolumeId()) == 0 {
@@ -99,37 +68,6 @@ func (s *service) validateRequest(request interface{}) error {
 		// require capability parameter
 		if len(req.GetVolumeCapabilities()) == 0 {
 			return status.Error(codes.InvalidArgument, "No volume capabilities are provided")
-		}
-
-	case *csi.ControllerExpandVolumeRequest:
-		// require volume id parameter
-		if len(req.GetVolumeId()) == 0 {
-			return status.Error(codes.InvalidArgument, "No volume id is provided")
-		}
-	case *csi.CreateSnapshotRequest:
-		// 0. Prepare
-		if isValid := s.option.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); isValid != true {
-			klog.Errorf("Invalid create snapshot request: %v", req)
-			return status.Error(codes.Unimplemented, "")
-		}
-		// Check source volume id
-		if len(req.GetSourceVolumeId()) == 0 {
-			return status.Error(codes.InvalidArgument, "volume ID missing in request")
-		}
-		// Check snapshot name
-		if len(req.GetName()) == 0 {
-			return status.Error(codes.InvalidArgument, "snapshot name missing in request")
-		}
-
-	case *csi.DeleteSnapshotRequest:
-		if isValid := s.option.ValidateControllerServiceRequest(csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT); isValid != true {
-			klog.Errorf("Invalid create snapshot request: %v", req)
-			return status.Error(codes.Unimplemented, "")
-		}
-		// Check snapshot id
-		klog.Info("Check required parameters")
-		if len(req.GetSnapshotId()) == 0 {
-			return status.Error(codes.InvalidArgument, "snapshot ID missing in request")
 		}
 
 	case *csi.NodePublishVolumeRequest:
@@ -161,9 +99,6 @@ func (s *service) validateRequest(request interface{}) error {
 			return status.Error(codes.InvalidArgument, "Volume id missing in request")
 		}
 	case *csi.NodeStageVolumeRequest:
-		if flag := s.option.ValidateNodeServiceRequest(csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME); flag == false {
-			return status.Error(codes.Unimplemented, "Node has not stage capability")
-		}
 		if len(req.GetVolumeId()) == 0 {
 			return status.Error(codes.InvalidArgument, "Volume ID missing in request")
 		}
@@ -175,30 +110,13 @@ func (s *service) validateRequest(request interface{}) error {
 		}
 
 	case *csi.NodeUnstageVolumeRequest:
-		if flag := s.option.ValidateNodeServiceRequest(csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME); flag == false {
-			return status.Error(codes.Unimplemented, "Node has not stage capability")
-		}
 		if len(req.GetVolumeId()) == 0 {
 			return status.Error(codes.InvalidArgument, "Volume ID missing in request")
 		}
 		if len(req.GetStagingTargetPath()) == 0 {
 			return status.Error(codes.InvalidArgument, "Target path missing in request")
 		}
-	case *csi.NodeExpandVolumeRequest:
-		if flag := s.option.ValidateNodeServiceRequest(csi.NodeServiceCapability_RPC_EXPAND_VOLUME); flag == false {
-			return status.Error(codes.Unimplemented, "Node has not stage capability")
-		}
-		if len(req.GetVolumeId()) == 0 {
-			return status.Error(codes.InvalidArgument, "Volume ID missing in request")
-		}
-		if len(req.GetVolumePath()) == 0 {
-			return status.Error(codes.InvalidArgument, "Volume path missing in request")
-		}
-
 	case *csi.NodeGetVolumeStatsRequest:
-		if flag := s.option.ValidateNodeServiceRequest(csi.NodeServiceCapability_RPC_GET_VOLUME_STATS); flag == false {
-			return status.Error(codes.Unimplemented, "Node has not stage capability")
-		}
 		if len(req.GetVolumeId()) == 0 {
 			return status.Error(codes.InvalidArgument, "Volume ID missing in request")
 		}

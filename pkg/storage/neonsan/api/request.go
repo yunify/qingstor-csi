@@ -6,11 +6,19 @@ type ResponseHeader struct {
 	Reason  string `json:"reason"`
 }
 
+func (r *ResponseHeader) Header() *ResponseHeader {
+	return r
+}
+
+type Response interface {
+	Header() *ResponseHeader
+}
+
 type CreateVolumeRequest struct {
 	Op       string `json:"op"`
 	PoolName string `json:"pool_name"`
 	Name     string `json:"name"`
-	Size     int    `json:"size"`
+	Size     int64  `json:"size"`
 	RepCount int    `json:"rep_count"`
 }
 

@@ -15,7 +15,7 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: csi-qingstor-controller
+  name: csi-neonsan-controller
   namespace: kube-system
   labels:
     role: "controller"
@@ -23,7 +23,7 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-qingstor-provisioner
+  name: csi-neonsan-provisioner
   labels:
     role: "controller"
 rules:
@@ -55,7 +55,7 @@ rules:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-qingstor-attacher
+  name: csi-neonsan-attacher
   labels:
     role: "controller"
 rules:
@@ -75,13 +75,13 @@ rules:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-qingstor-controller
+  name: csi-neonsan-controller
   labels:
     role: "controller"
 aggregationRule:
   clusterRoleSelectors:
   - matchLabels:
-      app: "csi-qingstor"
+      app: "csi-neonsan"
   - matchLabels:
       role: "controller"
   - matchLabels:
@@ -93,23 +93,23 @@ rules: []
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-qingstor-controller
+  name: csi-neonsan-controller
   labels:
     role: "controller"
 subjects:
   - kind: ServiceAccount
-    name: csi-qingstor-controller
+    name: csi-neonsan-controller
     namespace: kube-system
 roleRef:
   kind: ClusterRole
-  name: csi-qingstor-controller
+  name: csi-neonsan-controller
   apiGroup: rbac.authorization.k8s.io
 ---
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   namespace: kube-system
-  name: csi-qingstor-provisioner
+  name: csi-neonsan-provisioner
   labels:
     role: "controller"
 rules:
@@ -123,25 +123,24 @@ rules:
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-qingstor-provsioner
+  name: csi-neonsan-provsioner
   namespace: kube-system
   labels:
     role: "controller"
 subjects:
   - kind: ServiceAccount
-    name: csi-qingstor-controller
+    name: csi-neonsan-controller
     namespace: kube-system
 roleRef:
   kind: Role
-  name: csi-qingstor-provisioner
+  name: csi-neonsan-provisioner
   apiGroup: rbac.authorization.k8s.io
 ---
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  # replace with non-default namespace name
   namespace: kube-system
-  name: csi-qingstor-attacher
+  name: csi-neonsan-attacher
   labels:
     role: "controller"
 rules:
@@ -155,15 +154,15 @@ rules:
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-qingstor-attacher
+  name: csi-neonsan-attacher
   namespace: kube-system
   labels:
     role: "controller"
 subjects:
   - kind: ServiceAccount
-    name: csi-qingstor-controller
+    name: csi-neonsan-controller
     namespace: kube-system
 roleRef:
   kind: Role
-  name: csi-qingstor-attacher
+  name: csi-neonsan-attacher
   apiGroup: rbac.authorization.k8s.io

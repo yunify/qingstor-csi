@@ -15,18 +15,12 @@
 kind: Kustomization
 namespace: kube-system
 commonLabels:
-  app: "csi-qingcloud"
+  app: "csi-neonsan"
   owner: "yunify"
   ver: "v1.1.0"
 resources:
-  - controller-deploy.yaml
-  - controller-rbac.yaml
-  - node-ds.yaml
-  - node-rbac.yaml
   - csi-driver.yaml
-configMapGenerator:
-  - name: csi-qingcloud
-    files:
-      - config.yaml
-generatorOptions:
-  disableNameSuffixHash: true
+  - controller-rbac.yaml
+  - controller-deploy.yaml
+  - node-rbac.yaml
+  - node-ds.yaml

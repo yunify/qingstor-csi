@@ -64,24 +64,24 @@ func DetachVolume(confFile, poolName, volName string) (err error) {
 	return err
 }
 
-// FindAttachedVolumeWithoutPool get attachment volume info
+// ListVolume get attachment volume info
 // Input:
 //   volume name: string
 // Return cases:
 //   info, nil: found attached volume
 //   nil, nil: not found attached volume
 //   nil, err: return error
-func FindAttachedVolumeWithoutPool(volName string) (info *AttachInfo, err error) {
-	args := []string{"-l"}
+func ListVolume(confFile, poolName, volName string) (info *AttachInfo, err error) {
+	args := []string{"-l", "-c", confFile}
 	output, err := common.ExecCommand(CmdQbd, args)
 	if err != nil {
 		klog.Infof("list attached volume failed")
 		return nil, err
 	}
-	infoArr := ParseAttachVolumeList(string(output))
+	infoArr := parseAttachVolumeList(string(output))
 	var infoArrWithName []*AttachInfo
 	for i := range infoArr {
-		if infoArr[i].Name == volName {
+		if infoArr[i].Name == volName  && infoArr[i].Pool == poolName{
 			infoArrWithName = append(infoArrWithName, infoArr[i])
 		}
 	}
@@ -96,7 +96,7 @@ func FindAttachedVolumeWithoutPool(volName string) (info *AttachInfo, err error)
 }
 
 // ParseAttachedVolume parse attached volume list text
-func ParseAttachVolumeList(input string) (infoArr []*AttachInfo) {
+func parseAttachVolumeList(input string) (infoArr []*AttachInfo) {
 	in := strings.Trim(input, "\n")
 	lines := strings.Split(in, "\n")
 	for i, v := range lines {

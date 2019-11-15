@@ -20,7 +20,6 @@ import (
 	"flag"
 	"github.com/yunify/qingstor-csi/pkg/common"
 	"github.com/yunify/qingstor-csi/pkg/service"
-	neonsandriver "github.com/yunify/qingstor-csi/pkg/service/neonsan"
 	"github.com/yunify/qingstor-csi/pkg/storage/neonsan"
 	"k8s.io/klog"
 	"math/rand"
@@ -68,34 +67,27 @@ func handle() {
 			klog.Fatalf("Failed to get instance id from file, error: %s", err)
 		}
 	}
-	// Get qingcloud config object
-	storageProvider, err := neonsan.New(*configPath, *poolName)
-	if err != nil {
-		klog.Fatal(err)
-	}
+	// Get neonsan config
+	storageProvider := neonsan.New(*configPath, *poolName)
+
 	klog.Infof("Version: %s", version)
-	// Set DiskDriverInput
-	optionInput := &service.OptionInput{
-		Name:          *driverName,
-		Version:       version,
-		NodeId:        instanceId,
-		MaxVolume:     *maxVolume,
-		VolumeCap:     neonsandriver.DefaultVolumeAccessModeType,
-		ControllerCap: neonsandriver.DefaultControllerServiceCapability,
-		NodeCap:       neonsandriver.DefaultNodeServiceCapability,
-		PluginCap:     neonsandriver.DefaultPluginCapability,
-	}
-	// Option
-	serviceOpt := service.GetOption()
-	serviceOpt.InitOption(optionInput)
 
 	// Set BackOff
 	rt := service.DefaultBackOff
 	rt.Cap = *retryIntervalMax
 
+	// Option
+	serviceOpt := service.NewOption().SetName(*driverName).SetVersion(version).
+		SetNodeId(instanceId).SetMaxVolume(*maxVolume).
+		SetVolumeCapabilityAccessNodes(service.DefaultVolumeAccessModeType).
+		SetControllerServiceCapabilities(service.DefaultControllerServiceCapability).
+		SetNodeServiceCapabilities(service.DefaultNodeServiceCapability).
+		SetPluginCapabilities(service.DefaultPluginCapability).
+		SetRetryTime(rt).SetRetryCnt(service.DefaultRetryCnt)
+
 	// Mounter
-	mounter := common.NewSafeMounter()
+	formatMounter := common.NewSafeMounter()
 
 	// service
-	service.Run(serviceOpt, storageProvider, mounter, *endpoint, rt)
+	service.Run(serviceOpt, storageProvider, formatMounter, *endpoint)
 }

@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/pelletier/go-toml"
 	"github.com/samuel/go-zookeeper/zk"
 	"io/ioutil"
@@ -46,31 +47,24 @@ func ListVolume(confFile, poolName, volName string) (*Volume, error) {
 	if err != nil {
 		return nil, err
 	}
-	if response.RetCode != RetCodeOK {
-		return nil, errors.New(response.Reason)
-	}
 	if len(response.Volumes) == 0 {
 		return nil, nil
 	}
-	response.Volumes[0].Size = response.Volumes[0].Size >> 30
 	return &response.Volumes[0], nil
 }
 
-func CreateVolume(confFile, poolName, volName string, size, repCount int) (int, error) {
+func CreateVolume(confFile, poolName, volName string, size int64, repCount int) (int, error) {
 	request := CreateVolumeRequest{
 		Op:       "create_volume",
 		PoolName: poolName,
 		Name:     volName,
-		Size:     size << 30,
+		Size:     size,
 		RepCount: repCount,
 	}
 	response := &CreateVolumeResponse{}
 	err := httpGet(confFile, request, response)
 	if err != nil {
 		return -1, err
-	}
-	if response.RetCode != RetCodeOK {
-		return -1, errors.New(response.Reason)
 	}
 	return response.Id, nil
 }
@@ -86,9 +80,6 @@ func DeleteVolume(confFile, poolName, volName string) (int, error) {
 	if err != nil {
 		return -1, err
 	}
-	if response.RetCode != RetCodeOK {
-		return -1, errors.New(response.Reason)
-	}
 	return response.Id, nil
 }
 
@@ -98,17 +89,53 @@ func buildParameters(request interface{}) string {
 	for k := 0; k < t.NumField(); k++ {
 		sb.WriteString(t.Field(k).Tag.Get(`json`))
 		sb.WriteString("=")
-		switch v.Field(k).Interface().(type) {
+		switch val := v.Field(k).Interface().(type) {
 		case int:
-			sb.WriteString(strconv.Itoa(int(v.Field(k).Int())))
+			sb.WriteString(strconv.Itoa(val))
+		case int64:
+			sb.WriteString(strconv.Itoa(int(val)))
 		case string:
-			sb.WriteString(v.Field(k).String())
+			sb.WriteString(val)
 		default:
-			sb.WriteString("invalidType")
+			klog.Warning("invalidType: ", reflect.TypeOf(val))
 		}
 		sb.WriteString("&")
 	}
 	return sb.String()
+}
+
+func httpGet(confFile string, request interface{}, response Response) error {
+	apiUrl, err := getApiUrl(confFile)
+	if err != nil {
+		return err
+	}
+	url := "http://" + apiUrl + ":2600/qfa?"
+	params := buildParameters(request)
+	ret, err := http.Get(url + params)
+	if err != nil {
+		return err
+	}
+	if ret.StatusCode != 200 {
+		return fmt.Errorf("neonsan API, http code:%d", ret.StatusCode)
+	}
+	defer func() {
+		_ = ret.Body.Close()
+	}()
+
+	body, err := ioutil.ReadAll(ret.Body)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(body, response)
+	if err != nil {
+		return err
+	}
+
+	rspHeader := response.Header()
+	if rspHeader != nil && rspHeader.RetCode != RetCodeOK {
+		return errors.New(rspHeader.Reason)
+	}
+	return nil
 }
 
 func getApiUrl(confFile string) (string, error) {
@@ -152,29 +179,4 @@ func getApiUrl(confFile string) (string, error) {
 		return "", err
 	}
 	return string(ip), nil
-}
-
-func httpGet(confFile string, request, response interface{}) error {
-	apiUrl, err := getApiUrl(confFile)
-	if err != nil {
-		return err
-	}
-	url := "http://" + apiUrl + ":2600/qfa?"
-	params := buildParameters(request)
-	ret, err := http.Get(url + params)
-	if err != nil {
-		klog.Infof("params %s, err:%v", params, err)
-		return err
-	}
-	body, err := ioutil.ReadAll(ret.Body)
-	if err != nil {
-		klog.Infof("params %s, err:%v", params, err)
-		return err
-	}
-	klog.Infof("params %s, resp:%s", params, string(body))
-	err = json.Unmarshal(body, response)
-	if err != nil {
-		return err
-	}
-	return nil
 }
