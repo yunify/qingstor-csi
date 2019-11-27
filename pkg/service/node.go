@@ -24,6 +24,7 @@ import (
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/util/mount"
+	"k8s.io/kubernetes/pkg/util/resizefs"
 	"k8s.io/kubernetes/pkg/volume"
 	"os"
 )
@@ -267,7 +268,35 @@ func (s *service) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) 
 //  volume id: REQUIRED
 //  volume path: REQUIRED
 func (s *service) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "expand volume not implement")
+	requestSizeBytes, err := GetRequiredVolumeSizeByte(req.GetCapacityRange())
+	if err != nil {
+		return nil, status.Error(codes.OutOfRange, err.Error())
+	}
+	// Set parameter
+	volumeId := req.GetVolumeId()
+	volumePath := req.GetVolumePath()
+	if acquired := s.locks.TryAcquire(volumeId); !acquired {
+		return nil, status.Errorf(codes.Aborted, common.OperationPendingFmt, volumeId)
+	}
+	defer s.locks.Release(volumeId)
+
+	devicePath, err := s.storageProvider.NodeGetDevice(volumeId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Cannot find device path of volume %s, error:%s", volumeId, err.Error())
+	}
+
+	resizeFs := resizefs.NewResizeFs(s.mounter)
+	klog.Infof("Resize file system device %s, mount path %s ...", devicePath, volumePath)
+	ok, err := resizeFs.Resize(devicePath, volumePath)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if !ok {
+		return nil, status.Error(codes.Internal, "failed to expand volume filesystem")
+	}
+	return &csi.NodeExpandVolumeResponse{
+		CapacityBytes: requestSizeBytes,
+	}, nil
 }
 
 // NodeGetVolumeStats

@@ -16,19 +16,25 @@
 
 .PHONY: all disk
 
-NEONSAN_IMAGE_NAME=neonsan-csi
-NEONSAN_VERSION=v1.1.0
+NEONSAN_IMAGE_NAME=csiplugin/csi-neonsan
+NEONSAN_VERSION=canary
 ROOT_PATH=$(pwd)
 PACKAGE_LIST=./cmd/... ./pkg/...
 
 neonsan-plugin:
-	go build  -gcflags "all=-N -l" -mod=vendor  -o deploy/neonsan/plugin/neonsan-plugin ./cmd/neonsan
+	go build -ldflags "-w -s" -mod=vendor  -o deploy/neonsan/kubernetes/release/neonsan-plugin ./cmd/neonsan
+
+neonsan-plugin-debug:
+	go build  -gcflags "all=-N -l" -mod=vendor  -o deploy/neonsan/kubernetes/release/neonsan-plugin-debug ./cmd/neonsan
 
 neonsan-container:
-	docker build -t ${NEONSAN_IMAGE_NAME} -f deploy/neonsan/docker/Dockerfile  .
+	docker build -t ${NEONSAN_IMAGE_NAME}:${NEONSAN_VERSION} -f deploy/neonsan/docker/Dockerfile  .
+
+yaml:
+	kustomize build deploy/neonsan/kubernetes/base > deploy/neonsan/kubernetes/release/csi-neonsan-${NEONSAN_VERSION}.yaml
 
 release:
-	kustomize build deploy/neonsan/kubernetes/base > deploy/neonsan/kubernetes/release/csi-neonsan-${NEONSAN_VERSION}.yaml
+	cd deploy/neonsan/kubernetes/ && tar -zcvf csi-neonsan-${NEONSAN_VERSION}.tar.gz release/*
 
 mod:
 	go build ./...

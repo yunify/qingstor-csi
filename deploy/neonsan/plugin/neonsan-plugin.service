@@ -1,0 +1,14 @@
+[Unit]
+Description=NeonSAN CSI Plugin
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/neonsan-plugin  --poolname=kube \
+           --endpoint=unix:///var/lib/kubelet/plugins/neonsan.csi.qingcloud.com/csi.sock
+
+Restart=on-failure
+StartLimitBurst=3
+StartLimitInterval=60s
+
+[Install]
+WantedBy=multi-user.target
