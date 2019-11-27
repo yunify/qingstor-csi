@@ -1,3 +1,4 @@
+
 /*
 Copyright (C) 2018 Yunify, Inc.
 
@@ -34,7 +35,7 @@ func (p *mockStorageProvider) NodeAttachVolume(volId string) error {
 		return err
 	}
 	//deviceNo ++
-	p.attachedVolumes[volId] = &attachVolume{
+  p.attachedVolumes[volId] = &attachVolume{
 		vol:vol,
 		device: common.GenerateHashInEightBytes(time.Now().UTC().String()),
 	}
