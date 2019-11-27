@@ -1,0 +1,8 @@
+- hosts: all 
+  tasks:
+  - name: copy neonsan-plugin
+    copy: src=neonsan-plugin dest=/usr/bin/
+  - name: copy neonsan-plugin.service 
+    copy: src=neonsan-plugin.service dest=/etc/systemd/system/
+  - name: systemctl start neonsan-plugin 
+    systemd: name=neonsan-plugin enabled=true state=started
