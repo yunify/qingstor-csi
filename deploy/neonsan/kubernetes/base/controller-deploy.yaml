@@ -85,7 +85,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: csi-resizer
-          image: quay.io/k8scsi/csi-resizer:v0.2.0
+          image: quay.azk8s.cn/k8scsi/csi-resizer:v0.2.0
           resources:
             limits:
               memory: "20Mi"

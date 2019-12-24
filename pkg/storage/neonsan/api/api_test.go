@@ -44,7 +44,7 @@ func TestHttpGet(t *testing.T) {
 	}
 	response := &CreateVolumeResponse{}
 	var err error
-	guardGetApiUrlFail := monkey.Patch(getApiUrl, func(string) (string, error) { return "", errMock })
+	guardGetApiUrlFail := monkey.Patch(getApiHost, func(string) (string, error) { return "", errMock })
 	defer guardGetApiUrlFail.Unpatch()
 	err = httpGet(configFile, request, response)
 	convey.Convey("if get api url error, fail", t, func() {
@@ -52,7 +52,7 @@ func TestHttpGet(t *testing.T) {
 	})
 	guardGetApiUrlFail.Unpatch()
 
-	guardGetApiUrlOK := monkey.Patch(getApiUrl, func(string) (string, error) { return "neonsan-api.com", nil })
+	guardGetApiUrlOK := monkey.Patch(getApiHost, func(string) (string, error) { return "neonsan-api.com", nil })
 	defer guardGetApiUrlOK.Unpatch()
 
 	guardHttpGetFail := monkey.Patch(http.Get, func(string) (*http.Response, error) { return nil, errMock })
@@ -123,7 +123,7 @@ func TestHttpGet(t *testing.T) {
 
 func TestListVolume(t *testing.T) {
 
-	guardGetApiUrlOK := monkey.Patch(getApiUrl, func(string) (string, error) { return "neonsan-api.com", nil })
+	guardGetApiUrlOK := monkey.Patch(getApiHost, func(string) (string, error) { return "neonsan-api.com", nil })
 	defer guardGetApiUrlOK.Unpatch()
 
 	mockResponse := &ListVolumeResponse{
@@ -173,7 +173,7 @@ func TestListVolume(t *testing.T) {
 }
 
 func TestCreateVolume(t *testing.T) {
-	guardGetApiUrlOK := monkey.Patch(getApiUrl, func(string) (string, error) { return "neonsan-api.com", nil })
+	guardGetApiUrlOK := monkey.Patch(getApiHost, func(string) (string, error) { return "neonsan-api.com", nil })
 	defer guardGetApiUrlOK.Unpatch()
 
 	mockResponse := &CreateVolumeResponse{
@@ -211,7 +211,7 @@ func TestCreateVolume(t *testing.T) {
 
 func TestDeleteVolume(t *testing.T) {
 
-	guardGetApiUrlOK := monkey.Patch(getApiUrl, func(string) (string, error) { return "neonsan-api.com", nil })
+	guardGetApiUrlOK := monkey.Patch(getApiHost, func(string) (string, error) { return "neonsan-api.com", nil })
 	defer guardGetApiUrlOK.Unpatch()
 
 	mockResponse := &DeleteVolumeResponse{
@@ -247,19 +247,3 @@ func TestDeleteVolume(t *testing.T) {
 
 }
 
-/*
-func TestCreateVolume(t *testing.T) {
-	volId, err := CreateVolume(configFile, "kube", "happy", 1<<30*10, 1)
-	if err != nil {
-		t.Error(err)
-	}
-	t.Log(volId)
-
-}
-
-func TestGetApiUrl(t *testing.T) {
-	url, err := getApiUrl(configFile)
-	t.Log(url, err)
-}
-
-*/

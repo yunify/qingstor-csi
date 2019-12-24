@@ -20,11 +20,19 @@ import (
 	"errors"
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/yunify/qingstor-csi/pkg/storage/neonsan/api"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/util/retry"
+	"time"
 )
 
 var (
-	errorNotImplement = errors.New("method not implement")
-	errorNotToCalled  = errors.New("method should not to be called")
+	maxRetryCnt      = 10
+	retryBackOff     = wait.Backoff{
+		Duration: time.Second,
+		Factor:   1.5,
+		Steps:    20,
+		Cap:      time.Minute * 10,
+	}
 )
 
 func (v *neonsan) CreateVolume(volName string, requestSize int64, replicas int) (string, error) {
@@ -32,7 +40,6 @@ func (v *neonsan) CreateVolume(volName string, requestSize int64, replicas int) 
 	if err != nil {
 		return "", err
 	}
-
 	return volName, nil
 }
 
@@ -59,18 +66,54 @@ func (v *neonsan) FindVolumeByName(volName string) (*csi.Volume, error) {
 	}, nil
 }
 
-func (v *neonsan) AttachVolume(volId string, instanceId string) (err error) {
-	return errorNotToCalled
-}
-
-func (v *neonsan) DetachVolume(volId string, instanceId string) (err error) {
-	return errorNotToCalled
-}
-
 func (v *neonsan) ResizeVolume(volId string, requestSize int64) (err error) {
 	return api.ResizeVolume(v.confFile, v.poolName, volId, requestSize)
 }
 
-func (v *neonsan) CloneVolume(volName string, volType int, srcVolId string, zone string) (volId string, err error) {
-	return "", errorNotImplement
+func (v *neonsan) CloneVolume(volName string, srcVolId string) (volId string, err error) {
+	srcVol, err := api.ListVolume(v.confFile, v.poolName, srcVolId)
+	if err != nil {
+		return "", err
+	}
+
+	if srcVol == nil {
+		return "", errors.New("source volume not exist")
+	}
+
+	_, err = api.CreateVolume(v.confFile, v.poolName, volName, int64(srcVol.Size), srcVol.ReplicationCount)
+	if err != nil {
+		return "", err
+	}
+
+	err = api.CloneVolume(v.confFile, srcVolId, v.poolName, volName, v.poolName)
+	if err != nil {
+		return "", err
+	}
+
+	retryCnt := 0
+	retryFun := func(e error) bool {
+		retryCnt++
+		return e != nil && retryCnt <= maxRetryCnt
+	}
+	//Wait until clone SYNCED
+	err = retry.OnError(retryBackOff, retryFun, func() error {
+		cloneInfo, listCloneErr := api.ListClone(v.confFile, srcVolId, v.poolName, volName, v.poolName)
+		if listCloneErr != nil {
+			return err
+		}
+		if cloneInfo.Status != "SYNCED" {
+			return errors.New("clone not synced")
+		}
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+
+	err = api.DetachCloneRelationship(v.confFile, srcVolId, v.poolName, volName, v.poolName)
+	if err != nil {
+		return "", err
+	}
+
+	return volName, nil
 }

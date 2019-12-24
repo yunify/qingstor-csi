@@ -110,6 +110,45 @@ func ResizeVolume(confFile, poolName, volName string, size int64) error {
 	return httpGet(confFile, request, response)
 }
 
+func CloneVolume(confFile, sourceVol, sourcePool, targetVol, targetPool string) error {
+	request := CloneVolumeRequest{
+		Op:         "clone_volume",
+		SourceVol:  sourceVol,
+		SourcePool: sourcePool,
+		TargetVol:  targetVol,
+		TargetPool: targetPool,
+	}
+	response := &CloneVolumeResponse{}
+	return httpGet(confFile, request, response)
+}
+
+func ListClone(confFile, sourceVol, sourcePool, targetVol, targetPool string) (*CloneInfo, error) {
+	request := ListCloneRequest{
+		Op:        "list_clone",
+		SvolFullname: sourcePool + "/"+ sourceVol,
+	}
+	response := &ListCloneResponse{}
+	err := httpGet(confFile, request, response)
+	if err != nil {
+		return nil, err
+	}
+	if len(response.CloneVolumes) == 0 {
+		return nil, errors.New("no clone ")
+	}
+	return &response.CloneVolumes[0], nil
+
+}
+
+func DetachCloneRelationship(confFile, sourceVol, sourcePool, targetVol, targetPool string) error {
+	request := DetachCloneRelationshipRequest{
+		Op:"detach_clone_relationship",
+		SourceVol: sourcePool + "/"+ sourceVol,
+		TargetVol:targetPool + "/" + targetVol,
+	}
+	response := &DetachCloneRelationshipResponse{}
+	return httpGet(confFile, request, response)
+}
+
 func buildParameters(request interface{}) string {
 	t, v := reflect.TypeOf(request), reflect.ValueOf(request)
 	sb := strings.Builder{}
@@ -132,18 +171,18 @@ func buildParameters(request interface{}) string {
 }
 
 func httpGet(confFile string, request interface{}, response Response) error {
-	apiUrl, err := getApiUrl(confFile)
+	apiHost, err := getApiHost(confFile)
 	if err != nil {
 		return err
 	}
-	url := "http://" + apiUrl + ":2600/qfa?"
-	params := buildParameters(request)
-	ret, err := http.Get(url + params)
+	url := "http://" + apiHost + ":2600/qfa?" + buildParameters(request)
+	klog.Infof("NeonsanApi [Begin] request:%s", url)
+	ret, err := http.Get(url)
 	if err != nil {
 		return err
 	}
 	if ret.StatusCode != 200 {
-		return fmt.Errorf("neonsan API, http code:%d", ret.StatusCode)
+		return fmt.Errorf("NeonsanAPI http code:%d", ret.StatusCode)
 	}
 	defer func() {
 		_ = ret.Body.Close()
@@ -153,11 +192,11 @@ func httpGet(confFile string, request interface{}, response Response) error {
 	if err != nil {
 		return err
 	}
-	err = json.Unmarshal(body, response)
-	if err != nil {
+	klog.Infof("NeonsanApi [End] request:%s, response:%s", url, body)
+	err = json.Unmarshal(body,response)
+	if err != nil{
 		return err
 	}
-
 	rspHeader := response.Header()
 	if rspHeader != nil && rspHeader.RetCode != RetCodeOK {
 		return errors.New(rspHeader.Reason)
@@ -165,7 +204,7 @@ func httpGet(confFile string, request interface{}, response Response) error {
 	return nil
 }
 
-func getApiUrl(confFile string) (string, error) {
+func getApiHost(confFile string) (string, error) {
 	config, err := toml.LoadFile(confFile)
 	if err != nil {
 		return "", err
@@ -175,7 +214,7 @@ func getApiUrl(confFile string) (string, error) {
 		return "", errors.New("no zookeeper.ip in config file")
 	}
 	zkIp := zkIp_.(string)
-	c, _, err := zk.Connect(strings.Split(zkIp, ","), time.Second)
+	c, _, err := zk.Connect(strings.Split(zkIp, ","), time.Second, zk.WithLogInfo(false))
 	if err != nil {
 		return "", err
 	}

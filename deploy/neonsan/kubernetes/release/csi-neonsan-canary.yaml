@@ -654,7 +654,7 @@ spec:
         env:
         - name: ADDRESS
           value: /csi/csi.sock
-        image: quay.io/k8scsi/csi-resizer:v0.2.0
+        image: quay.azk8s.cn/k8scsi/csi-resizer:v0.2.0
         imagePullPolicy: IfNotPresent
         name: csi-resizer
         resources:

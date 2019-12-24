@@ -89,6 +89,13 @@ func (p *mockStorageProvider) ResizeVolume(volId string, requestSize int64) (err
 	return nil
 }
 
-func (p *mockStorageProvider) CloneVolume(volName string, volType int, srcVolId string, zone string) (volId string, err error) {
-	return "", errorNotImplement
+func (p *mockStorageProvider) CloneVolume(volName, srcVolId string) (volId string, err error) {
+	srcVol, err := p.FindVolume(srcVolId)
+	if err != nil {
+		return "", err
+	}
+	if srcVol == nil {
+		return "", errors.New("src vol not exist")
+	}
+	return p.CreateVolume(volName, srcVol.CapacityBytes, 0)
 }
