@@ -29,11 +29,13 @@ type attachVolume struct {
 type mockStorageProvider struct {
 	volumes         map[string]*csi.Volume
 	attachedVolumes map[string]*attachVolume
+	snapshots       map[string]*csi.Snapshot
 }
 
-func New() storage.Provider  {
+func New() storage.Provider {
 	return &mockStorageProvider{
 		volumes:         make(map[string]*csi.Volume),
 		attachedVolumes: make(map[string]*attachVolume),
+		snapshots:       make(map[string]*csi.Snapshot),
 	}
 }

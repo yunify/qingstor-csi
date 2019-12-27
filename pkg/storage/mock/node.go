@@ -25,34 +25,34 @@ import (
 
 //var deviceNo = 50
 
-func (p *mockStorageProvider) NodeAttachVolume(volId string) error {
-	_, ok := p.attachedVolumes[volId]
+func (p *mockStorageProvider) NodeAttachVolume(volumeName string) error {
+	_, ok := p.attachedVolumes[volumeName]
 	if ok {
 		return errors.New("volume already attached")
 	}
-	vol, err := p.FindVolume(volId)
+	vol, err := p.ListVolume(volumeName)
 	if err != nil{
 		return err
 	}
 	//deviceNo ++
-  p.attachedVolumes[volId] = &attachVolume{
+  p.attachedVolumes[volumeName] = &attachVolume{
 		vol:vol,
 		device: common.GenerateHashInEightBytes(time.Now().UTC().String()),
 	}
 	return nil
 }
 
-func (p *mockStorageProvider) NodeDetachVolume(volId string) error {
-	_, ok := p.attachedVolumes[volId]
+func (p *mockStorageProvider) NodeDetachVolume(volumeName string) error {
+	_, ok := p.attachedVolumes[volumeName]
 	if !ok {
 		return errors.New("volume not attached")
 	}
-	delete(p.attachedVolumes,volId)
+	delete(p.attachedVolumes, volumeName)
 	return nil
 }
 
-func (p *mockStorageProvider) NodeGetDevice(volId string) (string, error) {
-	attachVol, ok := p.attachedVolumes[volId]
+func (p *mockStorageProvider) NodeGetDevice(volumeName string) (string, error) {
+	attachVol, ok := p.attachedVolumes[volumeName]
 	if ok && attachVol != nil{
 		return  attachVol.device,nil
 	}

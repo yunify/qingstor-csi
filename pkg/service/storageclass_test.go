@@ -60,3 +60,4 @@ func TestNewStorageClass(t *testing.T) {
 		})
 	}
 }
+

@@ -94,7 +94,7 @@ Default neonsan pool name is **kube**. Modify the installation file, if you want
 2. Neonsan-plugin ars: - "--poolname=kube"
 
 ### StorageClass Parameters
-StorageClass definition [file](deploy/neonsan/example/sc.yaml) shown below is used to create StorageClass object.
+StorageClass definition [file](deploy/neonsan/example/volume/sc.yaml) shown below is used to create StorageClass object.
 
 ```
   apiVersion: storage.k8s.io/v1

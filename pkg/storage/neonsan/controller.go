@@ -19,6 +19,7 @@ package neonsan
 import (
 	"errors"
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/yunify/qingstor-csi/pkg/common"
 	"github.com/yunify/qingstor-csi/pkg/storage/neonsan/api"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
@@ -26,8 +27,7 @@ import (
 )
 
 var (
-	maxRetryCnt      = 10
-	retryBackOff     = wait.Backoff{
+	retryBackOff = wait.Backoff{
 		Duration: time.Second,
 		Factor:   1.5,
 		Steps:    20,
@@ -35,25 +35,17 @@ var (
 	}
 )
 
-func (v *neonsan) CreateVolume(volName string, requestSize int64, replicas int) (string, error) {
-	_, err := api.CreateVolume(v.confFile, v.poolName, volName, requestSize, replicas)
-	if err != nil {
-		return "", err
-	}
-	return volName, nil
+func (v *neonsan) CreateVolume(volumeName string, requestSize int64, replicas int) error {
+	return api.CreateVolume(v.confFile, v.poolName, volumeName, requestSize, replicas)
 }
 
-func (v *neonsan) DeleteVolume(volId string) (err error) {
-	_, err = api.DeleteVolume(v.confFile, v.poolName, volId)
+func (v *neonsan) DeleteVolume(volumeName string) (err error) {
+	_, err = api.DeleteVolume(v.confFile, v.poolName, volumeName)
 	return err
 }
 
-func (v *neonsan) FindVolume(volId string) (*csi.Volume, error) {
-	return v.FindVolumeByName(volId)
-}
-
-func (v *neonsan) FindVolumeByName(volName string) (*csi.Volume, error) {
-	vol, err := api.ListVolume(v.confFile, v.poolName, volName)
+func (v *neonsan) ListVolume(volumeName string) (*csi.Volume, error) {
+	vol, err := api.ListVolume(v.confFile, v.poolName, volumeName)
 	if err != nil {
 		return nil, err
 	}
@@ -66,38 +58,29 @@ func (v *neonsan) FindVolumeByName(volName string) (*csi.Volume, error) {
 	}, nil
 }
 
-func (v *neonsan) ResizeVolume(volId string, requestSize int64) (err error) {
-	return api.ResizeVolume(v.confFile, v.poolName, volId, requestSize)
+func (v *neonsan) ResizeVolume(volumeName string, requestSize int64) (err error) {
+	return api.ResizeVolume(v.confFile, v.poolName, volumeName, requestSize)
 }
 
-func (v *neonsan) CloneVolume(volName string, srcVolId string) (volId string, err error) {
-	srcVol, err := api.ListVolume(v.confFile, v.poolName, srcVolId)
+func (v *neonsan) CloneVolume(sourceVolumeName, snapshotName, targetVolumeName string) error {
+	sourceVolume, err := api.ListVolume(v.confFile, v.poolName, sourceVolumeName)
 	if err != nil {
-		return "", err
+		return err
 	}
-
-	if srcVol == nil {
-		return "", errors.New("source volume not exist")
+	if sourceVolume == nil {
+		return errors.New("source volume not exist")
 	}
-
-	_, err = api.CreateVolume(v.confFile, v.poolName, volName, int64(srcVol.Size), srcVol.ReplicationCount)
+	err = api.CreateVolume(v.confFile, v.poolName, targetVolumeName, int64(sourceVolume.Size), sourceVolume.ReplicationCount)
 	if err != nil {
-		return "", err
+		return err
 	}
-
-	err = api.CloneVolume(v.confFile, srcVolId, v.poolName, volName, v.poolName)
+	err = api.CloneVolume(v.confFile, sourceVolumeName, snapshotName, v.poolName, targetVolumeName, v.poolName)
 	if err != nil {
-		return "", err
-	}
-
-	retryCnt := 0
-	retryFun := func(e error) bool {
-		retryCnt++
-		return e != nil && retryCnt <= maxRetryCnt
+		return err
 	}
 	//Wait until clone SYNCED
-	err = retry.OnError(retryBackOff, retryFun, func() error {
-		cloneInfo, listCloneErr := api.ListClone(v.confFile, srcVolId, v.poolName, volName, v.poolName)
+	err = retry.OnError(retryBackOff, common.DefaultRetryErrorFunc, func() error {
+		cloneInfo, listCloneErr := api.ListClone(v.confFile, sourceVolumeName, v.poolName, targetVolumeName, v.poolName)
 		if listCloneErr != nil {
 			return err
 		}
@@ -107,13 +90,19 @@ func (v *neonsan) CloneVolume(volName string, srcVolId string) (volId string, er
 		return nil
 	})
 	if err != nil {
-		return "", err
+		return  err
 	}
+	return api.DetachCloneRelationship(v.confFile, sourceVolumeName, v.poolName, targetVolumeName, v.poolName)
+}
 
-	err = api.DetachCloneRelationship(v.confFile, srcVolId, v.poolName, volName, v.poolName)
-	if err != nil {
-		return "", err
-	}
+func (v *neonsan) CreateSnapshot(volumeName, snapshotName string) error {
+	return api.CreateSnapshot(v.confFile, volumeName, snapshotName, v.poolName)
+}
 
-	return volName, nil
+func (v *neonsan) ListSnapshot(volumeName, snapshotName string) (*csi.Snapshot, error) {
+	return api.ListSnapshot(v.confFile, volumeName, snapshotName, v.poolName)
+}
+
+func (v *neonsan) DeleteSnapshot(volumeName, snapshotName string) error {
+	return api.DeleteSnapshot(v.confFile, volumeName, snapshotName, v.poolName)
 }

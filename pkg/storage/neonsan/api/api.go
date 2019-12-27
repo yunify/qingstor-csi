@@ -20,8 +20,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/pelletier/go-toml"
 	"github.com/samuel/go-zookeeper/zk"
+	"github.com/yunify/qingstor-csi/pkg/common"
 	"io/ioutil"
 	"k8s.io/klog"
 	"net/http"
@@ -69,7 +72,7 @@ func ListVolume(confFile, poolName, volName string) (*Volume, error) {
 	return &response.Volumes[0], nil
 }
 
-func CreateVolume(confFile, poolName, volName string, size int64, repCount int) (int, error) {
+func CreateVolume(confFile, poolName, volName string, size int64, repCount int) error {
 	request := CreateVolumeRequest{
 		Op:       "create_volume",
 		PoolName: poolName,
@@ -78,11 +81,7 @@ func CreateVolume(confFile, poolName, volName string, size int64, repCount int) 
 		RepCount: repCount,
 	}
 	response := &CreateVolumeResponse{}
-	err := httpGet(confFile, request, response)
-	if err != nil {
-		return -1, err
-	}
-	return response.Id, nil
+	return httpGet(confFile, request, response)
 }
 
 func DeleteVolume(confFile, poolName, volName string) (int, error) {
@@ -110,13 +109,14 @@ func ResizeVolume(confFile, poolName, volName string, size int64) error {
 	return httpGet(confFile, request, response)
 }
 
-func CloneVolume(confFile, sourceVol, sourcePool, targetVol, targetPool string) error {
+func CloneVolume(confFile, sourceVol, snapshotName, sourcePool, targetVol, targetPool string) error {
 	request := CloneVolumeRequest{
-		Op:         "clone_volume",
-		SourceVol:  sourceVol,
-		SourcePool: sourcePool,
-		TargetVol:  targetVol,
-		TargetPool: targetPool,
+		Op:           "clone_volume",
+		SourcePool:   sourcePool,
+		SourceVol:    sourceVol,
+		SnapshotName: snapshotName,
+		TargetPool:   targetPool,
+		TargetVol:    targetVol,
 	}
 	response := &CloneVolumeResponse{}
 	return httpGet(confFile, request, response)
@@ -124,8 +124,8 @@ func CloneVolume(confFile, sourceVol, sourcePool, targetVol, targetPool string) 
 
 func ListClone(confFile, sourceVol, sourcePool, targetVol, targetPool string) (*CloneInfo, error) {
 	request := ListCloneRequest{
-		Op:        "list_clone",
-		SvolFullname: sourcePool + "/"+ sourceVol,
+		Op:           "list_clone",
+		SvolFullname: sourcePool + "/" + sourceVol,
 	}
 	response := &ListCloneResponse{}
 	err := httpGet(confFile, request, response)
@@ -141,12 +141,65 @@ func ListClone(confFile, sourceVol, sourcePool, targetVol, targetPool string) (*
 
 func DetachCloneRelationship(confFile, sourceVol, sourcePool, targetVol, targetPool string) error {
 	request := DetachCloneRelationshipRequest{
-		Op:"detach_clone_relationship",
-		SourceVol: sourcePool + "/"+ sourceVol,
-		TargetVol:targetPool + "/" + targetVol,
+		Op:        "detach_clone_relationship",
+		SourceVol: sourcePool + "/" + sourceVol,
+		TargetVol: targetPool + "/" + targetVol,
 	}
 	response := &DetachCloneRelationshipResponse{}
 	return httpGet(confFile, request, response)
+}
+
+func CreateSnapshot(confFile, volumeName, snapshotName, poolName string) error {
+	request := CreateSnapshotRequest{
+		Op:           "create_snapshot",
+		PoolName:     poolName,
+		VolumeName:   volumeName,
+		SnapshotName: snapshotName,
+	}
+	response := &CreateSnapshotResponse{}
+	return httpGet(confFile, request, response)
+}
+
+func DeleteSnapshot(confFile, volumeName, snapshotName, poolName string) error {
+	request := DeleteSnapshotRequest{
+		Op:           "delete_snapshot",
+		PoolName:     poolName,
+		VolumeName:   volumeName,
+		SnapshotName: snapshotName,
+	}
+	response := &DeleteSnapshotResponse{}
+	return httpGet(confFile, request, response)
+}
+
+func ListSnapshot(confFile, volumeName, snapshotName, poolName string) (*csi.Snapshot, error) {
+	if len(volumeName) == 0 || len(snapshotName) == 0{
+		return nil, nil
+	}
+	request := ListSnapshotRequest{
+		Op:           "list_snapshot",
+		PoolName:     poolName,
+		VolumeName:   volumeName,
+		SnapshotName: snapshotName,
+	}
+	response := &ListSnapshotResponse{}
+	err := httpGet(confFile, request, response)
+	if err != nil {
+		return nil, err
+	}
+	if len(response.Snapshots) == 0 {
+		return nil, nil
+	}
+	snapshot := response.Snapshots[0]
+	creationTime, _ := ptypes.TimestampProto(snapshot.CreateTime)
+	csiSnapshot := &csi.Snapshot{
+		SizeBytes:      snapshot.SnapshotSize,
+		SnapshotId:     common.JoinSnapshotName(volumeName, snapshot.SnapshotName),
+		SourceVolumeId: volumeName,
+		CreationTime:   creationTime,
+		ReadyToUse:     snapshot.Status == "OK",
+	}
+	return csiSnapshot, nil
+
 }
 
 func buildParameters(request interface{}) string {
@@ -193,8 +246,8 @@ func httpGet(confFile string, request interface{}, response Response) error {
 		return err
 	}
 	klog.Infof("NeonsanApi [End] request:%s, response:%s", url, body)
-	err = json.Unmarshal(body,response)
-	if err != nil{
+	err = json.Unmarshal(body, response)
+	if err != nil {
 		return err
 	}
 	rspHeader := response.Header()

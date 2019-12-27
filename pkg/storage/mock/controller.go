@@ -19,83 +19,77 @@ package mock
 import (
 	"errors"
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/yunify/qingstor-csi/pkg/common"
-	"time"
 )
 
-var (
-	errorNotImplement = errors.New("method not implement")
-	errorNotToCalled  = errors.New("method should not to be called")
-)
-
-//requestSize G
-func (p *mockStorageProvider) CreateVolume(volName string, requestSize int64, replicas int) (volId string, err error) {
-	vol, err := p.FindVolumeByName(volName)
-	if err != nil{
-		return "",err
+func (p *mockStorageProvider) CreateVolume(volumeName string, requestSize int64, replicas int) error {
+	vol, _ := p.ListVolume(volumeName)
+	if vol != nil {
+		return errors.New("volume exist")
 	}
-	if vol != nil{
-		return "", errors.New("volume exist")
-	}
-
-	volId = common.GenerateHashInEightBytes(time.Now().UTC().String())
 	vol = &csi.Volume{
 		CapacityBytes: requestSize,
-		VolumeId:volId,
+		VolumeId:      volumeName,
 	}
-	p.volumes[volName] = vol
-	return volId,nil
-}
-
-func (p *mockStorageProvider) DeleteVolume(volId string) (err error) {
-	vol,err := p.FindVolume(volId)
-	if vol == nil{
-		return errors.New("delete not exist volume")
-	}
-	delete(p.volumes, volId)
+	p.volumes[volumeName] = vol
 	return nil
 }
 
-func (p *mockStorageProvider) FindVolume(volId string) (*csi.Volume, error) {
-	for _,vol := range p.volumes {
-		if vol.VolumeId == volId{
-			return vol,nil
-		}
+func (p *mockStorageProvider) DeleteVolume(volumeName string) error {
+	vol, _ := p.ListVolume(volumeName)
+	if vol == nil {
+		return errors.New("delete not exist volume")
 	}
-	return nil,nil
+	delete(p.volumes, volumeName)
+	return nil
 }
 
-func (p *mockStorageProvider) FindVolumeByName(volName string) (*csi.Volume, error) {
-	return p.volumes[volName],nil
-}
-
-func (p *mockStorageProvider) AttachVolume(volId string, instanceId string) (err error) {
-	return errorNotToCalled
-}
-
-func (p *mockStorageProvider) DetachVolume(volId string, instanceId string) (err error) {
-	return errorNotToCalled
+func (p *mockStorageProvider) ListVolume(volumeName string) (*csi.Volume, error) {
+	return p.volumes[volumeName], nil
 }
 
 func (p *mockStorageProvider) ResizeVolume(volId string, requestSize int64) (err error) {
-	v, err := p.FindVolume(volId)
-	if err != nil {
-		return err
-	}
-	if v == nil{
+	v, _ := p.ListVolume(volId)
+	if v == nil {
 		return errors.New("not found")
 	}
 	v.CapacityBytes = requestSize
 	return nil
 }
 
-func (p *mockStorageProvider) CloneVolume(volName, srcVolId string) (volId string, err error) {
-	srcVol, err := p.FindVolume(srcVolId)
+func (p *mockStorageProvider) CloneVolume(sourceVolName, snapshotName, targetVolName string) error {
+	srcVol, err := p.ListVolume(sourceVolName)
 	if err != nil {
-		return "", err
+		return err
 	}
 	if srcVol == nil {
-		return "", errors.New("src vol not exist")
+		return errors.New("src vol not exist")
 	}
-	return p.CreateVolume(volName, srcVol.CapacityBytes, 0)
+	return p.CreateVolume(targetVolName, srcVol.CapacityBytes, 0)
+}
+
+func (p *mockStorageProvider) CreateSnapshot(volumeName, snapshotName string) error {
+	ptime := ptypes.TimestampNow()
+	snap := &csi.Snapshot{
+		SizeBytes:      0,
+		SnapshotId:     common.JoinSnapshotName(volumeName,snapshotName),
+		SourceVolumeId: volumeName,
+		CreationTime:   ptime,
+		ReadyToUse:     true,
+	}
+	p.snapshots[common.JoinSnapshotName(volumeName, snapshotName)] = snap
+	return  nil
+}
+
+func (p *mockStorageProvider) ListSnapshot(volumeName, snapshotName string) (*csi.Snapshot, error) {
+	if snap, ok := p.snapshots[common.JoinSnapshotName(volumeName,snapshotName)]; ok {
+		return snap, nil
+	}
+	return nil, nil
+}
+
+func (p *mockStorageProvider) DeleteSnapshot(volumeName, snapshotName string) error {
+	delete(p.snapshots, common.JoinSnapshotName(volumeName, snapshotName))
+	return nil
 }

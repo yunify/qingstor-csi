@@ -83,7 +83,7 @@ func handle() {
 		SetControllerServiceCapabilities(service.DefaultControllerServiceCapability).
 		SetNodeServiceCapabilities(service.DefaultNodeServiceCapability).
 		SetPluginCapabilities(service.DefaultPluginCapability).
-		SetRetryTime(rt).SetRetryCnt(service.DefaultRetryCnt)
+		SetRetryTime(rt)
 
 	// Mounter
 	formatMounter := common.NewSafeMounter()

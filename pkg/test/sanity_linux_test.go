@@ -50,8 +50,7 @@ var (
 		SetControllerServiceCapabilities(service.DefaultControllerServiceCapability).
 		SetNodeServiceCapabilities(service.DefaultNodeServiceCapability).
 		SetPluginCapabilities(service.DefaultPluginCapability).
-		SetRetryTime(service.DefaultBackOff).
-		SetRetryCnt(service.DefaultRetryCnt)
+		SetRetryTime(service.DefaultBackOff)
 )
 
 var _ = BeforeSuite(func() {

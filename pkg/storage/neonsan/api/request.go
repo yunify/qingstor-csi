@@ -16,7 +16,9 @@ limitations under the License.
 
 package api
 
-import "time"
+import (
+	"time"
+)
 
 type ResponseHeader struct {
 	Op      string `json:"op"`
@@ -83,12 +85,13 @@ type ListVolumeResponse struct {
 }
 
 type CloneVolumeRequest struct {
-	Op         string `json:"op"`
-	SourceVol  string `json:"source_vol"`
-	SourcePool string `json:"source_pool"`
-	TargetVol  string `json:"target_vol"`
-	TargetPool string `json:"target_pool"`
-	Size       int64  `json:"size"`
+	Op           string `json:"op"`
+	SourcePool   string `json:"source_pool"`
+	SourceVol    string `json:"source_vol"`
+	SnapshotName string `json:"snapshot_name"`
+	TargetPool   string `json:"target_pool"`
+	TargetVol    string `json:"target_vol"`
+	Size         int64  `json:"size"`
 }
 
 type CloneVolumeResponse struct {
@@ -130,4 +133,49 @@ type CloneRelation struct {
 type DetachCloneRelationshipResponse struct {
 	ResponseHeader
 	CloneRelations []CloneRelation `json:"CloneRelations"`
+}
+
+type CreateSnapshotRequest struct {
+	Op           string `json:"op"`
+	PoolName     string `json:"pool_name"`
+	VolumeName   string `json:"volume_name"`
+	SnapshotName string `json:"snapshot_name"`
+}
+
+type CreateSnapshotResponse struct {
+	ResponseHeader
+}
+
+type DeleteSnapshotRequest struct {
+	Op           string `json:"op"`
+	PoolName     string `json:"pool_name"`
+	VolumeName   string `json:"volume_name"`
+	SnapshotName string `json:"snapshot_name"`
+}
+
+type DeleteSnapshotResponse struct {
+	ResponseHeader
+	Id int `json:"id"`
+}
+
+type ListSnapshotRequest struct {
+	Op           string `json:"op"`
+	PoolName     string `json:"pool_name"`
+	VolumeName   string `json:"volume_name"`
+	SnapshotName string `json:"snapshot_name"`    //Optional
+}
+
+type SnapshotInfo struct {
+	SnapshotId   int       `json:"snapshot_id"`
+	SnapshotName string    `json:"snapshot_name"`
+	SnapshotSize int64     `json:"snapshot_size"`
+	Status       string    `json:"status"`
+	CreateTime   time.Time `json:"create_time" format:"ISO 8601"`
+}
+
+type ListSnapshotResponse struct {
+	ResponseHeader
+	VolumeId      int            `json:"volume_id"`
+	SnapshotCount int            `json:"snapshot_count"`
+	Snapshots     []SnapshotInfo `json:"snapshots"`
 }
