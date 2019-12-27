@@ -42,7 +42,7 @@ func NewResourceLocks() *ResourceLocks {
 // TryAcquire tries to acquire the lock for operating on resourceID and returns true if successful.
 // If another operation is already using resourceID, returns false.
 func (lock *ResourceLocks) TryAcquire(resourceID string) bool {
-	klog.Infof("Try to lock resource %s", resourceID)
+	klog.V(4).Infof("Try to lock resource %s", resourceID)
 	lock.mux.Lock()
 	defer lock.mux.Unlock()
 	if lock.locks.Has(resourceID) {
@@ -56,5 +56,5 @@ func (lock *ResourceLocks) Release(resourceID string) {
 	lock.mux.Lock()
 	defer lock.mux.Unlock()
 	lock.locks.Delete(resourceID)
-	klog.Infof("unlock resource %s", resourceID)
+	klog.V(4).Infof("unlock resource %s", resourceID)
 }

@@ -16,6 +16,8 @@ limitations under the License.
 
 package api
 
+import "time"
+
 type ResponseHeader struct {
 	Op      string `json:"op"`
 	RetCode int    `json:"ret_code"`
@@ -59,7 +61,7 @@ type ResizeVolumeRequest struct {
 	Op       string `json:"op"`
 	PoolName string `json:"pool_name"`
 	Name     string `json:"name"`
-	Size     int64    `json:"size"`
+	Size     int64  `json:"size"`
 }
 
 type ResizeVolumeResponse struct {
@@ -78,4 +80,54 @@ type ListVolumeResponse struct {
 	ResponseHeader
 	Count   int      `json:"count"`
 	Volumes []Volume `json:"volumes"`
+}
+
+type CloneVolumeRequest struct {
+	Op         string `json:"op"`
+	SourceVol  string `json:"source_vol"`
+	SourcePool string `json:"source_pool"`
+	TargetVol  string `json:"target_vol"`
+	TargetPool string `json:"target_pool"`
+	Size       int64  `json:"size"`
+}
+
+type CloneVolumeResponse struct {
+	ResponseHeader
+	Id        string `json:"id"`
+	QueueName string `json:"queue_name"`
+}
+
+type ListCloneRequest struct {
+	Op           string `json:"op"`
+	SvolFullname string `json:"svol_fullname"`
+}
+
+type CloneInfo struct {
+	Id         int       `json:"id"`
+	SourceVol  string    `json:"source_vol"`
+	TargetVol  string    `json:"target_vol"`
+	CreateTime time.Time `json:"create_time" format:"ISO 8601"`
+	Status     string    `json:"status"`
+	StatusTime time.Time `json:"status_time" format:"ISO 8601"`
+}
+
+type ListCloneResponse struct {
+	ResponseHeader
+	CloneVolumes []CloneInfo `json:"CloneVolumes"`
+}
+
+type DetachCloneRelationshipRequest struct {
+	Op        string `json:"op"`
+	SourceVol string `json:"source_vol"`
+	TargetVol string `json:"target_vol"`
+}
+
+type CloneRelation struct {
+	SourceVol int `json:"SourceVol"`
+	TargetVol int `json:"TargetVol"`
+}
+
+type DetachCloneRelationshipResponse struct {
+	ResponseHeader
+	CloneRelations []CloneRelation `json:"CloneRelations"`
 }

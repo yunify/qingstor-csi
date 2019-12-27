@@ -16,6 +16,7 @@ This guide will install CSI plugin in the *kube-system* namespace of Kubernetes 
   - Enable `--feature-gates=CSINodeInfo=true,CSIDriverRegistry=true,KubeletPluginsWatcher=true` option on kube-apiserver, kube-controller-manager, kube-scheduler, kubelet
   
 - Download **qbd** and install **qbd** on nodes of kubernetes
+  As long as **qbd**'s version consistent with neonsan server, the CSI works.
 
   * Download
   
@@ -55,7 +56,7 @@ This guide will install CSI plugin in the *kube-system* namespace of Kubernetes 
   ```
   $ kubectl get pods -n kube-system --selector=app=csi-neonsan
   NAME                                     READY   STATUS    RESTARTS   AGE
-  csi-neonsan-controller-594448465-sq57l   3/3     Running   0          6m41s
+  csi-neonsan-controller-594448465-sq57l   4/4     Running   0          6m41s
   csi-neonsan-node-9w2zp                   1/1     Running   0          6m41s
   csi-neonsan-node-bzqcj                   1/1     Running   0          6m41s
   csi-neonsan-node-vjmvb                   1/1     Running   0          6m41s

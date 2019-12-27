@@ -88,8 +88,7 @@ func (s *service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeR
 // This operation MUST be idempotent
 // csi.NodeUnstageVolumeRequest:	volume id	+ Required
 //									target path	+ Required
-func (s *service) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.
-	NodeUnstageVolumeResponse, error) {
+func (s *service) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
 
 	// set parameter
 	volumeId := req.GetVolumeId()
@@ -156,8 +155,7 @@ func (s *service) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVol
 //									target path			+ Required
 //									volume capability	+ Required
 //									read only			+ Required (This field is NOT provided when requesting in Kubernetes)
-func (s *service) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.
-	NodePublishVolumeResponse, error) {
+func (s *service) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	// set parameter
 	targetPath := req.GetTargetPath()
 	stagePath := req.GetStagingTargetPath()
@@ -221,8 +219,7 @@ func (s *service) NodePublishVolume(ctx context.Context, req *csi.NodePublishVol
 
 // csi.NodeUnpublishVolumeRequest:	volume id	+ Required
 //									target path	+ Required
-func (s *service) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.
-	NodeUnpublishVolumeResponse, error) {
+func (s *service) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	// set parameter
 	volumeId := req.GetVolumeId()
 	targetPath := req.GetTargetPath()
@@ -249,8 +246,7 @@ func (s *service) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublis
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 
-func (s *service) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.
-	NodeGetCapabilitiesResponse, error) {
+func (s *service) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
 	return &csi.NodeGetCapabilitiesResponse{
 		Capabilities: s.option.NodeCap,
 	}, nil

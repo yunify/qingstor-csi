@@ -16,8 +16,8 @@
 
 .PHONY: all disk
 
-NEONSAN_IMAGE_NAME=csiplugin/csi-neonsan
-NEONSAN_VERSION=canary
+NEONSAN_IMAGE_NAME=bmindocker/csi-neonsan
+NEONSAN_VERSION=v1.2.0
 ROOT_PATH=$(pwd)
 PACKAGE_LIST=./cmd/... ./pkg/...
 
@@ -34,7 +34,7 @@ yaml:
 	kustomize build deploy/neonsan/kubernetes/base > deploy/neonsan/kubernetes/release/csi-neonsan-${NEONSAN_VERSION}.yaml
 
 release:
-	cd deploy/neonsan/kubernetes/ && tar -zcvf csi-neonsan-${NEONSAN_VERSION}.tar.gz release/*
+	cp deploy/neonsan/plugin/* deploy/neonsan/kubernetes/release && cd deploy/neonsan/kubernetes/ && tar -zcvf csi-neonsan-${NEONSAN_VERSION}.tar.gz release/*
 
 mod:
 	go build ./...

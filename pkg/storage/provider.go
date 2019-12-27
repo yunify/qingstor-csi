@@ -47,22 +47,12 @@ type ControllerOperator interface {
 	// Return:
 	//   nil: succeed to attach volume
 	//   error: failed to attach volume
-	AttachVolume(volId string, instanceId string) error
-	// DetachVolume detaches volume from node.
-	// Return:
-	//   nil: succeed to detach volume
-	//   error: failed to detach volume
-	DetachVolume(volId string, instanceId string) error
-	// ResizeVolume expands volume to specified capacity.
-	// Return:
-	//   nil: succeed to expand volume
-	//   error: failed to expand volume
 	ResizeVolume(volId string, requestSize int64) error
 	// CloneVolume clones a volume
 	// Return:
 	//   volume id, nil: succeed to clone volume and return volume id
 	//   nil, error: failed to clone volume
-	CloneVolume(volName string, volType int, srcVolId string, zone string) (volId string, err error)
+	CloneVolume(destVolName string, srcVolName string) (volId string, err error)
 }
 
 type NodeOperator interface {
