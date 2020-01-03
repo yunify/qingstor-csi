@@ -123,15 +123,3 @@ func TestIsValidCapacityBytes(t *testing.T) {
 		}
 	}
 }
-
-func TestSplitSnapshotName(t *testing.T) {
-	fullSnapshotName := "pvc@snap-1"
-	volumeName, snapshotName := SplitSnapshotName(fullSnapshotName)
-	if volumeName != "pvc" || snapshotName != "snap-1"{
-		t.Error(fullSnapshotName)
-	}
-	fullSnapshotName2 := JoinSnapshotName(volumeName, snapshotName)
-	if fullSnapshotName2 != fullSnapshotName{
-		t.Error(fullSnapshotName2)
-	}
-}

@@ -30,8 +30,6 @@ var (
 		Steps:    20,
 		Cap:      time.Minute * 2,
 	}
-
-	DefaultRetryCnt = 10
 )
 
 type Option struct {

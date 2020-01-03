@@ -31,14 +31,11 @@ func (s *service) Probe(ctx context.Context, req *csi.ProbeRequest) (*csi.ProbeR
 // Get plugin capabilities: CONTROLLER, ACCESSIBILITY, EXPANSION
 func (s *service) GetPluginCapabilities(ctx context.Context, req *csi.GetPluginCapabilitiesRequest) (*csi.GetPluginCapabilitiesResponse, error) {
 	klog.V(5).Infof("Using default capabilities")
-	return &csi.GetPluginCapabilitiesResponse{
-		Capabilities: s.option.PluginCap,
-	}, nil
+	return &csi.GetPluginCapabilitiesResponse{Capabilities: s.option.PluginCap}, nil
 }
 
 func (s *service) GetPluginInfo(ctx context.Context, req *csi.GetPluginInfoRequest) (*csi.GetPluginInfoResponse, error) {
 	klog.V(5).Infof("Using GetPluginInfo")
-
 	return &csi.GetPluginInfoResponse{
 		Name:          s.option.Name,
 		VendorVersion: s.option.Version,

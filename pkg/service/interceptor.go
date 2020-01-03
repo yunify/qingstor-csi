@@ -45,6 +45,10 @@ func (s *service) interceptor(ctx context.Context, req interface{}, info *grpc.U
 		klog.Errorf("GRPC %s fail validate: %v req:%s %s", info.FullMethod, err, protosanitizer.StripSecrets(req), hash)
 		return nil, err
 	}
+	if volumeID := s.getVolumeID(req); len(volumeID) != 0{
+		s.locks.TryAcquire(volumeID)
+		defer s.locks.Release(volumeID)
+	}
 	resp, err := handler(common.ContextWithHash(ctx, hash), req)
 	if err != nil {
 		klog.Errorf("GRPC %s error: %v req:%s %s", info.FullMethod, err, protosanitizer.StripSecrets(req), hash)
@@ -162,4 +166,28 @@ func (s *service) validateRequest(request interface{}) error {
 	}
 
 	return nil
+}
+
+func (s *service) getVolumeID(request interface{}) string {
+	switch req := request.(type) {
+	case *csi.ControllerExpandVolumeRequest:
+		return req.VolumeId
+	case *csi.CreateSnapshotRequest:
+		return req.SourceVolumeId
+	case *csi.DeleteSnapshotRequest:
+		return req.SnapshotId
+	case *csi.DeleteVolumeRequest:
+		return req.VolumeId
+	case *csi.NodeExpandVolumeRequest:
+		return req.VolumeId
+	case *csi.NodePublishVolumeRequest:
+		return req.VolumeId
+	case *csi.NodeStageVolumeRequest:
+		return req.VolumeId
+	case *csi.NodeUnpublishVolumeRequest:
+		return req.VolumeId
+	case *csi.NodeUnstageVolumeRequest:
+		return req.VolumeId
+	}
+	return ""
 }

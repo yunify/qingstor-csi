@@ -1,4 +1,3 @@
-
 /*
 Copyright (C) 2018 Yunify, Inc.
 
@@ -25,36 +24,36 @@ import (
 
 //var deviceNo = 50
 
-func (p *mockStorageProvider) NodeAttachVolume(volumeName string) error {
-	_, ok := p.attachedVolumes[volumeName]
+func (p *mockStorageProvider) NodeAttachVolume(volumeID string) error {
+	_, ok := p.attachedVolumes[volumeID]
 	if ok {
 		return errors.New("volume already attached")
 	}
-	vol, err := p.ListVolume(volumeName)
-	if err != nil{
+	vol, err := p.FindVolume(volumeID)
+	if err != nil {
 		return err
 	}
 	//deviceNo ++
-  p.attachedVolumes[volumeName] = &attachVolume{
-		vol:vol,
+	p.attachedVolumes[volumeID] = &attachVolume{
+		vol:    vol,
 		device: common.GenerateHashInEightBytes(time.Now().UTC().String()),
 	}
 	return nil
 }
 
-func (p *mockStorageProvider) NodeDetachVolume(volumeName string) error {
-	_, ok := p.attachedVolumes[volumeName]
+func (p *mockStorageProvider) NodeDetachVolume(volumeID string) error {
+	_, ok := p.attachedVolumes[volumeID]
 	if !ok {
 		return errors.New("volume not attached")
 	}
-	delete(p.attachedVolumes, volumeName)
+	delete(p.attachedVolumes, volumeID)
 	return nil
 }
 
-func (p *mockStorageProvider) NodeGetDevice(volumeName string) (string, error) {
-	attachVol, ok := p.attachedVolumes[volumeName]
-	if ok && attachVol != nil{
-		return  attachVol.device,nil
+func (p *mockStorageProvider) NodeGetDevice(volumeID string) (string, error) {
+	attachVol, ok := p.attachedVolumes[volumeID]
+	if ok && attachVol != nil {
+		return attachVol.device, nil
 	}
-	return "" , errors.New("vol not found")
+	return "", errors.New("volume not found")
 }

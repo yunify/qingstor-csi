@@ -194,15 +194,14 @@ func TestCreateVolume(t *testing.T) {
 	})
 	defer guardHttpGetOK.Unpatch()
 
-	n, err := CreateVolume(configFile, poolName, "xx", 1, 1)
+	err := CreateVolume(configFile, poolName, "xx", 1, 1)
 	convey.Convey("create volume success", t, func() {
 		convey.So(err, convey.ShouldBeNil)
-		convey.So(n, convey.ShouldEqual, mockResponse.Id)
 	})
 
 	mockResponse.RetCode = 100
 	httpBody, _ = json.Marshal(mockResponse)
-	n, err = CreateVolume(configFile, poolName, "xx", 1, 1)
+	err = CreateVolume(configFile, poolName, "xx", 1, 1)
 	convey.Convey("create volume fail", t, func() {
 		convey.So(err, convey.ShouldNotBeNil)
 	})
@@ -210,7 +209,6 @@ func TestCreateVolume(t *testing.T) {
 }
 
 func TestDeleteVolume(t *testing.T) {
-
 	guardGetApiUrlOK := monkey.Patch(getApiHost, func(string) (string, error) { return "neonsan-api.com", nil })
 	defer guardGetApiUrlOK.Unpatch()
 
@@ -232,15 +230,14 @@ func TestDeleteVolume(t *testing.T) {
 	})
 	defer guardHttpGetOK.Unpatch()
 
-	n, err := DeleteVolume(configFile, poolName, "xx")
+	err := DeleteVolume(configFile, poolName, "xx")
 	convey.Convey("delete volume success", t, func() {
 		convey.So(err, convey.ShouldBeNil)
-		convey.So(n, convey.ShouldEqual, mockResponse.Id)
 	})
 
 	mockResponse.RetCode = 100
 	httpBody, _ = json.Marshal(mockResponse)
-	n, err = DeleteVolume(configFile, poolName, "xx")
+	err = DeleteVolume(configFile, poolName, "xx")
 	convey.Convey("delete volume fail", t, func() {
 		convey.So(err, convey.ShouldNotBeNil)
 	})

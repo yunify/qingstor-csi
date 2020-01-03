@@ -23,18 +23,28 @@ import (
 	"hash/fnv"
 	"os/exec"
 	"strconv"
-	"strings"
 )
 
 const (
-	snapSep = "@"
+	FileSystemExt3    string = "ext3"
+	FileSystemExt4    string = "ext4"
+	FileSystemXfs     string = "xfs"
+	DefaultFileSystem        = FileSystemExt4
+
+	fsTypeName = "fsType"
+
+	Hash = "Hash"
+
+	Gib = 1 << 30
 )
+
 // ContextWithHash return context with hash value
 func ContextWithHash(ctx context.Context, hash string) context.Context {
 	return context.WithValue(ctx, Hash, hash)
 }
 
 // GetContextHash return hash of context
+//noinspection GoUnusedExportedFunction
 func GetContextHash(ctx context.Context) string {
 	val := ctx.Value(Hash)
 	if v, ok := val.(string); ok {
@@ -104,16 +114,15 @@ func IsValidFileSystemType(fs string) bool {
 	}
 }
 
-func DefaultRetryErrorFunc(e error) bool { return e != nil }
-
-func SplitSnapshotName(fullSnapshotName string) (volumeName,snapshotName string) {
-	s := strings.Split(fullSnapshotName, snapSep)
-	if len(s) == 2{
-		volumeName, snapshotName = s[0], s[1]
+func GetFsType(volumeContext map[string]string) (string, error) {
+	fsType, ok := volumeContext[fsTypeName]
+	if ok {
+		if !IsValidFileSystemType(fsType) {
+			return "", fmt.Errorf("unsupported filesystem type %s", fsType)
+		}
+		return fsType, nil
 	}
-	return
+	return DefaultFileSystem, nil
 }
 
-func JoinSnapshotName(volumeName, snapshotName string) (fullSnapshotName string) {
-	return volumeName + snapSep + snapshotName
-}
+func DefaultRetryErrorFunc(e error) bool { return e != nil }
