@@ -18,16 +18,16 @@ package neonsan
 
 import "github.com/yunify/qingstor-csi/pkg/storage/neonsan/qbd"
 
-func (v *neonsan) NodeAttachVolume(volId string) error {
-	return qbd.AttachVolume(v.confFile, v.poolName, volId)
+func (v *neonsan) NodeAttachVolume(volumeName string) error {
+	return qbd.AttachVolume(v.confFile, v.poolName, volumeName)
 }
 
-func (v *neonsan) NodeDetachVolume(volId string) error {
-	return qbd.DetachVolume(v.confFile, v.poolName, volId)
+func (v *neonsan) NodeDetachVolume(volumeName string) error {
+	return qbd.DetachVolume(v.confFile, v.poolName, volumeName)
 }
 
-func (v *neonsan) NodeGetDevice(volId string) (string, error) {
-	attachInfo, err := qbd.ListVolume(v.confFile, v.poolName, volId)
+func (v *neonsan) NodeGetDevice(volumeName string) (string, error) {
+	attachInfo, err := qbd.ListVolume(v.confFile, v.poolName, volumeName)
 	if err != nil {
 		return "", err
 	}

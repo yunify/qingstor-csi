@@ -39,8 +39,8 @@ allowVolumeExpansion: true
 
 ### 准备工作
 - Kubernetes 1.14+ 集群
-- 安装了 QingStor CSI 存储插件
-- 安装了 QingStor CSI 存储类型
+- 安装了 Neonsan CSI 存储插件
+- 安装了 Neonsan CSI 存储类型
 
 #### 安装 QingCloud CSI 存储类型
 - 安装
@@ -106,7 +106,7 @@ Error from server (NotFound): persistentvolumeclaims "pvc-example" not found
 ### 准备工作
 - Kubernetes 1.14+ 集群
 - Kubernetes 组件的 `feature-gate` 增加 `ExpandCSIVolumes=true`
-- 配置 QingCloud CSI 存储类型，并将其 `allowVolumeExpansion` 字段值设置为 `true`
+- 配置 Neonsan CSI 存储类型，并将其 `allowVolumeExpansion` 字段值设置为 `true`
 - 创建一个存储卷并挂载至 Pod，参考存储卷管理
 
 ### 卸载存储卷
@@ -145,3 +145,98 @@ Filesystem      Size  Used Avail Use% Mounted on
 ...
 ```
 
+## 存储卷克隆
+存储卷克隆可以创建现有存储卷的副本，示例yaml文件在 deploy/neonsan/example/volume 。
+
+### 准备工作
+- Kubernetes 1.15+ 集群
+- Kubernetes 组件的 `feature-gate` 增加 `ExpandCSIVolumes=true`
+- 安装 Neonsan CSI v1.1.2
+- 配置 Neonsan CSI 存储类型
+- 创建一个存储卷，参考存储卷管理
+
+### 克隆存储卷
+- 查询已存在存储卷
+
+```console
+$ kubectl get pvc pvc-test
+NAME       STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+pvc-test   Bound    pvc-3bdbde24-7016-430e-b217-9eca185caca3   20Gi       RWO            csi-neonsan    3h16
+```
+
+- 克隆存储卷
+```console
+$ kubectl create -f pvc-clone.yaml
+persistentvolumeclaim/pvc-clone created
+```
+
+- 查询克隆存储卷
+```console
+$ kubectl get pvc pvc-clone
+NAME        STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+pvc-clone   Bound    pvc-a75e3f7c-59af-43ef-82d3-300508871432   20Gi       RWO            csi-neonsan    7m4s
+```
+
+## 快照管理
+快照功能包括创建和删除快照，从快照恢复存储卷功能，示例yaml文件在 deploy/neonsan/example/snapshot 。
+
+### 准备工作
+- Kubernetes 1.14+ 集群
+- 在 kube-apiserver, kube-controller-manager 的 `feature-gate` 增加 `VolumeSnapshotDataSource=true`
+- 安装 Neonsan CSI v1.1.2
+- 配置 Neonsan CSI 存储类型
+- 创建一个带数据的存储卷
+
+#### 创建带数据的存储卷 `pvc-source`
+- 创建存储卷 
+```console
+$ kubectl create -f pvc-source.yaml
+persistentvolumeclaim/pvc-source created
+```
+- 检查存储卷
+```console
+$ kubectl get pvc pvc-source
+NAME         STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS    AGE
+pvc-source   Bound    pvc-3bdbde24-7016-430e-b217-9eca185caca3   20Gi       RWO            csi-neonsan    4h25m
+```
+
+### 创建快照
+
+#### 创建快照类型
+```console
+$ kubectl create -f snapshot-class.yaml
+volumesnapshotclass.snapshot.storage.k8s.io/csi-neonsan created
+ 
+$ kubectl get volumesnapshotclass
+NAME            AGE
+csi-neonsdan    16s
+```
+
+#### 创建快照
+```console
+$ kubectl create -f snapshot.yaml 
+volumesnapshot.snapshot.storage.k8s.io/snap-1 created
+
+$ kubectl get volumesnapshot
+NAME     AGE
+snap-1   91s
+```
+
+### 从快照恢复存储卷
+#### 恢复存储卷 `pvc-snap`
+```console
+$ kubectl create -f pvc-snapshot.yaml 
+persistentvolumeclaim/pvc-snap created
+```
+
+```console
+$ kubectl get pvc pvc-snap
+NAME       STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+pvc-snap   Bound    pvc-a56f6ebe-b37b-40d7-bfb7-aafbecb6672b   20Gi       RWO            csi-neonsan    59m
+```
+
+### 删除快照
+```console
+$ kubectl delete volumesnapshot snap-1
+volumesnapshot.snapshot.storage.k8s.io "snap-1" deleted
+```

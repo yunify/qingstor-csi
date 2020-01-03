@@ -35,13 +35,13 @@ import (
 //								volume capability	+ Required
 func (s *service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	// set parameter
-	volumeId := req.GetVolumeId()
+	volumeName := req.GetVolumeId()
 	targetPath := req.GetStagingTargetPath()
 	// ensure one call in-flight
-	if acquired := s.locks.TryAcquire(volumeId); !acquired {
-		return nil, status.Errorf(codes.Aborted, common.OperationPendingFmt, volumeId)
+	if acquired := s.locks.TryAcquire(volumeName); !acquired {
+		return nil, status.Errorf(codes.Aborted, common.OperationPendingFmt, volumeName)
 	}
-	defer s.locks.Release(volumeId)
+	defer s.locks.Release(volumeName)
 	// set fsType
 	sc, err := NewStorageClass(req.GetPublishContext())
 	if err != nil {
@@ -49,15 +49,15 @@ func (s *service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeR
 	}
 
 	// Check volume exist
-	volInfo, err := s.storageProvider.FindVolume(volumeId)
+	volInfo, err := s.storageProvider.ListVolume(volumeName)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if volInfo == nil {
-		return nil, status.Errorf(codes.NotFound, "Volume %s does not exist", volumeId)
+		return nil, status.Errorf(codes.NotFound, "Volume %s does not exist", volumeName)
 	}
 	// Attach if need
-	err = s.storageProvider.NodeAttachVolume(volumeId)
+	err = s.storageProvider.NodeAttachVolume(volumeName)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -72,16 +72,16 @@ func (s *service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeR
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
 
-	devicePath, err := s.storageProvider.NodeGetDevice(volumeId)
+	devicePath, err := s.storageProvider.NodeGetDevice(volumeName)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	// do mount
-	klog.Infof("Mounting %s to %s format ...", volumeId, targetPath)
+	klog.Infof("Mounting %s to %s format ...", volumeName, targetPath)
 	if err := s.mounter.FormatAndMount(devicePath, targetPath, sc.FsType, []string{}); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	klog.Infof("Mount %s to %s succeed", volumeId, targetPath)
+	klog.Infof("Mount %s to %s succeed", volumeName, targetPath)
 	return &csi.NodeStageVolumeResponse{}, nil
 }
 
@@ -89,23 +89,22 @@ func (s *service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeR
 // csi.NodeUnstageVolumeRequest:	volume id	+ Required
 //									target path	+ Required
 func (s *service) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
-
 	// set parameter
-	volumeId := req.GetVolumeId()
+	volumeName := req.GetVolumeId()
 	targetPath := req.GetStagingTargetPath()
 	// ensure one call in-flight
-	klog.Infof("Try to lock resource %s", volumeId)
-	if acquired := s.locks.TryAcquire(volumeId); !acquired {
-		return nil, status.Errorf(codes.Aborted, common.OperationPendingFmt, volumeId)
+	klog.Infof("Try to lock resource %s", volumeName)
+	if acquired := s.locks.TryAcquire(volumeName); !acquired {
+		return nil, status.Errorf(codes.Aborted, common.OperationPendingFmt, volumeName)
 	}
-	defer s.locks.Release(volumeId)
+	defer s.locks.Release(volumeName)
 	// Check volume exist
-	volInfo, err := s.storageProvider.FindVolume(volumeId)
+	volInfo, err := s.storageProvider.ListVolume(volumeName)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if volInfo == nil {
-		return nil, status.Errorf(codes.NotFound, "Volume %s does not exist", volumeId)
+		return nil, status.Errorf(codes.NotFound, "Volume %s does not exist", volumeName)
 	}
 
 	// 1. Unmount
@@ -131,16 +130,16 @@ func (s *service) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVol
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	klog.Infof("Disk volume %s has been unmounted.", volumeId)
+	klog.Infof("Disk volume %s has been unmounted.", volumeName)
 	cnt--
 	klog.Infof("Disk volume mount count: %d", cnt)
 	if cnt > 0 {
-		klog.Errorf("Volume %s still mounted in instance %s", volumeId, s.option.NodeId)
+		klog.Errorf("Volume %s still mounted in instance %s", volumeName, s.option.NodeId)
 		return nil, status.Error(codes.Internal, "unmount failed")
 	}
 
 	// node detach volume
-	err = s.storageProvider.NodeDetachVolume(volumeId)
+	err = s.storageProvider.NodeDetachVolume(volumeName)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -159,13 +158,13 @@ func (s *service) NodePublishVolume(ctx context.Context, req *csi.NodePublishVol
 	// set parameter
 	targetPath := req.GetTargetPath()
 	stagePath := req.GetStagingTargetPath()
-	volumeId := req.GetVolumeId()
+	volumeName := req.GetVolumeId()
 
 	// ensure one call in-flight
-	if acquired := s.locks.TryAcquire(volumeId); !acquired {
-		return nil, status.Errorf(codes.Aborted, common.OperationPendingFmt, volumeId)
+	if acquired := s.locks.TryAcquire(volumeName); !acquired {
+		return nil, status.Errorf(codes.Aborted, common.OperationPendingFmt, volumeName)
 	}
-	defer s.locks.Release(volumeId)
+	defer s.locks.Release(volumeName)
 
 	// set fsType
 	sc, err := NewStorageClass(req.GetVolumeContext())
@@ -174,12 +173,12 @@ func (s *service) NodePublishVolume(ctx context.Context, req *csi.NodePublishVol
 	}
 
 	// Check volume exist
-	volInfo, err := s.storageProvider.FindVolume(volumeId)
+	volInfo, err := s.storageProvider.ListVolume(volumeName)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if volInfo == nil {
-		return nil, status.Errorf(codes.NotFound, "Volume %s does not exist", volumeId)
+		return nil, status.Errorf(codes.NotFound, "Volume %s does not exist", volumeName)
 	}
 
 	// 1. Mount
@@ -221,24 +220,24 @@ func (s *service) NodePublishVolume(ctx context.Context, req *csi.NodePublishVol
 //									target path	+ Required
 func (s *service) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	// set parameter
-	volumeId := req.GetVolumeId()
+	volumeName := req.GetVolumeId()
 	targetPath := req.GetTargetPath()
 	// ensure one call in-flight
-	if acquired := s.locks.TryAcquire(volumeId); !acquired {
-		return nil, status.Errorf(codes.Aborted, common.OperationPendingFmt, volumeId)
+	if acquired := s.locks.TryAcquire(volumeName); !acquired {
+		return nil, status.Errorf(codes.Aborted, common.OperationPendingFmt, volumeName)
 	}
-	defer s.locks.Release(volumeId)
+	defer s.locks.Release(volumeName)
 	// Check volume exist
-	volInfo, err := s.storageProvider.FindVolume(volumeId)
+	volInfo, err := s.storageProvider.ListVolume(volumeName)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if volInfo == nil {
-		return nil, status.Errorf(codes.NotFound, "Volume %s does not exist", volumeId)
+		return nil, status.Errorf(codes.NotFound, "Volume %s does not exist", volumeName)
 	}
 
 	// do unmount
-	klog.Infof("Unbind mount volume %s/%s", targetPath, volumeId)
+	klog.Infof("Unbind mount volume %s/%s", targetPath, volumeName)
 	if err = mount.CleanupMountPoint(targetPath, s.mounter.Interface, true); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}

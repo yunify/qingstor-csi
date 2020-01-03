@@ -84,6 +84,28 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
+        - name: csi-snapshotter
+          image: quay.azk8s.cn/k8scsi/csi-snapshotter:v1.2.2
+          resources:
+            limits:
+              memory: "20Mi"
+              cpu: "20m"
+            requests:
+              memory: "20Mi"
+              cpu: "20m"
+          args:
+            - "--connection-timeout=90s"
+            - "--csi-address=$(ADDRESS)"
+            - "--leader-election=false"
+            - "--snapshot-name-prefix=snapshot"
+            - "--v=5"
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+          imagePullPolicy: "IfNotPresent"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
         - name: csi-resizer
           image: quay.azk8s.cn/k8scsi/csi-resizer:v0.2.0
           resources:
@@ -105,7 +127,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: csi-neonsan
-          image: csiplugin/csi-neonsan:canary
+          image: bmindocker/csi-neonsan:v1.2.0
           resources:
             limits:
               memory: "50Mi"

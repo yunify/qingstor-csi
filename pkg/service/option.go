@@ -46,14 +46,12 @@ type Option struct {
 	PluginCap     []*csi.PluginCapability
 
 	RetryTime wait.Backoff
-	RetryCnt  int
 }
 
 // NewOption
 func NewOption() *Option {
 	return &Option{
 		RetryTime: DefaultBackOff,
-		RetryCnt:  DefaultRetryCnt,
 	}
 }
 
@@ -113,11 +111,6 @@ func (o *Option) SetPluginCapabilities(cap []*csi.PluginCapability) *Option {
 
 func (o *Option) SetRetryTime(retryTime wait.Backoff) *Option {
 	o.RetryTime = retryTime
-	return o
-}
-
-func (o *Option) SetRetryCnt(cnt int) *Option {
-	o.RetryCnt = cnt
 	return o
 }
 

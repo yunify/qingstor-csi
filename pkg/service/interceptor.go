@@ -75,7 +75,19 @@ func (s *service) validateRequest(request interface{}) error {
 		if len(req.GetVolumeId()) == 0 {
 			return status.Error(codes.InvalidArgument, "Volume id missing in request")
 		}
-
+	case *csi.CreateSnapshotRequest:
+		// Check source volume id
+		if len(req.GetSourceVolumeId()) == 0 {
+			return status.Error(codes.InvalidArgument, "volume ID missing in request")
+		}
+		// Check snapshot name
+		if len(req.GetName()) == 0 {
+			return status.Error(codes.InvalidArgument, "snapshot name missing in request")
+		}
+	case *csi.DeleteSnapshotRequest:
+		if len(req.GetSnapshotId()) == 0 {
+			return status.Error(codes.InvalidArgument, "snapshot ID missing in request")
+		}
 	case *csi.ControllerExpandVolumeRequest:
 		if len(req.GetVolumeId()) == 0 {
 			return status.Error(codes.InvalidArgument, "No volume id is provided")
@@ -89,7 +101,6 @@ func (s *service) validateRequest(request interface{}) error {
 		if len(req.GetVolumeCapabilities()) == 0 {
 			return status.Error(codes.InvalidArgument, "No volume capabilities are provided")
 		}
-
 	case *csi.NodePublishVolumeRequest:
 		// check volume id
 		if len(req.GetVolumeId()) == 0 {
@@ -109,7 +120,6 @@ func (s *service) validateRequest(request interface{}) error {
 		if len(req.GetStagingTargetPath()) == 0 {
 			return status.Error(codes.FailedPrecondition, "Staging target path not set")
 		}
-
 	case *csi.NodeUnpublishVolumeRequest:
 		// check arguments
 		if len(req.GetTargetPath()) == 0 {
