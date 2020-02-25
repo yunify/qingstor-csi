@@ -648,6 +648,28 @@ spec:
         - mountPath: /csi
           name: socket-dir
       - args:
+        - --connection-timeout=90s
+        - --csi-address=$(ADDRESS)
+        - --leader-election=false
+        - --snapshot-name-prefix=snapshot
+        - --v=5
+        env:
+        - name: ADDRESS
+          value: /csi/csi.sock
+        image: quay.azk8s.cn/k8scsi/csi-snapshotter:v1.2.2
+        imagePullPolicy: IfNotPresent
+        name: csi-snapshotter
+        resources:
+          limits:
+            cpu: 20m
+            memory: 20Mi
+          requests:
+            cpu: 20m
+            memory: 20Mi
+        volumeMounts:
+        - mountPath: /csi
+          name: socket-dir
+      - args:
         - --csi-address=$(ADDRESS)
         - --leader-election
         - --v=5
@@ -681,7 +703,7 @@ spec:
               fieldPath: spec.nodeName
         - name: CSI_ENDPOINT
           value: unix://csi/csi.sock
-        image: csiplugin/csi-neonsan:canary
+        image: bmindocker/csi-neonsan:v1.2.0
         imagePullPolicy: IfNotPresent
         name: csi-neonsan
         resources:

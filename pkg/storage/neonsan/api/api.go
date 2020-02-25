@@ -134,6 +134,24 @@ func ListClone(confFile, sourcePoolName, sourceVolumeName, targetPoolName, targe
 	return &response.CloneVolumes[0], nil
 }
 
+func ListClone220(confFile, sourcePoolName, sourceVolumeName, targetPoolName, targetVolumeName string) (*CloneInfo, error) {
+	request := ListCloneRequest220{
+		Op:           "list_clone",
+		SourceVol: sourcePoolName + "/" + sourceVolumeName,
+		TargetVol: targetPoolName+ "/" + targetVolumeName,
+	}
+	response := &ListCloneResponse{}
+	err := httpGet(confFile, request, response)
+	if err != nil {
+		return nil, err
+	}
+	if len(response.CloneVolumes) == 0 {
+		return nil, errors.New("no clone ")
+	}
+	return &response.CloneVolumes[0], nil
+}
+
+
 func DetachCloneRelationship(confFile, sourcePoolName, sourceVolumeName, targetPoolName, targetVolumeName string) error {
 	request := DetachCloneRelationshipRequest{
 		Op:        "detach_clone_relationship",

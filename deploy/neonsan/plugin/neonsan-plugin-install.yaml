@@ -1,7 +1,5 @@
 - hosts: all 
   tasks:
-  - name: systemctl stop neonsan-plugin
-    systemd: name=neonsan-plugin state=stopped
   - name: copy neonsan-plugin
     copy: src=neonsan-plugin dest=/usr/bin/
   - name: chmod +x

@@ -18,7 +18,6 @@ package service
 
 import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/yunify/qingstor-csi/pkg/common"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -35,10 +34,7 @@ import (
 //								volume capability	+ Required
 func (s *service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	volumeID, targetPath := req.GetVolumeId(), req.GetStagingTargetPath()
-	fsType, err := common.GetFsType(req.GetPublishContext())
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
+	fsType := req.VolumeCapability.GetMount().GetFsType()
 	// Check volume exist
 	volInfo, err := s.storageProvider.FindVolume(volumeID)
 	if err != nil {
@@ -132,10 +128,7 @@ func (s *service) NodePublishVolume(ctx context.Context, req *csi.NodePublishVol
 	// set parameter
 	volumeID, targetPath, stagePath := req.GetVolumeId(), req.GetTargetPath(), req.GetStagingTargetPath()
 	// set fsType
-	fsType, err := common.GetFsType(req.GetVolumeContext())
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
+	fsType := req.GetVolumeCapability().GetMount().GetFsType()
 	// Check volume exist
 	volInfo, err := s.storageProvider.FindVolume(volumeID)
 	if err != nil {

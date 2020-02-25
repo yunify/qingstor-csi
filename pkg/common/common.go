@@ -99,30 +99,4 @@ func ParseIntToDec(hex string) (dec string) {
 	return strconv.FormatInt(i64, 10)
 }
 
-// Check file system type
-// Support: ext3, ext4 and xfs
-func IsValidFileSystemType(fs string) bool {
-	switch fs {
-	case FileSystemExt3:
-		return true
-	case FileSystemExt4:
-		return true
-	case FileSystemXfs:
-		return true
-	default:
-		return false
-	}
-}
-
-func GetFsType(volumeContext map[string]string) (string, error) {
-	fsType, ok := volumeContext[fsTypeName]
-	if ok {
-		if !IsValidFileSystemType(fsType) {
-			return "", fmt.Errorf("unsupported filesystem type %s", fsType)
-		}
-		return fsType, nil
-	}
-	return DefaultFileSystem, nil
-}
-
 func DefaultRetryErrorFunc(e error) bool { return e != nil }

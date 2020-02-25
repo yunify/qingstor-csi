@@ -156,9 +156,9 @@ func (v *neonsan) cloneVolume(sourcePoolName, sourceVolumeName, snapshotName, ta
 	}
 	//Wait until clone SYNCED
 	err = retry.OnError(retryBackOff, common.DefaultRetryErrorFunc, func() error {
-		cloneInfo, listCloneErr := api.ListClone(v.confFile, sourcePoolName, sourceVolumeName, targetPoolName, targetVolumeName)
+		cloneInfo, listCloneErr := api.ListClone220(v.confFile, sourcePoolName, sourceVolumeName, targetPoolName, targetVolumeName)
 		if listCloneErr != nil {
-			return err
+			return listCloneErr
 		}
 		if cloneInfo.Status != "SYNCED" {
 			return errors.New("clone not synced")

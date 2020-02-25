@@ -105,6 +105,13 @@ type ListCloneRequest struct {
 	SvolFullname string `json:"svol_fullname"`
 }
 
+type ListCloneRequest220 struct {
+	Op string `json:"op"`
+	SourceVol string `json:"source_vol"`
+	TargetVol string `json:"target_vol"`
+}
+
+
 type CloneInfo struct {
 	Id         int       `json:"id"`
 	SourceVol  string    `json:"source_vol"`
