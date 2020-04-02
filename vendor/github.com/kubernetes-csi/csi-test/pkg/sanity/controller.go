@@ -2001,6 +2001,7 @@ var _ = DescribeSanity("CreateSnapshot [Controller Server]", func(sc *SanityCont
 	})
 
 	It("should fail when requesting to create a snapshot with already existing name and different SourceVolumeId.", func() {
+		Skip("neonsan not surpport")
 
 		By("creating a volume")
 		volume, err := c.CreateVolume(context.Background(), MakeCreateVolumeReq(sc, "CreateSnapshot-volume-2"))
@@ -2142,6 +2143,7 @@ var _ = DescribeSanity("ExpandVolume [Controller Server]", func(sc *SanityContex
 			CapacityRange: &csi.CapacityRange{
 				RequiredBytes: TestVolumeSize(sc),
 			},
+			Parameters: sc.Config.TestVolumeParameters,
 		}
 
 		vol, err := c.CreateVolume(context.Background(), req)

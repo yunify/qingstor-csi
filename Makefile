@@ -22,10 +22,10 @@ ROOT_PATH=$(pwd)
 PACKAGE_LIST=./cmd/... ./pkg/...
 
 neonsan-plugin:
-	go build -ldflags "-w -s" -mod=vendor  -o deploy/neonsan/kubernetes/release/neonsan-plugin ./cmd/neonsan
+	go build -ldflags "-w -s" -mod=vendor  -o deploy/neonsan/plugin/neonsan-plugin ./cmd/neonsan
 
 neonsan-plugin-debug:
-	go build  -gcflags "all=-N -l" -mod=vendor  -o deploy/neonsan/kubernetes/release/neonsan-plugin-debug ./cmd/neonsan
+	go build  -gcflags "all=-N -l" -mod=vendor  -o deploy/neonsan/plugin/neonsan-plugin-debug ./cmd/neonsan
 
 neonsan-container:
 	docker build -t ${NEONSAN_IMAGE_NAME}:${NEONSAN_VERSION} -f deploy/neonsan/docker/Dockerfile  .

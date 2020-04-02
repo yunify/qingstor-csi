@@ -45,7 +45,7 @@ const (
 var (
 	qbdServer  service.NonBlockingGRPCServer
 	serviceOpt = service.NewOption().SetName("mock.neonsan.csi.com").SetVersion("1.1.0").
-		SetNodeId("HelloNeonsan").SetMaxVolume(10).
+		SetNodeId("HelloNeonsan").SetMaxVolume(100).
 		SetVolumeCapabilityAccessNodes(service.DefaultVolumeAccessModeType).
 		SetControllerServiceCapabilities(service.DefaultControllerServiceCapability).
 		SetNodeServiceCapabilities(service.DefaultNodeServiceCapability).
@@ -57,7 +57,7 @@ var _ = BeforeSuite(func() {
 	klog.InitFlags(nil)
 
 	qbdServer = service.NewNonBlockingGRPCServer()
-	qbdServer.Start(udsEndpoint, service.New(serviceOpt, neonsan.New(defaultConfigPath, defaultPoolName), common.NewSafeMounter()))
+	qbdServer.Start(udsEndpoint, service.New(serviceOpt, neonsan.New(defaultConfigPath), common.NewSafeMounter()))
 
 })
 
@@ -75,10 +75,11 @@ func TestCSISanity(t *testing.T) {
 
 var _ = Describe("QBD Neonsan CSI Driver", func() {
 	config := &sanity.Config{
-		TargetPath:                filepath.Join(os.TempDir(),"/csi-target"),
+		TargetPath:                filepath.Join(os.TempDir(), "/csi-target"),
 		StagingPath:               filepath.Join(os.TempDir(), "/csi-staging"),
 		Address:                   udsEndpoint,
 		TestNodeVolumeAttachLimit: true,
+		TestVolumeParameters:      map[string]string{"pool": "testPool", "replica": "2", "fsType": "ext3"},
 		IDGen:                     &sanity.DefaultIDGenerator{},
 	}
 	sanity.GinkgoTest(config)

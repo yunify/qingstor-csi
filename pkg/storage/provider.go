@@ -16,23 +16,30 @@ limitations under the License.
 
 package storage
 
-import "github.com/container-storage-interface/spec/lib/go/csi"
+import (
+	"github.com/container-storage-interface/spec/lib/go/csi"
+)
 
 type ControllerOperator interface {
-	ListVolume(volumeName string) (*csi.Volume, error)
-	CreateVolume(volumeName string, requestSize int64, replicas int) error
-	DeleteVolume(volumeName string) error
-	ResizeVolume(volumeName string, requestSize int64) error
-	CloneVolume(sourceVolName, snapshotName, targetVolName string) error
-	CreateSnapshot(volumeName, snapshotName string) error
-	ListSnapshot(volumeName, snapshotName string) (*csi.Snapshot, error)
-	DeleteSnapshot(volumeName, snapshotName string) error
+	CreateVolume(volumeName string, requestSize int64, parameters map[string]string) (volumeID string, err error)
+	CreateVolumeFromSnapshot(volumeName, snapshotID string, parameters map[string]string) (volumeID string, err error)
+	CreateVolumeByClone(volumeName, sourceVolumeID string, parameters map[string]string) (volumeID string, err error)
+	FindVolumeByName(volumeName string, parameters map[string]string)(*csi.Volume, error)
+
+	FindVolume(volumeID string) (*csi.Volume, error)
+	DeleteVolume(volumeID string) error
+	ResizeVolume(volumeID string, requestSize int64) error
+
+	CreateSnapshot(volumeID, snapshotName string) error
+	DeleteSnapshot(snapshotID string) error
+	FindSnapshot(snapshotID string) (*csi.Snapshot, error)
+	FindSnapshotByName(volumeID, snapshotName string)(*csi.Snapshot, error)
 }
 
 type NodeOperator interface {
-	NodeAttachVolume(volumeName string) error
-	NodeDetachVolume(volumeName string) error
-	NodeGetDevice(volumeName string) (device string, err error)
+	NodeAttachVolume(volumeID string) error
+	NodeDetachVolume(volumeID string) error
+	NodeGetDevice(volumeID string) (device string, err error)
 }
 
 type Provider interface {

@@ -22,7 +22,6 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"k8s.io/client-go/util/retry"
 	"k8s.io/klog"
 )
 
@@ -34,72 +33,65 @@ import (
 // csi.CreateVolumeRequest: name 				+Required
 //							capability			+Required
 func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
-	hash := common.GetContextHash(ctx)
 	volumeName := req.GetName()
-	// create StorageClass object
-	sc, err := NewStorageClass(req.GetParameters())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
 	// get request volume capacity range
 	requiredSizeByte, err := GetRequiredVolumeSizeByte(req.GetCapacityRange())
 	if err != nil {
 		return nil, status.Errorf(codes.OutOfRange, "unsupported capacity range, error: %s", err.Error())
 	}
-	klog.Infof("%s: Get required creating volume size %d(%dGi)", hash, requiredSizeByte, requiredSizeByte>>30)
+	klog.Infof("Get required creating volume size %d(%dGi)", requiredSizeByte, requiredSizeByte>>30)
 	// check if volume exist for idempotent
-	existVolume, err := s.storageProvider.ListVolume(volumeName)
+	existVolume, err := s.storageProvider.FindVolumeByName(volumeName, req.GetParameters())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "find volume by name error: %s, %s", volumeName, err.Error())
 	}
 	if existVolume != nil {
 		if common.IsValidCapacityBytes(existVolume.CapacityBytes, req.GetCapacityRange()) {
-			existVolume.VolumeContext = req.GetParameters()
 			return &csi.CreateVolumeResponse{Volume: existVolume}, nil
 		} else {
-			klog.Errorf("%s: volume %s/%s already exist but is incompatible", hash, volumeName, existVolume.VolumeId)
+			klog.Errorf("volume %s/%s already exist but is incompatible",  volumeName, existVolume.VolumeId)
 			return nil, status.Errorf(codes.AlreadyExists, "volume %s already exist but is incompatible", volumeName)
 		}
 	}
 	var createError error
+	var createVolumeID string
 	if req.GetVolumeContentSource() == nil {
 		// create an empty volume
-		createError = s.storageProvider.CreateVolume(volumeName, requiredSizeByte, sc.Replica)
+		createVolumeID, createError = s.storageProvider.CreateVolume(volumeName, requiredSizeByte, req.GetParameters())
 	} else {
 		switch req.GetVolumeContentSource().GetType().(type) {
-		// create from snapshot
 		case *csi.VolumeContentSource_Snapshot:
-			sourceVolumeName, snapshotName := common.SplitSnapshotName(req.GetVolumeContentSource().GetSnapshot().GetSnapshotId())
-			snapshot, err := s.storageProvider.ListSnapshot(sourceVolumeName, snapshotName)
+			// create from snapshot
+			snapshotID := req.GetVolumeContentSource().GetSnapshot().GetSnapshotId()
+			snapshot, err := s.storageProvider.FindSnapshot(snapshotID)
 			if err != nil {
 				return nil, status.Errorf(codes.Internal, "list snapshot error:%v", err)
 			}
 			if snapshot == nil {
-				return nil, status.Errorf(codes.NotFound, "Requested source snapshot %s@%s not found", sourceVolumeName, snapshotName)
+				return nil, status.Errorf(codes.NotFound, "Requested source snapshot %s not found", snapshotID)
 			}
-			createError = s.storageProvider.CloneVolume(sourceVolumeName, snapshotName, volumeName)
-			// create from clone
+			createVolumeID, createError = s.storageProvider.CreateVolumeFromSnapshot(volumeName, snapshotID, req.GetParameters())
 		case *csi.VolumeContentSource_Volume:
-			sourceVolumeName := req.GetVolumeContentSource().GetVolume().GetVolumeId()
-			klog.Infof("%s: Clone volume %s from %s", hash, volumeName, sourceVolumeName)
-			sourceVolume, err := s.storageProvider.ListVolume(sourceVolumeName)
+			// create from clone
+			sourceVolumeId := req.GetVolumeContentSource().GetVolume().GetVolumeId()
+			klog.Infof("Clone volume %s from %s", volumeName, sourceVolumeId)
+			sourceVolume, err := s.storageProvider.FindVolume(sourceVolumeId)
 			if err != nil {
 				return nil, status.Error(codes.Internal, err.Error())
 			}
 			if sourceVolume == nil {
-				return nil, status.Errorf(codes.NotFound, "cannot find content source volume id [%s]", sourceVolumeName)
+				return nil, status.Errorf(codes.NotFound, "cannot find content source volume id [%s]", sourceVolumeId)
 			}
-			createError = s.storageProvider.CloneVolume(sourceVolumeName, "", volumeName)
+			createVolumeID, createError = s.storageProvider.CreateVolumeByClone(volumeName, sourceVolumeId, req.GetParameters())
 		}
 	}
 	if createError != nil {
-		klog.Errorf("%s: Failed to create volume %s, contentSource %s, error: %v", hash, req.GetVolumeContentSource(), volumeName, err)
-		return nil, status.Error(codes.Internal, err.Error())
+		klog.Errorf("Failed to create volume %s, contentSource %s, error: %v", req.GetVolumeContentSource(), volumeName, err)
+		return nil, status.Error(codes.Internal, createError.Error())
 	}
 	csiVolume := &csi.Volume{
-		VolumeId:      volumeName,
+		VolumeId:      createVolumeID,
 		CapacityBytes: requiredSizeByte,
-		VolumeContext: req.GetParameters(),
 	}
 	return &csi.CreateVolumeResponse{Volume: csiVolume}, nil
 }
@@ -108,28 +100,20 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 // volume id is REQUIRED in csi.DeleteVolumeRequest
 func (s *service) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	// For now the image get unconditionally deleted, but here retention policy can be checked
-	volumeId := req.GetVolumeId()
-	// ensure on call in-flight
-	if acquired := s.locks.TryAcquire(volumeId); !acquired {
-		return nil, status.Errorf(codes.Aborted, common.OperationPendingFmt, volumeId)
-	}
-	defer s.locks.Release(volumeId)
+	volumeID := req.GetVolumeId()
 	// For idempotent:
 	// MUST reply OK when volume does not exist
-	volInfo, err := s.storageProvider.ListVolume(volumeId)
+	volume, err := s.storageProvider.FindVolume(volumeID)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	if volInfo == nil {
+	if volume == nil {
 		return &csi.DeleteVolumeResponse{}, nil
 	}
 	// Do delete volume
-	err = retry.OnError(s.option.RetryTime, common.DefaultRetryErrorFunc, func() error {
-		klog.Infof("Try to delete volume %s", volumeId)
-		return s.storageProvider.DeleteVolume(volumeId)
-	})
+	err = s.storageProvider.DeleteVolume(volumeID)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "Exceed retry times: "+err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 	return &csi.DeleteVolumeResponse{}, nil
 }
@@ -153,17 +137,16 @@ func (s *service) ControllerUnpublishVolume(ctx context.Context, req *csi.Contro
 // 											volume capability 	+ Required
 func (s *service) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
 	// check volume exist
-	volumeId := req.GetVolumeId()
-	vol, err := s.storageProvider.ListVolume(volumeId)
+	volumeID := req.GetVolumeId()
+	volume, err := s.storageProvider.FindVolume(volumeID)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	if vol == nil {
-		return nil, status.Errorf(codes.NotFound, "volume %s does not exist", volumeId)
+	if volume == nil {
+		return nil, status.Errorf(codes.NotFound, "volume %s does not exist", volumeID)
 	}
 	// check volume capabilities
-	valid := s.option.ValidateVolumeCapabilities(req.GetVolumeCapabilities())
-	if !valid {
+	if !s.option.ValidateVolumeCapabilities(req.GetVolumeCapabilities()) {
 		return nil, status.Errorf(codes.InvalidArgument, "Driver does not support volume capabilities:%v", req.GetVolumeCapabilities())
 	}
 	return &csi.ValidateVolumeCapabilitiesResponse{}, nil
@@ -173,22 +156,14 @@ func (s *service) ValidateVolumeCapabilities(ctx context.Context, req *csi.Valid
 // volume id is REQUIRED in csi.ControllerExpandVolumeRequest
 // capacity range is REQUIRED in csi.ControllerExpandVolumeRequest
 func (s *service) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
-	volumeId := req.GetVolumeId()
-	if acquired := s.locks.TryAcquire(volumeId); !acquired {
-		return nil, status.Errorf(codes.Aborted, common.OperationPendingFmt, volumeId)
-	}
-	defer s.locks.Release(volumeId)
+	volumeID := req.GetVolumeId()
 	// get capacity
 	requiredSizeBytes, err := GetRequiredVolumeSizeByte(req.GetCapacityRange())
 	if err != nil {
 		return nil, status.Errorf(codes.OutOfRange, err.Error())
 	}
-
 	// resize volume
-	err = retry.OnError(s.option.RetryTime, common.DefaultRetryErrorFunc, func() error {
-		klog.Infof("Try to expand volume %s", volumeId)
-		return s.storageProvider.ResizeVolume(volumeId, requiredSizeBytes)
-	})
+	err = s.storageProvider.ResizeVolume(volumeID, requiredSizeBytes)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -215,14 +190,9 @@ func (s *service) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) 
 // Source volume id is REQUIRED
 // Snapshot name is REQUIRED
 func (s *service) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
-	srcVolId, snapName := req.GetSourceVolumeId(), req.GetName()
-	// ensure one call in-flight
-	if acquired := s.locks.TryAcquire(srcVolId); !acquired {
-		return nil, status.Errorf(codes.Aborted, common.OperationPendingFmt, srcVolId)
-	}
-	defer s.locks.Release(srcVolId)
+	sourceVolumeID, snapName := req.GetSourceVolumeId(), req.GetName()
 	// for idempotent
-	snapshot, err := s.storageProvider.ListSnapshot(srcVolId, snapName)
+	snapshot, err := s.storageProvider.FindSnapshotByName(sourceVolumeID, snapName)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "find snapshot by name error: %s, %s", snapName, err.Error())
 	}
@@ -230,12 +200,12 @@ func (s *service) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotReq
 		return &csi.CreateSnapshotResponse{Snapshot: snapshot}, nil
 	}
 	// create snapshot
-	err = s.storageProvider.CreateSnapshot(srcVolId, snapName)
+	err = s.storageProvider.CreateSnapshot(sourceVolumeID, snapName)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "create snapshot [%s] from source volume [%s] error: %s", snapName, srcVolId, err.Error())
+		return nil, status.Errorf(codes.Internal, "create snapshot [%s] from source volume [%s] error: %s", snapName, sourceVolumeID, err.Error())
 	}
 	// query snapshot info
-	snapshot, err = s.storageProvider.ListSnapshot(srcVolId, snapName)
+	snapshot, err = s.storageProvider.FindSnapshotByName(sourceVolumeID, snapName)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "find snapshot by name error: %s, %s", snapName, err.Error())
 	}
@@ -249,28 +219,19 @@ func (s *service) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotReq
 // This operation MUST be idempotent.
 // Snapshot id is REQUIRED
 func (s *service) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
-	fullSnapshotName := req.GetSnapshotId()
-	if acquired := s.locks.TryAcquire(fullSnapshotName); !acquired {
-		return nil, status.Errorf(codes.Aborted, common.OperationPendingFmt, fullSnapshotName)
-	}
-	defer s.locks.Release(fullSnapshotName)
+	snapshotID := req.GetSnapshotId()
 	// 1. For idempotent:
 	// MUST reply OK when snapshot does not exist
-	volumeName, snapshotName := common.SplitSnapshotName(fullSnapshotName)
-	exSnap, err := s.storageProvider.ListSnapshot(volumeName, snapshotName)
+	exSnap, err := s.storageProvider.FindSnapshot(snapshotID)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if exSnap == nil {
-		klog.Infof("Cannot find snapshot id [%s].", fullSnapshotName)
 		return &csi.DeleteSnapshotResponse{}, nil
 	}
-	// 2. Retry to delete snapshot
-	err = retry.OnError(s.option.RetryTime, common.DefaultRetryErrorFunc, func() error {
-		return s.storageProvider.DeleteSnapshot(volumeName, snapshotName)
-	})
+	err = s.storageProvider.DeleteSnapshot(snapshotID)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "Exceed retry times: "+err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	} else {
 		return &csi.DeleteSnapshotResponse{}, nil
 	}
@@ -281,7 +242,5 @@ func (s *service) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsReque
 }
 
 func (s *service) ControllerGetCapabilities(ctx context.Context, req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
-	return &csi.ControllerGetCapabilitiesResponse{
-		Capabilities: s.option.ControllerCap,
-	}, nil
+	return &csi.ControllerGetCapabilitiesResponse{Capabilities: s.option.ControllerCap}, nil
 }

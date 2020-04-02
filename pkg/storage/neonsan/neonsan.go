@@ -22,14 +22,10 @@ import (
 
 type neonsan struct {
 	confFile string
-	poolName string
 }
 
-
-
-func New(confFile, poolName string) storage.Provider {
+func New(confFile string) storage.Provider {
 	return &neonsan{
 		confFile: confFile,
-		poolName: poolName,
 	}
 }

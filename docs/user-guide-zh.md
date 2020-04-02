@@ -13,6 +13,7 @@ provisioner: neonsan.csi.qingcloud.com
 parameters:
   fsType: "ext4"
   replica: "1"
+  pool: "kube"
 reclaimPolicy: Delete
 allowVolumeExpansion: true
 ```
@@ -25,6 +26,9 @@ allowVolumeExpansion: true
 
 #### `replica`
 代表单副本硬盘副本数。 默认为 `1`，最大为`3`。
+
+#### `pool`
+Neonsan pool，不为空
 
 ### 其他参数
 

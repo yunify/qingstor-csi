@@ -17,6 +17,7 @@ limitations under the License.
 package qbd
 
 import (
+	"errors"
 	"fmt"
 	"github.com/yunify/qingstor-csi/pkg/common"
 	"k8s.io/klog"
@@ -27,6 +28,10 @@ import (
 
 const (
 	CmdQbd string = "qbd"
+)
+
+var (
+	errorInvalidArgument = errors.New("invalid argument")
 )
 
 type AttachInfo struct {
@@ -40,13 +45,6 @@ type AttachInfo struct {
 	WriteIops int64
 }
 
-type NeonsanStorageClass struct {
-	Replicas     int    `json:"replicas"`
-	VolumeFsType string `json:"fsType"`
-	Pool         string `json:"pool"`
-	StepSize     int    `json:"stepSize"`
-	Protocol     string `json:"protocol"`
-}
 
 // AttachVolume attach volume to current node
 // Input:
@@ -55,12 +53,12 @@ type NeonsanStorageClass struct {
 // Return:
 //   not nil: failed to attach volume
 //   nil: succeed to attach volume
-func AttachVolume(confFile, poolName, volName string) (err error) {
+func AttachVolume(confFile, poolName, volName string) error {
 	if volName == "" || poolName == "" {
-		return fmt.Errorf("invalid input arguments")
+		return errorInvalidArgument
 	}
 	args := []string{"-m", fmt.Sprintf("%s/%s", poolName, volName), "-c", confFile}
-	_, err = common.ExecCommand(CmdQbd, args)
+	_, err := common.ExecCommand(CmdQbd, args)
 	return err
 }
 
@@ -71,12 +69,12 @@ func AttachVolume(confFile, poolName, volName string) (err error) {
 // Return:
 //   not nil: failed to detach volume
 //   nil: succeed to detach volume
-func DetachVolume(confFile, poolName, volName string) (err error) {
+func DetachVolume(confFile, poolName, volName string) error {
 	if volName == "" || poolName == "" {
-		return fmt.Errorf("invalid input arguments")
+		return errorInvalidArgument
 	}
 	args := []string{"-u", fmt.Sprintf("%s/%s", poolName, volName), "-c", confFile}
-	_, err = common.ExecCommand(CmdQbd, args)
+	_, err := common.ExecCommand(CmdQbd, args)
 	return err
 }
 
@@ -87,7 +85,10 @@ func DetachVolume(confFile, poolName, volName string) (err error) {
 //   info, nil: found attached volume
 //   nil, nil: not found attached volume
 //   nil, err: return error
-func ListVolume(confFile, poolName, volName string) (info *AttachInfo, err error) {
+func ListVolume(confFile, poolName, volName string) (*AttachInfo, error) {
+	if volName == "" || poolName == "" {
+		return nil, errorInvalidArgument
+	}
 	args := []string{"-l", "-c", confFile}
 	output, err := common.ExecCommand(CmdQbd, args)
 	if err != nil {
@@ -126,9 +127,9 @@ func parseAttachVolumeList(input string) (infoArr []*AttachInfo) {
 	return infoArr
 }
 
-func readAttachVolumeInfo(line string) (ret *AttachInfo) {
+func readAttachVolumeInfo(line string) *AttachInfo {
 	fields := regexp.MustCompile("\\s+").Split(line, -1)
-	ret = &AttachInfo{}
+	ret := &AttachInfo{}
 	for i, v := range fields {
 		switch i {
 		case 1:

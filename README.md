@@ -40,21 +40,14 @@ This guide will install CSI plugin in the *kube-system* namespace of Kubernetes 
     ```
 
 
-- Download installation files 
-  
-  ```
-  $ wget https://github.com/bmingithub/qingstor-csi/raw/master/deploy/neonsan/kubernetes/csi-neonsan-canary.tar.gz
-  tar zxvf csi-neonsan-canary.tar.gz
-   ```
-
 - Deploy CSI plugin
   ```
-  kubectl apply -f release/csi-neonsan-canary.yaml
+  kubectl apply -f deploy/neonsan/kubernetes/release/csi-neonsan-v1.2.0.yaml
   ```
 
 - Check CSI plugin
   ```
-  $ kubectl get pods -n kube-system --selector=app=csi-neonsan
+  kubectl get pods -n kube-system --selector=app=csi-neonsan
   NAME                                     READY   STATUS    RESTARTS   AGE
   csi-neonsan-controller-594448465-sq57l   4/4     Running   0          6m41s
   csi-neonsan-node-9w2zp                   1/1     Running   0          6m41s
@@ -63,35 +56,25 @@ This guide will install CSI plugin in the *kube-system* namespace of Kubernetes 
   ```
 
 - Install neonsan-plugin
-
   ```
-  cp release/neonsan-plugin /usr/bin
-  sh release/neonsan-plugin.sh
+  make neonsan-plugin
+  ansible-playbook deploy/neonsan/plugin/neonsan-plugin-install.yaml
   ``` 
   
+- Check neonsan-plugin
    ``` 
-  systemctl status neonsan-plugin.service
-  ● neonsan-plugin.service - NeonSAN CSI Plugin
-     Loaded: loaded (/etc/systemd/system/neonsan-plugin.service; enabled; vendor preset: disabled)
-     Active: active (running) since Fri 2019-11-15 17:45:04 CST; 2 days ago
-   Main PID: 5714 (neonsan-plugin)
-      Tasks: 11
-     Memory: 10.1M
-     CGroup: /system.slice/neonsan-plugin.service
-             └─5714 /usr/bin/neonsan-plugin --endpoint=unix:///var/lib/kubelet/plugins/neonsan.csi.qingcloud.com/csi.sock
-
+  ansible all -m shell -a "systemctl status neonsan-plugin.service" | grep active
+     Active: active (running) since Tue 2020-02-25 10:42:25 CST; 40s ago
+     Active: active (running) since Tue 2020-02-25 10:42:25 CST; 40s ago
+     Active: active (running) since Tue 2020-02-25 10:42:25 CST; 40s ago
    ``` 
-  
 
 ### Uninstall
-```
-$ kubectl delete -f release/csi-neonsan-canary.yaml
-```
 
-### Neonsan pool
-Default neonsan pool name is **kube**. Modify the installation file, if you want to use other pool.
-1. Neosan-csi args : - "--poolname=kube"
-2. Neonsan-plugin ars: - "--poolname=kube"
+``` 
+  ansible-playbook deploy/neonsan/plugin/neonsan-plugin-uninstall.yaml
+  kubectl delete -f deploy/neonsan/kubernetes/release/csi-neonsan-v1.2.0.yaml
+``` 
 
 ### StorageClass Parameters
 StorageClass definition [file](deploy/neonsan/example/volume/sc.yaml) shown below is used to create StorageClass object.
@@ -105,11 +88,12 @@ StorageClass definition [file](deploy/neonsan/example/volume/sc.yaml) shown belo
   parameters:
     fsType: "ext4"
     replica: "2"
+    pool: "kube"
   reclaimPolicy: Delete 
 ```
 
 - `fsType`: `ext3`, `ext4`, `xfs`. Default `ext4`.
 - `replica`: count of replicas (`1-3`). Default` 1`.
-
+- `poolName`: pool of Neonsan, should not be empty. 
 ## Support
 If you have any questions or suggestions, please submit an issue at [qingstor-csi](https://github.com/yunify/qingstor-csi/issues).

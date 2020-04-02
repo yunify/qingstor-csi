@@ -42,9 +42,8 @@ var (
 	endpoint         = flag.String("endpoint", "unix://tmp/csi.sock", "CSI endpoint")
 	nodeId           = flag.String("nodeid", "", "If driver cannot get instance ID from /etc/qingcloud/instance-id, we would use this flag.")
 	configPath       = flag.String("config", defaultConfigPath, "Neonsan server config file path")
-	poolName         = flag.String("poolname", defaultPoolName, "Neonsan pool name")
 	driverName       = flag.String("drivername", defaultProvisionName, "name of the driver")
-	maxVolume        = flag.Int64("maxvolume", 10, "Maximum number of volumes that controller can publish to the node.")
+	maxVolume        = flag.Int64("maxvolume", 100, "Maximum number of volumes that controller can publish to the node.")
 	retryIntervalMax = flag.Duration("retry-interval-max", 2*time.Minute, "Maximum retry interval(s) of failed deletion.")
 )
 
@@ -68,7 +67,7 @@ func handle() {
 		}
 	}
 	// Get neonsan config
-	storageProvider := neonsan.New(*configPath, *poolName)
+	storageProvider := neonsan.New(*configPath)
 
 	klog.Infof("Version: %s", version)
 

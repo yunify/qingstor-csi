@@ -2,7 +2,11 @@
   tasks:
   - name: copy neonsan-plugin
     copy: src=neonsan-plugin dest=/usr/bin/
-  - name: copy neonsan-plugin.service 
+  - name: chmod +x
+    file:
+      path: /usr/bin/neonsan-plugin
+      mode: u+x
+  - name: copy neonsan-plugin.service
     copy: src=neonsan-plugin.service dest=/etc/systemd/system/
   - name: systemctl start neonsan-plugin 
-    systemd: name=neonsan-plugin enabled=true state=started
+    systemd: name=neonsan-plugin enabled=true state=started daemon_reload=true

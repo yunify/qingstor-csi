@@ -35,11 +35,6 @@ import (
 const (
 	socket      = "127.0.0.1:10086"
 	tcpEndpoint = "tcp://" + socket
-	uds         = "/tmp/csi.sock"
-	udsEndpoint = "unix://" + uds
-
-	defaultConfigPath = "/etc/neonsan/qbd.conf"
-	defaultPoolName   = "kube"
 )
 
 var (
