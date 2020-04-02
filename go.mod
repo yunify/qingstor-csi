@@ -4,9 +4,10 @@ go 1.12
 
 require (
 	bou.ke/monkey v1.0.1
-	github.com/container-storage-interface/spec v1.1.0
+	github.com/container-storage-interface/spec v1.2.0
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6 // indirect
+	github.com/golang/protobuf v1.3.2
 	github.com/googleapis/gnostic v0.3.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.1 // indirect
 	github.com/kubernetes-csi/csi-lib-utils v0.2.0

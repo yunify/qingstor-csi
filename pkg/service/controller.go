@@ -47,9 +47,15 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 	}
 	if existVolume != nil {
 		if common.IsValidCapacityBytes(existVolume.CapacityBytes, req.GetCapacityRange()) {
-			return &csi.CreateVolumeResponse{Volume: existVolume}, nil
+			return &csi.CreateVolumeResponse{
+				Volume: &csi.Volume{
+					VolumeId:      existVolume.VolumeId,
+					CapacityBytes: existVolume.CapacityBytes,
+					VolumeContext: req.GetParameters(),
+					ContentSource: req.GetVolumeContentSource(),
+				}}, nil
 		} else {
-			klog.Errorf("volume %s/%s already exist but is incompatible",  volumeName, existVolume.VolumeId)
+			klog.Errorf("volume %s/%s already exist but is incompatible", volumeName, existVolume.VolumeId)
 			return nil, status.Errorf(codes.AlreadyExists, "volume %s already exist but is incompatible", volumeName)
 		}
 	}
@@ -92,6 +98,8 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 	csiVolume := &csi.Volume{
 		VolumeId:      createVolumeID,
 		CapacityBytes: requiredSizeByte,
+		VolumeContext: req.GetParameters(),
+		ContentSource: req.GetVolumeContentSource(),
 	}
 	return &csi.CreateVolumeResponse{Volume: csiVolume}, nil
 }
