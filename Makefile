@@ -33,6 +33,9 @@ neonsan-container:
 yaml:
 	kustomize build deploy/neonsan/kubernetes/base > deploy/neonsan/kubernetes/release/csi-neonsan-${NEONSAN_VERSION}.yaml
 
+yaml-1.16:
+	kustomize build deploy/neonsan/kubernetes/base-1.16 > deploy/neonsan/kubernetes/release/csi-neonsan-${NEONSAN_VERSION}-k8s16.yaml
+
 release:
 	cp deploy/neonsan/plugin/* deploy/neonsan/kubernetes/release && cd deploy/neonsan/kubernetes/ && tar -zcvf csi-neonsan-${NEONSAN_VERSION}.tar.gz release/*
 

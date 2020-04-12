@@ -7,6 +7,9 @@
 ## Description
 QingStor CSI plugin implements an interface between Container Storage Interface ([CSI](https://github.com/container-storage-interface/)) enabled Container Orchestrator (CO) and the storage of NeonSAN, which has passed [CSI sanity test](https://github.com/kubernetes-csi/csi-test). 
 
+## Notes
+- On Kubernetes v1.16, QingStor CSI v1.2.0 not supports volume snapshot management.
+
 ## Installation
 This guide will install CSI plugin in the *kube-system* namespace of Kubernetes v1.14+. You can also deploy the plugin in other namespace. 
 
@@ -41,6 +44,11 @@ This guide will install CSI plugin in the *kube-system* namespace of Kubernetes 
 
 
 - Deploy CSI plugin
+  - For kubernetes 1.16
+  ```
+  kubectl apply -f deploy/neonsan/kubernetes/release/csi-neonsan-v1.2.0-k8s16.yaml
+  ```
+  - For kubernetes 1.17
   ```
   kubectl apply -f deploy/neonsan/kubernetes/release/csi-neonsan-v1.2.0.yaml
   ```
@@ -70,11 +78,17 @@ This guide will install CSI plugin in the *kube-system* namespace of Kubernetes 
    ``` 
 
 ### Uninstall
-
-``` 
+```
   ansible-playbook deploy/neonsan/plugin/neonsan-plugin-uninstall.yaml
-  kubectl delete -f deploy/neonsan/kubernetes/release/csi-neonsan-v1.2.0.yaml
-``` 
+```
+  - For kubernetes 1.16
+  ```
+    kubectl delete -f deploy/neonsan/kubernetes/release/csi-neonsan-v1.2.0-k8s16.yaml
+  ```
+  - For kubernetes 1.17
+  ```
+    kubectl delete -f deploy/neonsan/kubernetes/release/csi-neonsan-v1.2.0.yaml
+  ```
 
 ### StorageClass Parameters
 StorageClass definition [file](deploy/neonsan/example/volume/sc.yaml) shown below is used to create StorageClass object.
