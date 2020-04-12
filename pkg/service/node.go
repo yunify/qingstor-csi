@@ -233,7 +233,6 @@ func (s *service) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolum
 func (s *service) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
 	volumeId, volumePath := req.GetVolumeId(), req.GetVolumePath()
 	// Checkout device
-	k8sVolume.NewMetricsDu(volumePath)
 	devicePath, _, err := mount.GetDeviceNameFromMount(s.mounter, volumePath)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "cannot get device name from mount point %s", volumePath)
