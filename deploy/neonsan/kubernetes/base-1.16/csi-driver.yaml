@@ -12,13 +12,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-kind: Kustomization
-namespace: kube-system
-resources:
-  - csi-driver.yaml
-  - controller-rbac.yaml
-  - controller-deploy.yaml
-  - node-rbac.yaml
-  - node-ds.yaml
-  - snapshot-crd.yaml
-  - snapshot-controller.yaml
+apiVersion: storage.k8s.io/v1beta1
+kind: CSIDriver
+metadata:
+  name: neonsan.csi.qingcloud.com
+spec:
+  attachRequired: true
+  podInfoOnMount: false
+  volumeLifecycleModes:
+    - Persistent

@@ -20,5 +20,3 @@ resources:
   - controller-deploy.yaml
   - node-rbac.yaml
   - node-ds.yaml
-  - snapshot-crd.yaml
-  - snapshot-controller.yaml
