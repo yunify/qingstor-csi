@@ -14,8 +14,8 @@
 
 driver:
   name: neonsan.csi.qingcloud.com
-  repository: bmindocker/csi-neonsan
-  tag: v1.2.0
+  repository: csiplugin/csi-neonsan
+  tag: v1.2.0-rc1
   pullPolicy: IfNotPresent
   config:
     path: /etc/neonsan

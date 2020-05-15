@@ -1187,7 +1187,7 @@ spec:
               fieldPath: spec.nodeName
         - name: CSI_ENDPOINT
           value: unix://csi/csi.sock
-        image: bmindocker/csi-neonsan:v1.2.0
+        image: csiplugin/csi-neonsan:v1.2.0-rc1
         imagePullPolicy: IfNotPresent
         name: csi-neonsan
         resources:

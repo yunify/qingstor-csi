@@ -105,7 +105,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: csi-neonsan
-          image: bmindocker/csi-neonsan:v1.2.0
+          image: csiplugin/csi-neonsan:v1.2.0-rc1
           resources:
             limits:
               memory: "50Mi"

@@ -16,8 +16,8 @@
 
 .PHONY: all disk
 
-NEONSAN_IMAGE_NAME=bmindocker/csi-neonsan
-NEONSAN_VERSION=v1.2.0
+NEONSAN_IMAGE_NAME=csiplugin/csi-neonsan
+NEONSAN_VERSION=v1.2.0-rc1
 ROOT_PATH=$(pwd)
 PACKAGE_LIST=./cmd/... ./pkg/...
 
