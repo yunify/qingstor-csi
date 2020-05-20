@@ -21,11 +21,17 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      role: "controller"
+      app: csi-neonsan
+      role: controller
+      owner: yunify
+      ver: v1.2.0
   template:
     metadata:
       labels:
-        role: "controller"
+        app: csi-neonsan
+        role: controller
+        owner: yunify
+        ver: v1.2.0
     spec:
       serviceAccount: csi-neonsan-controller
       containers:

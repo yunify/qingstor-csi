@@ -19,5 +19,7 @@ metadata:
 spec:
   attachRequired: true
   podInfoOnMount: false
+{{- if semverCompare ">=1.16" .Capabilities.KubeVersion.GitVersion }}
   volumeLifecycleModes:
     - Persistent
+{{- end }}

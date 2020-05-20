@@ -8,7 +8,7 @@ apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: csi-neonsan
-provisioner: neonsan.csi.qingcloud.com
+provisioner: neonsan.csi.qingstor.com
 parameters:
   fsType: "ext4"
   replica: "1"
@@ -53,7 +53,7 @@ $ kubectl create -f sc.yaml
 ```console
 $ kubectl get sc
 NAME            PROVISIONER              AGE
-csi-neonsan neonsan.csi.qingcloud.com   14m
+csi-neonsan neonsan.csi.qingstor.com   14m
 ```
 
 ### Create PVC 

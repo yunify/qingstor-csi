@@ -21,11 +21,11 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      role: "controller"
+      role: controller
   template:
     metadata:
       labels:
-        role: "controller"
+        role: controller
     spec:
       serviceAccount: csi-neonsan-controller
       containers:
@@ -135,7 +135,7 @@ spec:
               cpu: "50m"
           args:
             - "--config=/etc/neonsan/qbd.conf"
-            - "--drivername=neonsan.csi.qingcloud.com"
+            - "--drivername=neonsan.csi.qingstor.com"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--maxvolume=100"
             - "--nodeid=$(NODE_ID)"

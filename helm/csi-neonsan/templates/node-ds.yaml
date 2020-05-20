@@ -18,15 +18,24 @@ metadata:
   name: csi-neonsan-node
   namespace: {{ .Release.Namespace }}
   labels:
-    role: "node"
+    app: csi-neonsan
+    role: node
+    owner: yunify
+    ver: v1.2.0
 spec:
   selector:
     matchLabels:
-      role: "node"
+      app: csi-neonsan
+      role: node
+      owner: yunify
+      ver: v1.2.0
   template:
     metadata:
       labels:
-        role: "node"
+        app: csi-neonsan
+        role: node
+        owner: yunify
+        ver: v1.2.0
     spec:
       serviceAccount: csi-neonsan-node
       tolerations:
