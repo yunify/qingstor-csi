@@ -31,10 +31,7 @@ neonsan-container:
 	docker build -t ${NEONSAN_IMAGE_NAME}:${NEONSAN_VERSION} -f deploy/neonsan/docker/Dockerfile  .
 
 yaml:
-	kustomize build deploy/neonsan/kubernetes/base > deploy/neonsan/kubernetes/release/csi-neonsan-${NEONSAN_VERSION}.yaml
-
-yaml-1.16:
-	kustomize build deploy/neonsan/kubernetes/base-1.16 > deploy/neonsan/kubernetes/release/csi-neonsan-${NEONSAN_VERSION}-k8s16.yaml
+	kustomize build deploy/neonsan/kubernetes/base > deploy/neonsan/kubernetes/release/csi-neonsan.yaml
 
 release:
 	cp deploy/neonsan/plugin/* deploy/neonsan/kubernetes/release && cd deploy/neonsan/kubernetes/ && tar -zcvf csi-neonsan-${NEONSAN_VERSION}.tar.gz release/*

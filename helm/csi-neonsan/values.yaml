@@ -13,7 +13,7 @@
 #  limitations under the License.
 
 driver:
-  name: neonsan.csi.qingcloud.com
+  name: neonsan.csi.qingstor.com
   repository: csiplugin/csi-neonsan
   tag: v1.2.0-rc1
   pullPolicy: IfNotPresent

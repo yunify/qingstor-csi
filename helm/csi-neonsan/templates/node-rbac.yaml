@@ -18,14 +18,20 @@ metadata:
   name: csi-neonsan-node
   namespace: {{ .Release.Namespace }}
   labels:
-    role: "node"
+    app: csi-neonsan
+    role: node
+    owner: yunify
+    ver: v1.2.0
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: csi-neonsan-node
   labels:
-    role: "node"
+    app: csi-neonsan
+    role: node
+    owner: yunify
+    ver: v1.2.0
 rules:
   - apiGroups: [""]
     resources: ["events"]
@@ -36,7 +42,10 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: csi-neonsan-node
   labels:
-    role: "node"
+    app: csi-neonsan
+    role: node
+    owner: yunify
+    ver: v1.2.0
 subjects:
   - kind: ServiceAccount
     name: csi-neonsan-node

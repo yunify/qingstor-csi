@@ -14,11 +14,13 @@
 
 kind: Kustomization
 namespace: kube-system
+commonLabels:
+  app: csi-neonsan
+  owner: yunify
+  ver: v1.2.0
 resources:
   - csi-driver.yaml
   - controller-rbac.yaml
   - controller-deploy.yaml
   - node-rbac.yaml
   - node-ds.yaml
-  - snapshot-crd.yaml
-  - snapshot-controller.yaml

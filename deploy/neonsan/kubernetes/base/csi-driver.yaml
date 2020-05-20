@@ -15,7 +15,7 @@
 apiVersion: storage.k8s.io/v1beta1
 kind: CSIDriver
 metadata:
-  name: neonsan.csi.qingcloud.com
+  name: neonsan.csi.qingstor.com
 spec:
   attachRequired: true
   podInfoOnMount: false

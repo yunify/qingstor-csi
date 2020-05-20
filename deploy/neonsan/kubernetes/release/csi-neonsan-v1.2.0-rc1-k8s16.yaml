@@ -2,7 +2,10 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   labels:
+    app: csi-neonsan
+    owner: yunify
     role: controller
+    ver: v1.2.0
   name: csi-neonsan-controller
   namespace: kube-system
 ---
@@ -10,7 +13,10 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   labels:
+    app: csi-neonsan
+    owner: yunify
     role: node
+    ver: v1.2.0
   name: csi-neonsan-node
   namespace: kube-system
 ---
@@ -18,7 +24,10 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   labels:
+    app: csi-neonsan
+    owner: yunify
     role: controller
+    ver: v1.2.0
   name: csi-neonsan-attacher
   namespace: kube-system
 rules:
@@ -49,7 +58,10 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   labels:
+    app: csi-neonsan
+    owner: yunify
     role: controller
+    ver: v1.2.0
   name: csi-neonsan-provisioner
   namespace: kube-system
 rules:
@@ -69,28 +81,11 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   labels:
+    app: csi-neonsan
+    owner: yunify
     role: controller
+    ver: v1.2.0
   name: csi-neonsan-resizer
-  namespace: kube-system
-rules:
-- apiGroups:
-  - coordination.k8s.io
-  resources:
-  - leases
-  verbs:
-  - get
-  - watch
-  - list
-  - delete
-  - update
-  - create
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  labels:
-    role: controller
-  name: csi-neonsan-snapshotter
   namespace: kube-system
 rules:
 - apiGroups:
@@ -109,7 +104,10 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
+    app: csi-neonsan
+    owner: yunify
     role: controller
+    ver: v1.2.0
   name: csi-neonsan-attacher
 rules:
 - apiGroups:
@@ -145,17 +143,17 @@ aggregationRule:
   clusterRoleSelectors:
   - matchLabels:
       app: csi-neonsan
-  - matchLabels:
-      role: controller
-  - matchLabels:
-      csi: v1.2.0
-  - matchLabels:
       owner: yunify
+      role: controller
+      ver: v1.2.0
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
+    app: csi-neonsan
+    owner: yunify
     role: controller
+    ver: v1.2.0
   name: csi-neonsan-controller
 rules: []
 ---
@@ -163,7 +161,10 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
+    app: csi-neonsan
+    owner: yunify
     role: node
+    ver: v1.2.0
   name: csi-neonsan-node
 rules:
 - apiGroups:
@@ -182,7 +183,10 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
+    app: csi-neonsan
+    owner: yunify
     role: controller
+    ver: v1.2.0
   name: csi-neonsan-provisioner
 rules:
 - apiGroups:
@@ -223,20 +227,6 @@ rules:
   - update
   - patch
 - apiGroups:
-  - snapshot.storage.k8s.io
-  resources:
-  - volumesnapshots
-  verbs:
-  - get
-  - list
-- apiGroups:
-  - snapshot.storage.k8s.io
-  resources:
-  - volumesnapshotcontents
-  verbs:
-  - get
-  - list
-- apiGroups:
   - storage.k8s.io
   resources:
   - csinodes
@@ -257,7 +247,10 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
+    app: csi-neonsan
+    owner: yunify
     role: controller
+    ver: v1.2.0
   name: csi-neonsan-resizer
 rules:
 - apiGroups:
@@ -300,7 +293,10 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   labels:
+    app: csi-neonsan
+    owner: yunify
     role: controller
+    ver: v1.2.0
   name: csi-neonsan-attacher
   namespace: kube-system
 roleRef:
@@ -316,7 +312,10 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   labels:
+    app: csi-neonsan
+    owner: yunify
     role: controller
+    ver: v1.2.0
   name: csi-neonsan-provsioner
   namespace: kube-system
 roleRef:
@@ -332,7 +331,10 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   labels:
+    app: csi-neonsan
+    owner: yunify
     role: controller
+    ver: v1.2.0
   name: csi-neonsan-resizer
   namespace: kube-system
 roleRef:
@@ -345,26 +347,13 @@ subjects:
   namespace: kube-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  labels:
-    role: controller
-  name: csi-neonsan-snapshotter
-  namespace: kube-system
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: csi-neonsan-snapshotter
-subjects:
-- kind: ServiceAccount
-  name: csi-snapshotter
-  namespace: kube-system
----
-apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   labels:
+    app: csi-neonsan
+    owner: yunify
     role: controller
+    ver: v1.2.0
   name: csi-neonsan-controller
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -379,7 +368,10 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   labels:
+    app: csi-neonsan
+    owner: yunify
     role: node
+    ver: v1.2.0
   name: csi-neonsan-node
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -393,17 +385,27 @@ subjects:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  labels:
+    app: csi-neonsan
+    owner: yunify
+    ver: v1.2.0
   name: csi-neonsan-controller
   namespace: kube-system
 spec:
   replicas: 1
   selector:
     matchLabels:
+      app: csi-neonsan
+      owner: yunify
       role: controller
+      ver: v1.2.0
   template:
     metadata:
       labels:
+        app: csi-neonsan
+        owner: yunify
         role: controller
+        ver: v1.2.0
     spec:
       containers:
       - args:
@@ -483,7 +485,7 @@ spec:
           name: socket-dir
       - args:
         - --config=/etc/neonsan/qbd.conf
-        - --drivername=neonsan.csi.qingcloud.com
+        - --drivername=neonsan.csi.qingstor.com
         - --endpoint=$(CSI_ENDPOINT)
         - --maxvolume=100
         - --nodeid=$(NODE_ID)
@@ -522,22 +524,31 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   labels:
+    app: csi-neonsan
+    owner: yunify
     role: node
+    ver: v1.2.0
   name: csi-neonsan-node
   namespace: kube-system
 spec:
   selector:
     matchLabels:
+      app: csi-neonsan
+      owner: yunify
       role: node
+      ver: v1.2.0
   template:
     metadata:
       labels:
+        app: csi-neonsan
+        owner: yunify
         role: node
+        ver: v1.2.0
     spec:
       containers:
       - args:
         - --csi-address=$(ADDRESS)
-        - --kubelet-registration-path=/var/lib/kubelet/plugins/neonsan.csi.qingcloud.com/csi.sock
+        - --kubelet-registration-path=/var/lib/kubelet/plugins/neonsan.csi.qingstor.com/csi.sock
         - --v=5
         env:
         - name: ADDRESS
@@ -549,7 +560,7 @@ spec:
               command:
               - /bin/sh
               - -c
-              - rm -rf /registration/neonsan.csi.qingcloud.com /registration/neonsan.csi.qingcloud.com-reg.sock
+              - rm -rf /registration/neonsan.csi.qingstor.com /registration/neonsan.csi.qingstor.com-reg.sock
         name: node-registrar
         resources:
           limits:
@@ -577,7 +588,7 @@ spec:
         value: "true"
       volumes:
       - hostPath:
-          path: /var/lib/kubelet/plugins/neonsan.csi.qingcloud.com/
+          path: /var/lib/kubelet/plugins/neonsan.csi.qingstor.com/
           type: DirectoryOrCreate
         name: socket-dir
       - hostPath:
@@ -591,7 +602,11 @@ spec:
 apiVersion: storage.k8s.io/v1beta1
 kind: CSIDriver
 metadata:
-  name: neonsan.csi.qingcloud.com
+  labels:
+    app: csi-neonsan
+    owner: yunify
+    ver: v1.2.0
+  name: neonsan.csi.qingstor.com
 spec:
   attachRequired: true
   podInfoOnMount: false

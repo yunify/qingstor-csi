@@ -18,7 +18,7 @@ apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: csi-neonsan
-provisioner: neonsan.csi.qingcloud.com
+provisioner: neonsan.csi.qingstor.com
 parameters:
   fsType: "ext4"
   replica: "1"

@@ -18,14 +18,14 @@ metadata:
   name: csi-neonsan-controller
   namespace: kube-system
   labels:
-    role: "controller"
+    role: controller
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: csi-neonsan-provisioner
   labels:
-    role: "controller"
+    role: controller
 rules:
   - apiGroups: [""]
     resources: ["persistentvolumes"]
@@ -57,7 +57,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: csi-neonsan-attacher
   labels:
-    role: "controller"
+    role: controller
 rules:
   - apiGroups: [""]
     resources: ["persistentvolumes"]
@@ -74,7 +74,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: csi-neonsan-snapshotter
   labels:
-    role: "controller"
+    role: controller
 rules:
   - apiGroups: [""]
     resources: ["events"]
@@ -94,7 +94,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: csi-neonsan-resizer
   labels:
-    role: "controller"
+    role: controller
 rules:
   - apiGroups: [""]
     resources: ["persistentvolumes"]
@@ -114,17 +114,14 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: csi-neonsan-controller
   labels:
-    role: "controller"
+    role: controller
 aggregationRule:
   clusterRoleSelectors:
   - matchLabels:
-      app: "csi-neonsan"
-  - matchLabels:
-      role: "controller"
-  - matchLabels:
-      csi: "v1.2.0"
-  - matchLabels:
-      owner: "yunify"
+      app: csi-neonsan
+      role: controller
+      ver: v1.2.0
+      owner: yunify
 rules: []
 ---
 kind: ClusterRoleBinding
@@ -132,7 +129,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: csi-neonsan-controller
   labels:
-    role: "controller"
+    role: controller
 subjects:
   - kind: ServiceAccount
     name: csi-neonsan-controller
@@ -148,7 +145,7 @@ metadata:
   namespace: kube-system
   name: csi-neonsan-provisioner
   labels:
-    role: "controller"
+    role: controller
 rules:
   - apiGroups: ["coordination.k8s.io"]
     resources: ["leases"]
@@ -160,7 +157,7 @@ metadata:
   name: csi-neonsan-provsioner
   namespace: kube-system
   labels:
-    role: "controller"
+    role: controller
 subjects:
   - kind: ServiceAccount
     name: csi-neonsan-controller
@@ -176,7 +173,7 @@ metadata:
   namespace: kube-system
   name: csi-neonsan-attacher
   labels:
-    role: "controller"
+    role: controller
 rules:
   - apiGroups: [""]
     resources: ["configmaps"]
@@ -191,7 +188,7 @@ metadata:
   name: csi-neonsan-attacher
   namespace: kube-system
   labels:
-    role: "controller"
+    role: controller
 subjects:
   - kind: ServiceAccount
     name: csi-neonsan-controller
@@ -207,7 +204,7 @@ metadata:
   name: csi-neonsan-snapshotter
   namespace: kube-system
   labels:
-    role: "controller"
+    role: controller
 rules:
   - apiGroups: ["coordination.k8s.io"]
     resources: ["leases"]
@@ -219,7 +216,7 @@ metadata:
   name: csi-neonsan-snapshotter
   namespace: kube-system
   labels:
-    role: "controller"
+    role: controller
 subjects:
   - kind: ServiceAccount
     name: csi-snapshotter
@@ -235,7 +232,7 @@ metadata:
   name: csi-neonsan-resizer
   namespace: kube-system
   labels:
-    role: "controller"
+    role: controller
 rules:
   - apiGroups: ["coordination.k8s.io"]
     resources: ["leases"]
@@ -247,7 +244,7 @@ metadata:
   name: csi-neonsan-resizer
   namespace: kube-system
   labels:
-    role: "controller"
+    role: controller
 subjects:
   - kind: ServiceAccount
     name: csi-resizer

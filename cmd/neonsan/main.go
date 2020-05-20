@@ -29,8 +29,8 @@ import (
 
 //noinspection ALL
 const (
-	version              = "v1.1.0"
-	defaultProvisionName = "neonsan.csi.qingcloud.com"
+	version              = "v1.2.0"
+	defaultProvisionName = "neonsan.csi.qingstor.com"
 	defaultConfigPath    = "/etc/neonsan/qbd.conf"
 	defaultPoolName      = "kube"
 
