@@ -25,10 +25,6 @@ import (
 	"strings"
 )
 
-const (
-	fsTypeName  = "fsType"
-)
-
 func GetInstanceIdFromFile(filepath string) (instanceId string, err error) {
 	bytes, err := ioutil.ReadFile(filepath)
 	if err != nil {

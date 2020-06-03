@@ -45,35 +45,38 @@ type AttachInfo struct {
 	WriteIops int64
 }
 
-
 // AttachVolume attach volume to current node
 // Input:
-//   volume name: string
-//   pool name: string
+//   configFile: string, qbd config file
+//   protocol: string, rdma or tcp
+//   poolName: string
+//   volName: string
 // Return:
 //   not nil: failed to attach volume
 //   nil: succeed to attach volume
-func AttachVolume(confFile, poolName, volName string) error {
+func AttachVolume(confFile, protocol, poolName, volName string) error {
 	if volName == "" || poolName == "" {
 		return errorInvalidArgument
 	}
-	args := []string{"-m", fmt.Sprintf("%s/%s", poolName, volName), "-c", confFile}
+	args := []string{"-m", fmt.Sprintf("%s://%s/%s", protocol, poolName, volName), "-c", confFile}
 	_, err := common.ExecCommand(CmdQbd, args)
 	return err
 }
 
 // DetachVolume detach volume from current node
 // Input:
-//   volume name: string
-//   pool name: string
+//   configFile: string, qbd config file
+//   protocol: string, rdma or tcp
+//   poolName: string
+//   volName: string
 // Return:
 //   not nil: failed to detach volume
 //   nil: succeed to detach volume
-func DetachVolume(confFile, poolName, volName string) error {
+func DetachVolume(confFile, protocol, poolName, volName string) error {
 	if volName == "" || poolName == "" {
 		return errorInvalidArgument
 	}
-	args := []string{"-u", fmt.Sprintf("%s/%s", poolName, volName), "-c", confFile}
+	args := []string{"-u", fmt.Sprintf("%s://%s/%s", protocol, poolName, volName), "-c", confFile}
 	_, err := common.ExecCommand(CmdQbd, args)
 	return err
 }
@@ -98,7 +101,7 @@ func ListVolume(confFile, poolName, volName string) (*AttachInfo, error) {
 	infoArr := parseAttachVolumeList(string(output))
 	var infoArrWithName []*AttachInfo
 	for i := range infoArr {
-		if infoArr[i].Name == volName  && infoArr[i].Pool == poolName{
+		if infoArr[i].Name == volName && infoArr[i].Pool == poolName {
 			infoArrWithName = append(infoArrWithName, infoArr[i])
 		}
 	}
@@ -138,12 +141,12 @@ func readAttachVolumeInfo(line string) *AttachInfo {
 			ret.Device = "/dev/" + v
 		case 3:
 			args := strings.Split(v, "/")
-			if len(args) != 2 {
+			if len(args) != 4 {
 				klog.Errorf("expect pool/volume, but actually [%s]", v)
 				return nil
 			}
-			ret.Pool = args[0]
-			ret.Name = args[1]
+			ret.Pool = args[2]
+			ret.Name = args[3]
 		case 5:
 			num, err := strconv.ParseInt(v, 0, 64)
 			if err != nil {
