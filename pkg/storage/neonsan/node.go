@@ -20,12 +20,12 @@ import "github.com/yunify/qingstor-csi/pkg/storage/neonsan/qbd"
 
 func (v *neonsan) NodeAttachVolume(volumeID string) error {
 	poolName, volumeName := SplitVolumeName(volumeID)
-	return qbd.AttachVolume(v.confFile, poolName, volumeName)
+	return qbd.AttachVolume(v.confFile, v.protocol, poolName, volumeName)
 }
 
 func (v *neonsan) NodeDetachVolume(volumeID string) error {
 	poolName, volumeName := SplitVolumeName(volumeID)
-	return qbd.DetachVolume(v.confFile, poolName, volumeName)
+	return qbd.DetachVolume(v.confFile, v.protocol, poolName, volumeName)
 }
 
 func (v *neonsan) NodeGetDevice(volumeID string) (string, error) {

@@ -39,6 +39,7 @@ const (
 	udsEndpoint = "unix://" + uds
 
 	defaultConfigPath = "/etc/neonsan/qbd.conf"
+	defaultProtocol = "tcp"
 	defaultPoolName   = "kube"
 )
 
@@ -57,7 +58,7 @@ var _ = BeforeSuite(func() {
 	klog.InitFlags(nil)
 
 	qbdServer = service.NewNonBlockingGRPCServer()
-	qbdServer.Start(udsEndpoint, service.New(serviceOpt, neonsan.New(defaultConfigPath), common.NewSafeMounter()))
+	qbdServer.Start(udsEndpoint, service.New(serviceOpt, neonsan.New(defaultConfigPath, defaultProtocol), common.NewSafeMounter()))
 
 })
 

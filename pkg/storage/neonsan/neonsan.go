@@ -22,10 +22,12 @@ import (
 
 type neonsan struct {
 	confFile string
+	protocol string
 }
 
-func New(confFile string) storage.Provider {
+func New(confFile, protocol string) storage.Provider {
 	return &neonsan{
 		confFile: confFile,
+		protocol: protocol,
 	}
 }

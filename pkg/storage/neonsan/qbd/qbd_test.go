@@ -60,8 +60,8 @@ func TestListAttachVolume(t *testing.T) {
 	Describe("List attached volumes", func() {
 		It("volume has attached", func() {
 			cmdOut = `dev_id  vol_id  device  volume  config  read_bps    write_bps   read_iops   write_iops
-0   0x3ff7000000    qbd0    csi/foo1    /etc/neonsan/qbd.conf   0   0   0   0
-1   0x3a7c000000    qbd1    csi/foo /etc/neonsan/qbd.conf   0   0   0   0`
+0   0x3ff7000000    qbd0    tcp://csi/foo1    /etc/neonsan/qbd.conf   0   0   0   0
+1   0x3a7c000000    qbd1    tcp://csi/foo /etc/neonsan/qbd.conf   0   0   0   0`
 			cmdError = nil
 			attachInfo, err := ListVolume(configFile, poolName, volName)
 			Expect(err).To(BeNil())
@@ -74,8 +74,8 @@ func TestListAttachVolume(t *testing.T) {
 	Describe("volume has not attached ", func() {
 		It("", func() {
 			cmdOut = `dev_id  vol_id  device  volume  config  read_bps    write_bps   read_iops   write_iops
-0   0x3ff7000000    qbd0    csi/foo0    /etc/neonsan/qbd.conf   0   0   0   0
-1   0x3a7c000000    qbd1    csi/foo /etc/neonsan/qbd.conf   0   0   0   0`
+0   0x3ff7000000    qbd0    tcp://csi/foo0    /etc/neonsan/qbd.conf   0   0   0   0
+1   0x3a7c000000    qbd1    tcp://csi/foo /etc/neonsan/qbd.conf   0   0   0   0`
 			cmdError = nil
 			attachInfo, err := ListVolume(configFile, poolName, volName)
 			Expect(err).NotTo(HaveOccurred())
@@ -86,8 +86,8 @@ func TestListAttachVolume(t *testing.T) {
 	Describe("volume has not attached when same name in another pool", func() {
 		It("", func() {
 			cmdOut = `dev_id  vol_id  device  volume  config  read_bps    write_bps   read_iops   write_iops
-0   0x3ff7000000    qbd0    csi1/foo1    /etc/neonsan/qbd.conf   0   0   0   0
-1   0x3a7c000000    qbd1    csi/foo /etc/neonsan/qbd.conf   0   0   0   0`
+0   0x3ff7000000    qbd0    tcp://csi1/foo1    /etc/neonsan/qbd.conf   0   0   0   0
+1   0x3a7c000000    qbd1    tcp://csi/foo /etc/neonsan/qbd.conf   0   0   0   0`
 			cmdError = nil
 			attachInfo, err := ListVolume(configFile, poolName, volName)
 			Expect(err).NotTo(HaveOccurred())
@@ -98,8 +98,8 @@ func TestListAttachVolume(t *testing.T) {
 	Describe("volume has two attached infos", func() {
 		It("", func() {
 			cmdOut = `dev_id  vol_id  device  volume  config  read_bps    write_bps   read_iops   write_iops
-0   0x3ff7000000    qbd0    csi/foo1    /etc/neonsan/qbd.conf   0   0   0   0
-1   0x3a7c000000    qbd1    csi/foo1 /etc/neonsan/qbd.conf   0   0   0   0`
+0   0x3ff7000000    qbd0    tcp://csi/foo1    /etc/neonsan/qbd.conf   0   0   0   0
+1   0x3a7c000000    qbd1    tcp://csi/foo1 /etc/neonsan/qbd.conf   0   0   0   0`
 			cmdError = nil
 			attachInfo, err := ListVolume(configFile, poolName, volName)
 			Expect(err).To(HaveOccurred())

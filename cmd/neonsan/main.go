@@ -29,11 +29,11 @@ import (
 
 //noinspection ALL
 const (
-	version              = "v1.2.0"
-	defaultProvisionName = "neonsan.csi.qingstor.com"
-	defaultConfigPath    = "/etc/neonsan/qbd.conf"
-	defaultPoolName      = "kube"
-
+	version                   = "v1.2.0"
+	defaultProvisionName      = "neonsan.csi.qingstor.com"
+	defaultConfigPath         = "/etc/neonsan/qbd.conf"
+	defaultProtocol           = "tcp"
+	defaultPoolName           = "kube"
 	defaultInstanceIdFilePath = "/etc/qingcloud/instance-id"
 )
 
@@ -43,6 +43,7 @@ var (
 	nodeId           = flag.String("nodeid", "", "If driver cannot get instance ID from /etc/qingcloud/instance-id, we would use this flag.")
 	configPath       = flag.String("config", defaultConfigPath, "Neonsan server config file path")
 	driverName       = flag.String("drivername", defaultProvisionName, "name of the driver")
+	protocol         = flag.String("protocol", defaultProtocol, "protocol of qbd")
 	maxVolume        = flag.Int64("maxvolume", 100, "Maximum number of volumes that controller can publish to the node.")
 	retryIntervalMax = flag.Duration("retry-interval-max", 2*time.Minute, "Maximum retry interval(s) of failed deletion.")
 )
@@ -67,7 +68,7 @@ func handle() {
 		}
 	}
 	// Get neonsan config
-	storageProvider := neonsan.New(*configPath)
+	storageProvider := neonsan.New(*configPath, *protocol)
 
 	klog.Infof("Version: %s", version)
 
