@@ -422,7 +422,7 @@ spec:
         env:
         - name: ADDRESS
           value: /csi/csi.sock
-        image: quay.azk8s.cn/k8scsi/csi-provisioner:v1.5.0
+        image: csiplugin/csi-provisioner:v1.5.0
         imagePullPolicy: IfNotPresent
         name: csi-provisioner
         resources:
@@ -450,7 +450,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
-        image: quay.azk8s.cn/k8scsi/csi-attacher:v2.1.1
+        image: csiplugin/csi-attacher:v2.1.1
         imagePullPolicy: IfNotPresent
         name: csi-attacher
         resources:
@@ -470,7 +470,7 @@ spec:
         env:
         - name: ADDRESS
           value: /csi/csi.sock
-        image: quay.azk8s.cn/k8scsi/csi-resizer:v0.4.0
+        image: csiplugin/csi-resizer:v0.4.0
         imagePullPolicy: IfNotPresent
         name: csi-resizer
         resources:
@@ -497,7 +497,7 @@ spec:
               fieldPath: spec.nodeName
         - name: CSI_ENDPOINT
           value: unix://csi/csi.sock
-        image: csiplugin/csi-neonsan:v1.2.0-rc1
+        image: csiplugin/csi-neonsan:v1.2.0-rc2
         imagePullPolicy: IfNotPresent
         name: csi-neonsan
         resources:
@@ -553,7 +553,7 @@ spec:
         env:
         - name: ADDRESS
           value: /csi/csi.sock
-        image: quay.azk8s.cn/k8scsi/csi-node-driver-registrar:v1.2.0
+        image: csiplugin/csi-node-driver-registrar:v1.2.0
         lifecycle:
           preStop:
             exec:
