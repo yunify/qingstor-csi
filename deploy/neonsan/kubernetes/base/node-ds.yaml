@@ -42,7 +42,7 @@ spec:
       hostNetwork: true
       containers:
         - name: node-registrar
-          image: quay.azk8s.cn/k8scsi/csi-node-driver-registrar:v1.2.0
+          image: csiplugin/csi-node-driver-registrar:v1.2.0
           resources:
             limits:
               memory: "20Mi"

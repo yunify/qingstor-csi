@@ -72,11 +72,11 @@ This guide will install CSI plugin in the *kube-system* namespace of Kubernetes 
   - Kubectl
     - For kubernetes 1.16
       ```bash
-      kubectl apply -f deploy/neonsan/kubernetes/release/csi-neonsan-v1.2.0-rc1-k8s16.yaml
+      kubectl apply -f deploy/neonsan/kubernetes/release/csi-neonsan-v1.2.0-k8s16.yaml
       ```
     - For kubernetes 1.17
       ```bash
-      kubectl apply -f deploy/neonsan/kubernetes/release/csi-neonsan-v1.2.0-rc1.yaml
+      kubectl apply -f deploy/neonsan/kubernetes/release/csi-neonsan-v1.2.0.yaml
       ```
     - Check CSI plugin
       ```bash
