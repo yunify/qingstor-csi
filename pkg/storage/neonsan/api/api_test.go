@@ -38,9 +38,8 @@ var (
 
 func TestHttpGet(t *testing.T) {
 	request := CreateVolumeRequest{
-		Op:       "list_volume",
-		PoolName: "",
-		Name:     "",
+		Op:   "list_volume",
+		Name: "",
 	}
 	response := &CreateVolumeResponse{}
 	var err error
@@ -194,14 +193,14 @@ func TestCreateVolume(t *testing.T) {
 	})
 	defer guardHttpGetOK.Unpatch()
 
-	err := CreateVolume(configFile, poolName, "xx", 1, 1)
+	err := CreateVolume(configFile, "xx", 1, nil)
 	convey.Convey("create volume success", t, func() {
 		convey.So(err, convey.ShouldBeNil)
 	})
 
 	mockResponse.RetCode = 100
 	httpBody, _ = json.Marshal(mockResponse)
-	err = CreateVolume(configFile, poolName, "xx", 1, 1)
+	err = CreateVolume(configFile, "xx", 1, nil)
 	convey.Convey("create volume fail", t, func() {
 		convey.So(err, convey.ShouldNotBeNil)
 	})
@@ -243,4 +242,3 @@ func TestDeleteVolume(t *testing.T) {
 	})
 
 }
-

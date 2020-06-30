@@ -24,6 +24,7 @@ import (
 	"github.com/yunify/qingstor-csi/pkg/storage/neonsan/api"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
+	"strconv"
 	"time"
 )
 
@@ -37,15 +38,12 @@ var (
 )
 
 func (v *neonsan) CreateVolume(volumeName string, requestSize int64, parameters map[string]string) (string, error) {
-	replica, err := GetReplica(parameters)
+	TuneUpParameter(parameters)
+	err := api.CreateVolume(v.confFile, volumeName, requestSize, parameters)
 	if err != nil {
 		return "", err
 	}
 	poolName := GetPoolName(parameters)
-	err = api.CreateVolume(v.confFile, poolName, volumeName, requestSize, replica)
-	if err != nil {
-		return "", err
-	}
 	return JoinVolumeName(poolName, volumeName), nil
 }
 
@@ -139,14 +137,22 @@ func (v *neonsan) DeleteSnapshot(snapshotID string) error {
 }
 
 func (v *neonsan) cloneVolume(sourcePoolName, sourceVolumeName, snapshotName, targetPoolName, targetVolumeName string) error {
-	sourceVolume, err := api.ListVolume(v.confFile, sourcePoolName, sourceVolumeName)
+	volumeForClone, err := api.GetVolumeForClone(v.confFile, sourcePoolName, sourceVolumeName)
 	if err != nil {
 		return err
 	}
-	if sourceVolume == nil {
+	if volumeForClone == nil {
 		return errors.New("source volume not exist")
 	}
-	err = api.CreateVolume(v.confFile, targetPoolName, targetVolumeName, int64(sourceVolume.Size), sourceVolume.ReplicationCount)
+	parameters := map[string]string{
+		"rep_count":  strconv.Itoa(volumeForClone.ReplicationCount),
+		"thick_prov": "false",
+		"pool_name":  targetPoolName,
+		"rg":         volumeForClone.Rg,
+		"encrypte":   volumeForClone.Encrypte,
+		"key_name":   volumeForClone.KeyName,
+	}
+	err = api.CreateVolume(v.confFile, targetVolumeName, int64(volumeForClone.Size), parameters)
 	if err != nil {
 		return err
 	}

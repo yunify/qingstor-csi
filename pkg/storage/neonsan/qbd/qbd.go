@@ -28,6 +28,7 @@ import (
 
 const (
 	CmdQbd string = "qbd"
+	CmdDd  string = "dd"
 )
 
 var (
@@ -60,6 +61,22 @@ func AttachVolume(confFile, protocol, poolName, volName string) error {
 	}
 	args := []string{"-m", fmt.Sprintf("%s://%s/%s", protocol, poolName, volName), "-c", confFile}
 	_, err := common.ExecCommand(CmdQbd, args)
+
+	if err != nil {
+		return err
+	}
+
+	deviceName, err := GetDevice(confFile, poolName, volName)
+	if err != nil {
+		return err
+	}
+	if len(deviceName) == 0 {
+		return errors.New("device name is empty in attach volume")
+	}
+
+	// dd if=/dev/qbd1 of=/dev/null bs=4k count=1 iflag=direct
+	args = []string{"if=" + deviceName, "of=/dev/null", "bs=4k", "count=1", "iflag=direct"}
+	_, err = common.ExecCommand(CmdDd, args)
 	return err
 }
 
@@ -79,6 +96,19 @@ func DetachVolume(confFile, protocol, poolName, volName string) error {
 	args := []string{"-u", fmt.Sprintf("%s://%s/%s", protocol, poolName, volName), "-c", confFile}
 	_, err := common.ExecCommand(CmdQbd, args)
 	return err
+}
+
+// GetDevice return device name of volume
+func GetDevice(confFile, poolName, volumeName string) (string, error) {
+	attachInfo, err := ListVolume(confFile, poolName, volumeName)
+	if err != nil {
+		return "", err
+	}
+	if attachInfo != nil {
+		return attachInfo.Device, nil
+	}
+	return "", nil
+
 }
 
 // ListVolume get attachment volume info

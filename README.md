@@ -135,14 +135,14 @@ StorageClass definition [file](deploy/neonsan/example/volume/sc.yaml) shown belo
   provisioner: neonsan.csi.qingstor.com
   parameters:
     fsType: "ext4"
-    replica: "2"
-    pool: "kube"
+    rep_count: "2"
+    pool_name: "kube"
   reclaimPolicy: Delete 
 ```
 
 - `fsType`: `ext3`, `ext4`, `xfs`. Default `ext4`.
-- `replica`: count of replicas (`1-3`). Default` 1`.
-- `poolName`: pool of Neonsan, should not be empty. 
+- `rep_count`: count of replicas (`1-3`). Default` 1`.
+- `pool_name`: pool name of Neonsan, should not be empty. 
 
 ## Document
 - [User Guide](docs/user-guide.md)

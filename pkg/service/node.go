@@ -52,15 +52,24 @@ func (s *service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeR
 	if !notMnt {
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
-	// Attach if need
-	err = s.storageProvider.NodeAttachVolume(volumeID)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
+
+	// for idempotent, if device not empty, volume has already attached
 	devicePath, err := s.storageProvider.NodeGetDevice(volumeID)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	if len(devicePath) == 0 {
+		// Attach if need
+		err = s.storageProvider.NodeAttachVolume(volumeID)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		devicePath, err = s.storageProvider.NodeGetDevice(volumeID)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
+
 	// do mount
 	if err := s.mounter.FormatAndMount(devicePath, targetPath, fsType, []string{}); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -109,6 +118,16 @@ func (s *service) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVol
 		klog.Errorf("Volume %s still mounted in instance %s", volumeID, s.option.NodeId)
 		return nil, status.Error(codes.Internal, "unmount failed")
 	}
+
+	devicePath, err := s.storageProvider.NodeGetDevice(volumeID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	// for idempotent, if device is empty, the volume has already detached
+	if len(devicePath) == 0 {
+		return &csi.NodeUnstageVolumeResponse{}, nil
+	}
+
 	// node detach volume
 	err = s.storageProvider.NodeDetachVolume(volumeID)
 	if err != nil {

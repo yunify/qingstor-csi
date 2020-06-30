@@ -28,14 +28,11 @@ func (v *neonsan) NodeDetachVolume(volumeID string) error {
 	return qbd.DetachVolume(v.confFile, v.protocol, poolName, volumeName)
 }
 
+func (v *neonsan) NodeIsVolumeAttached(volumeID string) (bool, error) {
+	return true, nil
+}
+
 func (v *neonsan) NodeGetDevice(volumeID string) (string, error) {
 	poolName, volumeName := SplitVolumeName(volumeID)
-	attachInfo, err := qbd.ListVolume(v.confFile, poolName, volumeName)
-	if err != nil {
-		return "", err
-	}
-	if attachInfo != nil {
-		return attachInfo.Device, nil
-	}
-	return "", nil
+	return qbd.GetDevice(v.confFile, poolName, volumeName)
 }

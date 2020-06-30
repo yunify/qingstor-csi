@@ -44,12 +44,28 @@ type Volume struct {
 	ReplicationCount    int       `json:"replication_count"`
 	Status              string    `json:"status"`
 	MinReplicationCount int       `json:"min_replication_count"`
+	Role                string    `json:"role"`
+	Policy              string    `json:"policy"`
 	CreateTime          time.Time `json:"create_time" format:"ISO 8601"`
 	StatusTime          time.Time `json:"status_time" format:"ISO 8601"`
 	MetroReplica        string    `json:"metro_replica"`
+	ProvisionType       string    `json:"provision_type"` // thin or thick
+	MaxBs               int       `json:"max_bs"`
 	VolumeAllocated     int       `json:"volume_allocated"`
-	ProvisionType       string    `json:"provision_type"`
-	Role                string    `json:"role"`
+	RgName              string    `json:"rg_name"`
+	Encrypted           string    `json:"encrypted"`
+}
+
+type VolumeForClone struct {
+	ID                  int    `json:"id"`
+	Size                int    `json:"size"`
+	ReplicationCount    int    `json:"replication_count"`
+	MinReplicationCount int    `json:"min_replication_count"`
+	Role                string `json:"role"`
+	MaxBs               int    `json:"max_bs"`
+	Encrypte            string `json:"encrypte"`
+	KeyName             string `json:"key_name"`
+	Rg                  string `json:"rg"`
 }
 
 func ListVolume(confFile, poolName, volumeName string) (*Volume, error) {
@@ -72,13 +88,12 @@ func ListVolume(confFile, poolName, volumeName string) (*Volume, error) {
 	return &response.Volumes[0], nil
 }
 
-func CreateVolume(confFile, poolName, volumeName string, size int64, repCount int) error {
+func CreateVolume(confFile, volumeName string, size int64, parameters map[string]string) error {
 	request := CreateVolumeRequest{
-		Op:       "create_volume",
-		PoolName: poolName,
-		Name:     volumeName,
-		Size:     size,
-		RepCount: repCount,
+		Op:         "create_volume",
+		Name:       volumeName,
+		Size:       size,
+		Parameters: parameters,
 	}
 	response := &CreateVolumeResponse{}
 	return httpGet(confFile, request, response)
@@ -103,6 +118,20 @@ func ResizeVolume(confFile, poolName, volumeName string, size int64) error {
 	}
 	response := &ResizeVolumeResponse{}
 	return httpGet(confFile, request, response)
+}
+
+func GetVolumeForClone(confFile, poolName, volumeName string) (*VolumeForClone, error) {
+	request := GetVolumeForCloneRequest{
+		Op:       "get_volume_info",
+		PoolName: poolName,
+		Name:     volumeName,
+	}
+	response := &GetVolumeForCloneResponse{}
+	err := httpGet(confFile, request, response)
+	if err != nil {
+		return nil, err
+	}
+	return &response.VolumeInfo, nil
 }
 
 func CloneVolume(confFile, sourcePoolName, sourceVolumeName, snapshotName, targetVolumeName, targetPoolName string) error {
@@ -136,9 +165,9 @@ func ListClone(confFile, sourcePoolName, sourceVolumeName, targetPoolName, targe
 
 func ListClone220(confFile, sourcePoolName, sourceVolumeName, targetPoolName, targetVolumeName string) (*CloneInfo, error) {
 	request := ListCloneRequest220{
-		Op:           "list_clone",
+		Op:        "list_clone",
 		SourceVol: sourcePoolName + "/" + sourceVolumeName,
-		TargetVol: targetPoolName+ "/" + targetVolumeName,
+		TargetVol: targetPoolName + "/" + targetVolumeName,
 	}
 	response := &ListCloneResponse{}
 	err := httpGet(confFile, request, response)
@@ -150,7 +179,6 @@ func ListClone220(confFile, sourcePoolName, sourceVolumeName, targetPoolName, ta
 	}
 	return &response.CloneVolumes[0], nil
 }
-
 
 func DetachCloneRelationship(confFile, sourcePoolName, sourceVolumeName, targetPoolName, targetVolumeName string) error {
 	request := DetachCloneRelationshipRequest{
@@ -208,20 +236,25 @@ func ListSnapshot(confFile, poolName, volumeName, snapshotName string) (*Snapsho
 func buildParameters(request interface{}) string {
 	t, v := reflect.TypeOf(request), reflect.ValueOf(request)
 	sb := strings.Builder{}
+	parameter := make(map[string]string)
 	for k := 0; k < t.NumField(); k++ {
-		sb.WriteString(t.Field(k).Tag.Get(`json`))
-		sb.WriteString("=")
 		switch val := v.Field(k).Interface().(type) {
 		case int:
-			sb.WriteString(strconv.Itoa(val))
+			parameter[t.Field(k).Tag.Get("json")] = strconv.Itoa(val)
 		case int64:
-			sb.WriteString(strconv.Itoa(int(val)))
+			parameter[t.Field(k).Tag.Get("json")] = strconv.Itoa(int(val))
 		case string:
-			sb.WriteString(val)
+			parameter[t.Field(k).Tag.Get("json")] = val
+		case map[string]string:
+			for k1, v1 := range val {
+				parameter[k1] = v1
+			}
 		default:
 			klog.Warning("invalidType: ", reflect.TypeOf(val))
 		}
-		sb.WriteString("&")
+	}
+	for k2, v2 := range parameter {
+		sb.WriteString(fmt.Sprintf("%s=%s&", k2, v2))
 	}
 	return sb.String()
 }
@@ -238,18 +271,20 @@ func httpGet(confFile string, request interface{}, response Response) error {
 	if err != nil {
 		return err
 	}
-	if ret.StatusCode != 200 {
+	defer func() {
+		if ret != nil && ret.Body != nil {
+			_ = ret.Body.Close()
+		}
+	}()
+	// http 400 is param error, let it show ret.Body in error
+	if ret.StatusCode != 200 && ret.StatusCode != 400 {
 		return fmt.Errorf("NeonsanAPI http code:%d", ret.StatusCode)
 	}
-	defer func() {
-		_ = ret.Body.Close()
-	}()
-
 	body, err := ioutil.ReadAll(ret.Body)
 	if err != nil {
 		return err
 	}
-	klog.Infof("NeonsanApi response:%s, request:%s",  body, url)
+	klog.Infof("NeonsanApi response:%s, request:%s", body, url)
 	err = json.Unmarshal(body, response)
 	if err != nil {
 		return err
