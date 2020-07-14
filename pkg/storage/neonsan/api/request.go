@@ -35,11 +35,29 @@ type Response interface {
 }
 
 type CreateVolumeRequest struct {
-	Op       string `json:"op"`
-	PoolName string `json:"pool_name"`
-	Name     string `json:"name"`
-	Size     int64  `json:"size"`
-	RepCount int    `json:"rep_count"`
+	Op         string            `json:"op"`
+	Name       string            `json:"name"`
+	Size       int64             `json:"size"`
+	Parameters map[string]string `json:"parameters"`
+	/*
+		RepCount     int    `json:"rep_count"`
+		PoolName     string `json:"pool_name"`
+		Mrip         string `json:"mrip"`
+		Mrport       int    `json:"mrport"`
+		Rpo          int    `json:"rpo"`
+		Encrypte     string `json:"encrypte"`
+		KeyName      string `json:"key_name"`
+		Rg           string `json:"rg"`
+		Label        string `json:"label"`
+		Policy       string `json:"policy"`
+		Dc           string `json:"dc"`
+		SampleVolume string `json:"sample_volume"`
+		MutexGroup   string `json:"mutex_group"`
+		Role         string `json:"role"`
+		MinRepCount  int    `json:"min_rep_count"`
+		MaxBs        int    `json:"max_bs"`
+		ThickProv    bool   `json:"thick_prov"`
+	*/
 }
 
 type CreateVolumeResponse struct {
@@ -84,6 +102,17 @@ type ListVolumeResponse struct {
 	Volumes []Volume `json:"volumes"`
 }
 
+type GetVolumeForCloneRequest struct {
+	Op       string `json:"op"`
+	Name     string `json:"name"`
+	PoolName string `json:"pool_name"`
+}
+
+type GetVolumeForCloneResponse struct {
+	ResponseHeader
+	VolumeInfo VolumeForClone `json:"VolumeInfo"`
+}
+
 type CloneVolumeRequest struct {
 	Op           string `json:"op"`
 	SourcePool   string `json:"source_pool"`
@@ -106,11 +135,10 @@ type ListCloneRequest struct {
 }
 
 type ListCloneRequest220 struct {
-	Op string `json:"op"`
+	Op        string `json:"op"`
 	SourceVol string `json:"source_vol"`
 	TargetVol string `json:"target_vol"`
 }
-
 
 type CloneInfo struct {
 	Id         int       `json:"id"`
@@ -169,7 +197,7 @@ type ListSnapshotRequest struct {
 	Op           string `json:"op"`
 	PoolName     string `json:"pool_name"`
 	VolumeName   string `json:"volume_name"`
-	SnapshotName string `json:"snapshot_name"`    //Optional
+	SnapshotName string `json:"snapshot_name"` //Optional
 }
 
 type SnapshotInfo struct {

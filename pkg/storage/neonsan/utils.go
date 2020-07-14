@@ -16,8 +16,6 @@ limitations under the License.
 package neonsan
 
 import (
-	"errors"
-	"strconv"
 	"strings"
 )
 
@@ -25,19 +23,14 @@ const (
 	snapSep   = "@"
 	volumeSep = "/"
 
-	scReplicaName  = "replica"
-	defaultReplica = 1
-	scPoolName       = "pool"
-	defaultPool    = "kube"
-)
-
-var (
-	errorInvalidArgument = errors.New("invalid argument")
+	scReplicaNameOld = "replica"
+	scPoolNameOld    = "pool"
+	scPoolNameNew    = "pool_name"
 )
 
 func SplitSnapshotName(fullSnapshotName string) (poolName, volumeName, snapshotName string) {
 	s := strings.Split(fullSnapshotName, snapSep)
-	if len(s) == 2{
+	if len(s) == 2 {
 		poolName, volumeName = SplitVolumeName(s[0])
 		snapshotName = s[1]
 	}
@@ -60,22 +53,45 @@ func JoinVolumeName(poolName, volumeName string) (fullVolumeName string) {
 	return poolName + volumeSep + volumeName
 }
 
-func GetReplica(parameters map[string]string) (int, error) {
-	sReplica, ok := parameters[scReplicaName]
-	if ok {
-		iReplica, err := strconv.Atoi(sReplica)
-		if err != nil || iReplica <= 0 {
-			return -1, err
-		}
-		return iReplica, nil
-	}
-	return defaultReplica, nil
-}
-
 func GetPoolName(parameters map[string]string) string {
-	poolName, ok := parameters[scPoolName]
-	if ok {
-		return poolName
+	if poolNameNew, okNew := parameters[scPoolNameNew]; okNew {
+		return poolNameNew
+	} else if poolNameOld, okOld := parameters[scPoolNameOld]; okOld {
+		return poolNameOld
 	}
 	return ""
+}
+
+func TuneUpParameter(parameter map[string]string) {
+	//Backward: "pool" -> "pool_name", "replica" -> "rep_count"
+	backward(parameter, scPoolNameOld, scPoolNameNew)
+	backward(parameter, scReplicaNameOld, "rep_count")
+	// set default if the parameter is empty
+	setDefaultIfEmpty(parameter, "rep_count", "1")
+	// delete unnecessary
+	delUnnecessary(parameter, "fsType")
+}
+
+func backward(parameters map[string]string, oldKey, newKey string) {
+	if poolName, okOld := parameters[oldKey]; okOld {
+		if _, okNew := parameters[newKey]; !okNew {
+			parameters[newKey] = poolName
+		}
+		delete(parameters, oldKey)
+	}
+}
+
+func setDefaultIfEmpty(parameters map[string]string, key, defaultValue string) {
+	if parameters == nil {
+		return
+	}
+	if _, ok := parameters[key]; !ok {
+		parameters[key] = defaultValue
+	}
+}
+
+func delUnnecessary(parameters map[string]string, key string) {
+	if parameters != nil {
+		delete(parameters, key)
+	}
 }

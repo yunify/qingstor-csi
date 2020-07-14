@@ -22,6 +22,6 @@ provisioner: neonsan.csi.qingstor.com
 parameters:
   fsType: "ext4"
   replica: "1"
-  pool: "kube"
+  pool_name: "kube"
 reclaimPolicy: Delete
 allowVolumeExpansion: true

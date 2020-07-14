@@ -92,7 +92,7 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 		}
 	}
 	if createError != nil {
-		klog.Errorf("Failed to create volume %s, contentSource %s, error: %v", req.GetVolumeContentSource(), volumeName, err)
+		klog.Errorf("Failed to create volume %s, contentSource %s, error: %v", volumeName, req.GetVolumeContentSource(), createError)
 		return nil, status.Error(codes.Internal, createError.Error())
 	}
 	csiVolume := &csi.Volume{
@@ -220,7 +220,7 @@ func (s *service) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotReq
 	if snapshot != nil {
 		return &csi.CreateSnapshotResponse{Snapshot: snapshot}, nil
 	}
-	return nil, status.Errorf(codes.Internal, "not find after create snapshot : %s", snapName, )
+	return nil, status.Errorf(codes.Internal, "not find after create snapshot : %s", snapName)
 }
 
 // CreateSnapshot allows the CO to delete a snapshot.

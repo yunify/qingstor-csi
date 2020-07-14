@@ -11,8 +11,8 @@ metadata:
 provisioner: neonsan.csi.qingstor.com
 parameters:
   fsType: "ext4"
-  replica: "1"
-  pool: "kube"
+  rep_count: "1"
+  pool_name: "kube"
 reclaimPolicy: Delete
 allowVolumeExpansion: true
 ```
@@ -22,11 +22,11 @@ allowVolumeExpansion: true
 #### `fsType`
 Support `ext3`, `ext4`, `xfs`, default `ext4`.
 
-#### `replica`
+#### `rep_count`
 Number of disk replicas, default `1`，maximum `3`.
 
-#### `pool`
-Neonsan pool，not empty
+#### `pool_name`
+Neonsan pool name，not empty
 
 ### Other Parameters 
 
@@ -107,7 +107,7 @@ This plugin only supports offline volume expansion. The procedure of offline vol
 1. Ensure volume in unmounted status
 2. Edit the capacity of PVC
 3. Mount volume on workload
-Please reference [Example YAML files](https://github.com/yunify/qingcloud-csi/tree/master/deploy/disk/volume).
+Please reference [Example YAML files](deploy/neonsan/example/volume).
 
 ### Prerequisite
 - Kubernetes 1.14+ cluster
@@ -183,7 +183,7 @@ pvc-clone   Bound    pvc-a75e3f7c-59af-43ef-82d3-300508871432   20Gi       RWO  
 ```
 
 ## Snapshot Management
-Snapshot management contains creating/deleting snapshot and restoring volume from snapshpot. Please reference [Example YAML files](https://github.com/yunify/qingcloud-csi/tree/master/deploy/disk/example/snapshot).
+Snapshot management contains creating/deleting snapshot and restoring volume from snapshot. Please reference [Example YAML files](deploy/neonsan/example/snapshot).
 
 ### Prerequisites
 - Kubernetes 1.14+ 

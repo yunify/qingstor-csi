@@ -36,6 +36,3 @@ snapshotter:
 registrar:
   repository: csiplugin/csi-node-driver-registrar
   tag: v1.2.0
-snapshotController:
-  repository: csiplugin/snapshot-controller
-  tag: v2.0.1
