@@ -17,18 +17,13 @@
 .PHONY: all disk
 
 IMAGE=csiplugin/csi-neonsan
-TAG=v1.2.0-rc2
+TAG=canary
 IMAGE_UBUNTU=csiplugin/csi-neonsan-ubuntu
-TAG_UBUNTU=v1.2.0
-RELEASE_VERSION=v1.2.0
+TAG_UBUNTU=canary
+IMAGE_CENTOS=csiplugin/csi-neonsan-centos
+TAG_CENTOS=canary
 ROOT_PATH=$(pwd)
 PACKAGE_LIST=./cmd/... ./pkg/...
-
-neonsan-plugin:
-	go build -ldflags "-w -s" -mod=vendor  -o deploy/neonsan/plugin/neonsan-plugin ./cmd/neonsan
-
-neonsan-plugin-debug:
-	go build  -gcflags "all=-N -l" -mod=vendor  -o deploy/neonsan/plugin/neonsan-plugin-debug ./cmd/neonsan
 
 container:
 	docker build -t ${IMAGE}:${TAG} -f deploy/neonsan/docker/Dockerfile  .
@@ -36,14 +31,8 @@ container:
 container-ubuntu:
 	docker build -t ${IMAGE_UBUNTU}:${TAG_UBUNTU} -f deploy/neonsan/docker/ubuntu/Dockerfile  .
 
-yaml:
-	kustomize build deploy/neonsan/kubernetes/base > deploy/neonsan/kubernetes/release/csi-neonsan-${RELEASE_VERSION}.yaml
-
-yaml-ubuntu:
-	kustomize build deploy/neonsan/kubernetes/base-ubuntu > deploy/neonsan/kubernetes/release/csi-neonsan-${RELEASE_VERSION}-ubuntu.yaml
-
-release:
-	cp deploy/neonsan/plugin/* deploy/neonsan/kubernetes/release && cd deploy/neonsan/kubernetes/ && tar -zcvf csi-neonsan-${RELEASE_VERSION}.tar.gz release/*
+container-centos:
+	docker build -t ${IMAGE_CENTOS}:${TAG_CENTOS} -f deploy/neonsan/docker/centos/Dockerfile  .
 
 mod:
 	go build ./...

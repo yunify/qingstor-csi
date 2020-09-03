@@ -22,7 +22,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -mod=vendor  -ldflags "-s -w" -o  _outp
 FROM gcr.azk8s.cn/google_containers/debian-base:v1.0.0
 LABEL maintainers="Yunify"
 LABEL description="NeonSAN CSI plugin"
-RUN clean-install util-linux e2fsprogs xfsprogs  mount ca-certificates udev
+RUN clean-install util-linux e2fsprogs xfsprogs mount ca-certificates udev
 COPY --from=builder /qingstor-csi/_output/neonsan-csi-driver /neonsan-csi-driver
 RUN chmod +x /neonsan-csi-driver && \
     mkdir -p /var/log/neonsan-csi-driver
