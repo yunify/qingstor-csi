@@ -46,7 +46,11 @@ func (s *service) interceptor(ctx context.Context, req interface{}, info *grpc.U
 		return nil, err
 	}
 	if volumeID := s.getVolumeID(req); len(volumeID) != 0{
-		s.locks.TryAcquire(volumeID)
+		if acquired := s.locks.TryAcquire(volumeID); !acquired{
+			err = status.Errorf(codes.Aborted, common.OperationPendingFmt, volumeID)
+			klog.Errorf("GRPC %s fail lock: %v req:%s %s", info.FullMethod, err, protosanitizer.StripSecrets(req), hash)
+			return nil, err
+		}
 		defer s.locks.Release(volumeID)
 	}
 	resp, err := handler(common.ContextWithHash(ctx, hash), req)

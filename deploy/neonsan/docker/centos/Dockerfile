@@ -19,13 +19,12 @@ WORKDIR /qingstor-csi
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -mod=vendor  -ldflags "-s -w" -o  _output/neonsan-csi-driver ./cmd/neonsan
 
-FROM ubuntu:16.04
+FROM centos:7
 LABEL maintainers="Yunify"
 LABEL description="NeonSAN CSI plugin"
 # libcurl3 and libicu55 for qbd
-RUN apt-get update -y && \
-    apt-get install -y libcurl3 libicu55 && \
-    apt-get install -y e2fsprogs xfsprogs mount ca-certificates udev
+RUN yum -y install libcurl libicu
+RUN yum -y install e2fsprogs xfsprogs mount ca-certificates udev
 COPY --from=builder /qingstor-csi/_output/neonsan-csi-driver /neonsan-csi-driver
 RUN chmod +x /neonsan-csi-driver && \
     mkdir -p /var/log/neonsan-csi-driver
