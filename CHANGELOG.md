@@ -15,3 +15,4 @@
 * Pool name as a parameter of SC ([#30](https://github.com/yunify/qingstor-csi/pull/30))
 * Update to CSI spec v1.2.0 ([#31](https://github.com/yunify/qingstor-csi/pull/31))
 * Update for k8s 1.17 ([#31](https://github.com/yunify/qingstor-csi/pull/31))
+* QBD run in container ([#40](https://github.com/yunify/qingstor-csi/pull/40))
