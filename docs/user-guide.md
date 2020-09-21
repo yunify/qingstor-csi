@@ -37,7 +37,7 @@ Set the annotation `.metadata.annotations.storageclass.beta.kubernetes.io/is-def
 Set the value of `.allowVolumeExpansion` as `true`. See details in [Kubernetes docs](https://kubernetes.io/docs/concepts/storage/storage-classes/#allow-volume-expansion)
 
 ## Volume Management 
-Volume management including dynamical provisioning/deleting volume, attaching/detaching volume. Please reference [Example YAML Files](https://github.com/yunify/qingcloud-csi/tree/master/deploy/disk/example/volume).
+Volume management including dynamical provisioning/deleting volume, attaching/detaching volume. Please reference [volume example](/deploy/neonsan/example/volume).
 
 ### Prerequisite
 - Kubernetes 1.14+ 
@@ -107,7 +107,7 @@ This plugin only supports offline volume expansion. The procedure of offline vol
 1. Ensure volume in unmounted status
 2. Edit the capacity of PVC
 3. Mount volume on workload
-Please reference [Example YAML files](deploy/neonsan/example/volume).
+Please reference [volume example](/deploy/neonsan/example/volume).
 
 ### Prerequisite
 - Kubernetes 1.14+ cluster
@@ -151,7 +151,7 @@ Filesystem      Size  Used Avail Use% Mounted on
 ```
 
 ## Volume Cloning 
-Cloning is defined as a duplicate of an existing PVC. Please reference [Example YAML](deploy/neonsan/example/volume) 
+Cloning is defined as a duplicate of an existing PVC. Please reference [volume example](/deploy/neonsan/example/volume) 
 
 ### Prerequisites
 - Kubernetes 1.15+  
@@ -183,7 +183,7 @@ pvc-clone   Bound    pvc-a75e3f7c-59af-43ef-82d3-300508871432   20Gi       RWO  
 ```
 
 ## Snapshot Management
-Snapshot management contains creating/deleting snapshot and restoring volume from snapshot. Please reference [Example YAML files](deploy/neonsan/example/snapshot).
+Snapshot management contains creating/deleting snapshot and restoring volume from snapshot. Please reference [snapshot examples](/deploy/neonsan/example/snapshot).
 
 ### Prerequisites
 - Kubernetes 1.14+ 
@@ -244,4 +244,54 @@ pvc-snap   Bound    pvc-a56f6ebe-b37b-40d7-bfb7-aafbecb6672b   20Gi       RWO   
 ```console
 $ kubectl delete volumesnapshot snap-1
 volumesnapshot.snapshot.storage.k8s.io "snap-1" deleted
+```
+
+## RWM Block Volume
+Volume [Access Mode](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes) `ReadWriteMany` is only available
+[VolumeMode](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#volume-mode) `Block` on NeonSAN-CSI. 
+Following are examples for `Block RWM` PVC. Please reference [volume examples](/deploy/neonsan/example/volume).
+
+### Create PVC
+```bash
+kubectl apply -f pvc-block.yaml
+persistentvolumeclaim/pvc-block created
+
+kubectl get pvc pvc-block
+NAME        STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+pvc-block   Bound    pvc-d4e44291-c8e8-4a6d-9a4c-6a3662672d77   1Gi        RWX            csi-neonsan    9m57s
+
+```
+
+### Attach PVC for multi-pods
+```bash
+kubectl apply -f deploy-nginx-block-1.yaml
+deployment.apps/nginx-block-1 created
+
+kubectl apply -f deploy-nginx-block-2.yaml
+deployment.apps/nginx-block-2 created
+
+kubectl get pod
+NAME                             READY   STATUS    RESTARTS   AGE
+nginx-block-1-65ddc6bf75-zdnqg   1/1     Running   0          8m40s
+nginx-block-2-788bfbbf4b-b4kpd   1/1     Running   0          7m55s
+```
+
+### Check 
+
+Block device in container-1:
+```bash
+kubectl exec -it deployment/nginx-block-1 -- fdisk -l /dev/xvda
+Disk /dev/xvda: 1 GiB, 1073741824 bytes, 2097152 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 4096 bytes
+I/O size (minimum/optimal): 4096 bytes / 4096 bytes
+```
+
+Block device in container-2:
+```bash
+kubectl exec -it deployment/nginx-block-2 -- fdisk -l /dev/xvda
+Disk /dev/xvda: 1 GiB, 1073741824 bytes, 2097152 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 4096 bytes
+I/O size (minimum/optimal): 4096 bytes / 4096 bytes
 ```

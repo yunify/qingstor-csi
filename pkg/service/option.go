@@ -120,10 +120,21 @@ func (o *Option) ValidateVolumeCapability(cap *csi.VolumeCapability) bool {
 }
 
 func (o *Option) ValidateVolumeCapabilities(caps []*csi.VolumeCapability) bool {
+	isMultiNode, isBlock := false, false
 	for _, capability := range caps {
 		if !o.ValidateVolumeAccessMode(capability.GetAccessMode().GetMode()) {
 			return false
 		}
+		// RO modes need to be handled independently (ie right now even if access mode is RO, they'll be RW upon attach)
+		if capability.GetAccessMode().GetMode() == csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER {
+			isMultiNode = true
+		}
+		if capability.GetBlock() != nil {
+			isBlock = true
+		}
+	}
+	if isMultiNode && !isBlock{
+		return false
 	}
 	return true
 }

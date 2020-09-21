@@ -146,6 +146,11 @@ func (s *service) validateRequest(request interface{}) error {
 		if req.GetVolumeCapability() == nil {
 			return status.Error(codes.InvalidArgument, "Volume capability missing in request")
 		}
+		// MULTI_NODE_MULTI_WRITER is supported by default for Block access type volumes
+		if req.VolumeCapability.AccessMode.Mode == csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER &&
+			req.GetVolumeCapability().GetBlock() == nil{
+			return status.Error(codes.InvalidArgument, "RWX access mode request is only valid for volumes with access type `block`")
+		}
 	case *csi.NodeExpandVolumeRequest:
 		if len(req.GetVolumeId()) == 0 {
 			return status.Error(codes.InvalidArgument, "Volume ID missing in request")

@@ -14,7 +14,7 @@
 # | limitations under the License.
 # +-------------------------------------------------------------------------
 
-FROM golang:1.12.7-alpine as builder
+FROM golang:1.14.4-alpine as builder
 WORKDIR /qingstor-csi
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -mod=vendor  -ldflags "-s -w" -o  _output/neonsan-csi-driver ./cmd/neonsan

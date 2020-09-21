@@ -22,6 +22,8 @@ import (
 	"github.com/yunify/qingstor-csi/pkg/common"
 	"io/ioutil"
 	"k8s.io/klog"
+	"k8s.io/utils/mount"
+	"os"
 	"strings"
 )
 
@@ -38,11 +40,11 @@ func GetInstanceIdFromFile(filepath string) (instanceId string, err error) {
 
 func NewControllerServiceCapability(cap csi.ControllerServiceCapability_RPC_Type) *csi.ControllerServiceCapability {
 	return &csi.ControllerServiceCapability{
-			Type: &csi.ControllerServiceCapability_Rpc{
-				Rpc: &csi.ControllerServiceCapability_RPC{
-					Type: cap,
-				},
+		Type: &csi.ControllerServiceCapability_Rpc{
+			Rpc: &csi.ControllerServiceCapability_RPC{
+				Type: cap,
 			},
+		},
 	}
 }
 
@@ -69,5 +71,35 @@ func GetRequiredVolumeSizeByte(capRange *csi.CapacityRange) (int64, error) {
 		return -1, fmt.Errorf("volume required bytes %d greater than limit bytes %d", res, capRange.GetLimitBytes())
 	}
 	return res, nil
+}
+
+func createTargetMountPath(mounter mount.Interface, mountPath string, isBlock bool) (bool, error) {
+	// Check if that mount path exists properly
+	notMnt, err := mount.IsNotMountPoint(mounter, mountPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			if isBlock {
+				//#nosec
+				pathFile, e := os.OpenFile(mountPath, os.O_CREATE|os.O_RDWR, 0750)
+				if e != nil {
+					klog.Errorf("Failed to create mountPath:%s with error: %v", mountPath, e)
+					return notMnt, e
+				}
+				if err = pathFile.Close(); err != nil {
+					klog.Errorf("Failed to close mountPath:%s with error: %v", mountPath, err)
+					return notMnt, err
+				}
+			} else {
+				// Create a directory
+				if err = os.MkdirAll(mountPath, 0750); err != nil {
+					return notMnt, err
+				}
+			}
+			notMnt = true
+		} else {
+			return false, err
+		}
+	}
+	return notMnt, err
 }
 

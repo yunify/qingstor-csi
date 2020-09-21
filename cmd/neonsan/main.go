@@ -18,7 +18,6 @@ package main
 
 import (
 	"flag"
-	"github.com/yunify/qingstor-csi/pkg/common"
 	"github.com/yunify/qingstor-csi/pkg/service"
 	"github.com/yunify/qingstor-csi/pkg/storage/neonsan"
 	"k8s.io/klog"
@@ -85,9 +84,6 @@ func handle() {
 		SetPluginCapabilities(service.DefaultPluginCapability).
 		SetRetryTime(rt)
 
-	// Mounter
-	formatMounter := common.NewSafeMounter()
-
 	// service
-	service.Run(serviceOpt, storageProvider, formatMounter, *endpoint)
+	service.Run(serviceOpt, storageProvider, *endpoint)
 }

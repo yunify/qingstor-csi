@@ -1,10 +1,10 @@
 language: go
 go:
-  - "1.12"
+  - "1.14"
 services:
   - docker
 before_install:
-  - docker pull golang:1.12.7-alpine
+  - docker pull golang:1.14.4-alpine
   - docker pull k8s.gcr.io/debian-base:v1.0.0
   - docker tag k8s.gcr.io/debian-base:v1.0.0 gcr.azk8s.cn/google_containers/debian-base:v1.0.0
 

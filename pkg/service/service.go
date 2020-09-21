@@ -21,7 +21,8 @@ import (
 	"github.com/yunify/qingstor-csi/pkg/common"
 	"github.com/yunify/qingstor-csi/pkg/storage"
 	"google.golang.org/grpc"
-	"k8s.io/kubernetes/pkg/util/mount"
+	"k8s.io/utils/exec"
+	"k8s.io/utils/mount"
 )
 
 
@@ -39,7 +40,11 @@ type service struct {
 	locks           *common.ResourceLocks
 }
 
-func New(option *Option, cloud storage.Provider, mounter *mount.SafeFormatAndMount) Service {
+func New(option *Option, cloud storage.Provider) Service {
+	mounter := &mount.SafeFormatAndMount{
+		Interface: mount.New(""),
+		Exec:      exec.New(),
+	}
 	return &service{
 		option:          option,
 		storageProvider: cloud,
