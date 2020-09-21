@@ -17,11 +17,11 @@
 .PHONY: all disk
 
 IMAGE=csiplugin/csi-neonsan
-TAG=v1.2.0
+TAG=canary
 IMAGE_UBUNTU=csiplugin/csi-neonsan-ubuntu
-TAG_UBUNTU=v1.2.0
+TAG_UBUNTU=canary
 IMAGE_CENTOS=csiplugin/csi-neonsan-centos
-TAG_CENTOS=v1.2.0
+TAG_CENTOS=canary
 ROOT_PATH=$(pwd)
 PACKAGE_LIST=./cmd/... ./pkg/...
 

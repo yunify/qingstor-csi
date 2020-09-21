@@ -22,10 +22,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"
-	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/util/resizefs"
-	k8sVolume "k8s.io/kubernetes/pkg/volume"
-	"os"
+	"k8s.io/kubernetes/pkg/volume"
+	"k8s.io/utils/mount"
 )
 
 // This operation MUST be idempotent
@@ -35,14 +34,18 @@ import (
 func (s *service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	volumeID, targetPath := req.GetVolumeId(), req.GetStagingTargetPath()
 	fsType := req.VolumeCapability.GetMount().GetFsType()
-	// Check volume exist
-	volInfo, err := s.storageProvider.FindVolume(volumeID)
-	if err != nil {
+
+	// idempotent attach volume, qbd -m neonsan volume
+	devicePath, err := s.nodeAttachVolume(volumeID)
+	if err != nil{
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	if volInfo == nil {
-		return nil, status.Errorf(codes.NotFound, "Volume %s does not exist", volumeID)
+
+	// if block mode, skip mount
+	if req.GetVolumeCapability().GetBlock() != nil{
+		return &csi.NodeStageVolumeResponse{},nil
 	}
+
 	// if volume already mounted
 	notMnt, err := s.mounter.Interface.IsLikelyNotMountPoint(targetPath)
 	if err != nil {
@@ -53,24 +56,7 @@ func (s *service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeR
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
 
-	// for idempotent, if device not empty, volume has already attached
-	devicePath, err := s.storageProvider.NodeGetDevice(volumeID)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	if len(devicePath) == 0 {
-		// Attach if need
-		err = s.storageProvider.NodeAttachVolume(volumeID)
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-		devicePath, err = s.storageProvider.NodeGetDevice(volumeID)
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-	}
-
-	// do mount
+	// do mount and format
 	if err := s.mounter.FormatAndMount(devicePath, targetPath, fsType, []string{}); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -83,53 +69,32 @@ func (s *service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeR
 func (s *service) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
 	// set parameter
 	volumeID, targetPath := req.GetVolumeId(), req.GetStagingTargetPath()
-	// Check volume exist
-	volume, err := s.storageProvider.FindVolume(volumeID)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	if volume == nil {
-		return nil, status.Errorf(codes.NotFound, "Volume %s does not exist", volumeID)
-	}
 	// check targetPath is mounted
 	// For idempotent:
 	// If the volume corresponding to the volume id is not staged to the staging target path,
 	// the plugin MUST reply 0 OK.
-	mounter := s.mounter.Interface
-	notMnt, err := mounter.IsLikelyNotMountPoint(targetPath)
+	notMnt, err := mount.IsNotMountPoint(s.mounter.Interface, targetPath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	if notMnt {
-		return &csi.NodeUnstageVolumeResponse{}, nil
+	if !notMnt{
+		// count mount point
+		_, cnt, err := mount.GetDeviceNameFromMount(s.mounter.Interface, targetPath)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		// do unmount
+		err = s.mounter.Interface.Unmount(targetPath)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		if cnt > 1 {
+			klog.Errorf("Volume %s still mounted in instance %s", volumeID, s.option.NodeId)
+			return nil, status.Error(codes.Internal, "unmount failed")
+		}
 	}
-	// count mount point
-	_, cnt, err := mount.GetDeviceNameFromMount(mounter, targetPath)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	// do unmount
-	err = mounter.Unmount(targetPath)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	cnt--
-	if cnt > 0 {
-		klog.Errorf("Volume %s still mounted in instance %s", volumeID, s.option.NodeId)
-		return nil, status.Error(codes.Internal, "unmount failed")
-	}
-
-	devicePath, err := s.storageProvider.NodeGetDevice(volumeID)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	// for idempotent, if device is empty, the volume has already detached
-	if len(devicePath) == 0 {
-		return &csi.NodeUnstageVolumeResponse{}, nil
-	}
-
-	// node detach volume
-	err = s.storageProvider.NodeDetachVolume(volumeID)
+	// idempotent detach volume
+	err = s.nodeDetachVolume(volumeID)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -148,39 +113,35 @@ func (s *service) NodePublishVolume(ctx context.Context, req *csi.NodePublishVol
 	volumeID, targetPath, stagePath := req.GetVolumeId(), req.GetTargetPath(), req.GetStagingTargetPath()
 	// set fsType
 	fsType := req.GetVolumeCapability().GetMount().GetFsType()
-	// Check volume exist
-	volInfo, err := s.storageProvider.FindVolume(volumeID)
+
+	isBlock := req.GetVolumeCapability().GetBlock() != nil
+	// Check if that target path exists properly
+	notMnt, err := createTargetMountPath(s.mounter.Interface, targetPath, isBlock)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	if volInfo == nil {
-		return nil, status.Errorf(codes.NotFound, "Volume %s does not exist", volumeID)
-	}
-	// Make dir if dir not presents
-	_, err = os.Stat(targetPath)
-	if os.IsNotExist(err) {
-		if err = os.MkdirAll(targetPath, 0750); err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-	}
-	// check targetPath is mounted
-	mounter := s.mounter.Interface
-	notMnt, err := mounter.IsNotMountPoint(targetPath)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	// For idempotent:
-	// If the volume corresponding to the volume id has already been published at the specified target path,
-	// and is compatible with the specified volume capability and readonly flag, the plugin MUST reply 0 OK.
 	if !notMnt {
 		return &csi.NodePublishVolumeResponse{}, nil
 	}
+
 	// set bind mount options
 	options := []string{"bind"}
 	if req.GetReadonly() == true {
 		options = append(options, "ro")
 	}
-	if err := mounter.Mount(stagePath, targetPath, fsType, options); err != nil {
+	if isBlock{
+		devicePath, err := s.storageProvider.NodeGetDevice(volumeID)
+		if err != nil{
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		if len(devicePath) == 0{
+			return nil, status.Error(codes.Internal, "device empty")
+		}
+		err = s.mounter.Interface.Mount(devicePath, targetPath, "", options)
+	} else {
+		err = s.mounter.Interface.Mount(stagePath, targetPath, fsType, options)
+	}
+	if err != nil{
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	return &csi.NodePublishVolumeResponse{}, nil
@@ -190,18 +151,10 @@ func (s *service) NodePublishVolume(ctx context.Context, req *csi.NodePublishVol
 //									target path	+ Required
 func (s *service) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	// set parameter
-	volumeID := req.GetVolumeId()
+	//volumeID := req.GetVolumeId()
 	targetPath := req.GetTargetPath()
-	// Check volume exist
-	volInfo, err := s.storageProvider.FindVolume(volumeID)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	if volInfo == nil {
-		return nil, status.Errorf(codes.NotFound, "Volume %s does not exist", volumeID)
-	}
 	// do unmount
-	if err = mount.CleanupMountPoint(targetPath, s.mounter.Interface, true); err != nil {
+	if err := mount.CleanupMountPoint(targetPath, s.mounter.Interface, true); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	return &csi.NodeUnpublishVolumeResponse{}, nil
@@ -266,7 +219,7 @@ func (s *service) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolume
 			"from storage provider %s", devicePath, volumeDevicePath)
 	}
 	// Get metrics
-	metricsStatFs := k8sVolume.NewMetricsStatFS(volumePath)
+	metricsStatFs := volume.NewMetricsStatFS(volumePath)
 	metrics, err := metricsStatFs.GetMetrics()
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
@@ -287,4 +240,38 @@ func (s *service) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolume
 			},
 		},
 	}, nil
+}
+
+// nodeAttachVolume
+// idempotent attach volume
+func (s *service) nodeAttachVolume(volumeID string) (string, error)  {
+	// for idempotent, if device not empty, volume has already attached
+	devicePath, err := s.storageProvider.NodeGetDevice(volumeID)
+	if err != nil {
+		return "", err
+	}
+	if len(devicePath) == 0 {
+		// Attach if need
+		err = s.storageProvider.NodeAttachVolume(volumeID)
+		if err != nil {
+			return "", err
+		}
+		return s.storageProvider.NodeGetDevice(volumeID)
+	}
+	return devicePath, err
+}
+
+// nodeDetachVolume
+// idempotent detach volume
+func (s *service) nodeDetachVolume(volumeID string) error {
+	// for idempotent, if device is empty, the volume has already detached
+	devicePath, err := s.storageProvider.NodeGetDevice(volumeID)
+	if err != nil {
+		return err
+	}
+	if len(devicePath) == 0 {
+		return nil
+	}
+	// node detach volume
+	return s.storageProvider.NodeDetachVolume(volumeID)
 }

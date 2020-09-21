@@ -20,6 +20,7 @@ import "github.com/container-storage-interface/spec/lib/go/csi"
 
 var DefaultVolumeAccessModeType = []csi.VolumeCapability_AccessMode_Mode{
 	csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+	csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
 }
 
 var DefaultControllerServiceCapability = []csi.ControllerServiceCapability_RPC_Type{

@@ -22,7 +22,6 @@ import (
 	"github.com/yunify/qingstor-csi/pkg/storage"
 	"google.golang.org/grpc"
 	"k8s.io/klog"
-	"k8s.io/kubernetes/pkg/util/mount"
 	"net"
 	"os"
 	"strings"
@@ -122,10 +121,9 @@ func parseEndpoint(ep string) (string, string, error) {
 
 // Run
 // Initial and start CSI driver
-func Run(option *Option, storageProvider storage.Provider, formatAndMount *mount.SafeFormatAndMount,
-	endpoint string) {
+func Run(option *Option, storageProvider storage.Provider, endpoint string) {
 	s := NewNonBlockingGRPCServer()
-	service := New(option, storageProvider, formatAndMount)
+	service := New(option, storageProvider)
 	s.Start(endpoint, service)
 	s.Wait()
 }

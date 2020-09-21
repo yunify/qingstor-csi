@@ -19,20 +19,14 @@ package common
 import (
 	"context"
 	"fmt"
-	"github.com/container-storage-interface/spec/lib/go/csi"
 	"hash/fnv"
 	"os/exec"
 	"strconv"
+
+	"github.com/container-storage-interface/spec/lib/go/csi"
 )
 
 const (
-	FileSystemExt3    string = "ext3"
-	FileSystemExt4    string = "ext4"
-	FileSystemXfs     string = "xfs"
-	DefaultFileSystem        = FileSystemExt4
-
-	fsTypeName = "fsType"
-
 	Hash = "Hash"
 
 	Gib = 1 << 30
