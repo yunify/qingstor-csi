@@ -37,6 +37,7 @@ var CSITestSuites = []func() testsuites.TestSuite{
 	testsuites.InitVolumeIOTestSuite,
 	testsuites.InitVolumeLimitsTestSuite,
 	testsuites.InitVolumesTestSuite,
+	testsuites.InitVolumeModeTestSuite,
 }
 
 // This executes testSuites for csi volumes.
