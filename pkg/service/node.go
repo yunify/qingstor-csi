@@ -37,13 +37,13 @@ func (s *service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeR
 
 	// idempotent attach volume, qbd -m neonsan volume
 	devicePath, err := s.nodeAttachVolume(volumeID)
-	if err != nil{
+	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	// if block mode, skip mount
-	if req.GetVolumeCapability().GetBlock() != nil{
-		return &csi.NodeStageVolumeResponse{},nil
+	if req.GetVolumeCapability().GetBlock() != nil {
+		return &csi.NodeStageVolumeResponse{}, nil
 	}
 
 	// if volume already mounted
@@ -77,7 +77,7 @@ func (s *service) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVol
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	if !notMnt{
+	if !notMnt {
 		// count mount point
 		_, cnt, err := mount.GetDeviceNameFromMount(s.mounter.Interface, targetPath)
 		if err != nil {
@@ -129,19 +129,19 @@ func (s *service) NodePublishVolume(ctx context.Context, req *csi.NodePublishVol
 	if req.GetReadonly() == true {
 		options = append(options, "ro")
 	}
-	if isBlock{
+	if isBlock {
 		devicePath, err := s.storageProvider.NodeGetDevice(volumeID)
-		if err != nil{
+		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
-		if len(devicePath) == 0{
+		if len(devicePath) == 0 {
 			return nil, status.Error(codes.Internal, "device empty")
 		}
 		err = s.mounter.Interface.Mount(devicePath, targetPath, "", options)
 	} else {
 		err = s.mounter.Interface.Mount(stagePath, targetPath, fsType, options)
 	}
-	if err != nil{
+	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	return &csi.NodePublishVolumeResponse{}, nil
@@ -186,6 +186,10 @@ func (s *service) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolum
 	devicePath, err := s.storageProvider.NodeGetDevice(volumeID)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Cannot find device path of volume %s, error:%s", volumeID, err.Error())
+	}
+	isBlock := req.GetVolumeCapability() != nil && req.GetVolumeCapability().GetBlock() != nil
+	if isBlock {
+		return &csi.NodeExpandVolumeResponse{CapacityBytes: requestSizeBytes}, nil
 	}
 	resizeFs := resizefs.NewResizeFs(s.mounter)
 	ok, err := resizeFs.Resize(devicePath, volumePath)
@@ -244,7 +248,7 @@ func (s *service) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolume
 
 // nodeAttachVolume
 // idempotent attach volume
-func (s *service) nodeAttachVolume(volumeID string) (string, error)  {
+func (s *service) nodeAttachVolume(volumeID string) (string, error) {
 	// for idempotent, if device not empty, volume has already attached
 	devicePath, err := s.storageProvider.NodeGetDevice(volumeID)
 	if err != nil {
