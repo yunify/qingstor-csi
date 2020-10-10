@@ -55,7 +55,7 @@ func initDriver(name string) testsuites.TestDriver {
 				testsuites.CapNodeExpansion:       true,
 				testsuites.CapVolumeLimits:        true,
 				testsuites.CapSingleNodeVolume:    true,
-				testsuites.CapRWX:                 false,
+				testsuites.CapRWX:                 true,
 				testsuites.CapTopology:            false,
 			},
 		},
