@@ -175,9 +175,11 @@ func (s *service) ControllerExpandVolume(ctx context.Context, req *csi.Controlle
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	// set NodeExpansionRequired flag
+	nodeExpansion := req.GetVolumeCapability() != nil && req.GetVolumeCapability().GetMount() != nil
 	return &csi.ControllerExpandVolumeResponse{
 		CapacityBytes:         requiredSizeBytes,
-		NodeExpansionRequired: true,
+		NodeExpansionRequired: nodeExpansion,
 	}, nil
 }
 
