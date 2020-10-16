@@ -19,6 +19,7 @@ require (
 	golang.org/x/net v0.0.0-20191112182307-2180aed22343
 	google.golang.org/appengine v1.6.1 // indirect
 	google.golang.org/grpc v1.26.0
+	k8s.io/api v0.18.6
 	k8s.io/apimachinery v0.18.6
 	k8s.io/client-go v0.18.6
 	k8s.io/klog v1.0.0

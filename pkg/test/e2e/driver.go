@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/kubernetes/test/e2e/framework"
+	"k8s.io/kubernetes/test/e2e/framework/volume"
 	"k8s.io/kubernetes/test/e2e/storage/testpatterns"
 	"k8s.io/kubernetes/test/e2e/storage/testsuites"
 )
@@ -28,7 +29,7 @@ type driver struct {
 	driverInfo testsuites.DriverInfo
 }
 
-const driverName  =  "neonsan.csi.qingcloud.com"
+const driverName = "neonsan.csi.qingstor.com"
 
 // initDriver returns driver that implements TestDriver interface
 func initDriver(name string) testsuites.TestDriver {
@@ -37,10 +38,10 @@ func initDriver(name string) testsuites.TestDriver {
 	)
 	return &driver{
 		driverInfo: testsuites.DriverInfo{
-			Name:                 name,
+			Name:                 driverName,
 			MaxFileSize:          testpatterns.FileSizeLarge,
 			SupportedFsType:      supportedTypes,
-			//SupportedSizeRange:   volume.SizeRange{Min: "5Gi"},
+			SupportedSizeRange:   volume.SizeRange{Min: "5Gi"},
 			SupportedMountOption: sets.NewString(),
 			Capabilities: map[testsuites.Capability]bool{
 				testsuites.CapPersistence:         true,
@@ -54,7 +55,8 @@ func initDriver(name string) testsuites.TestDriver {
 				testsuites.CapNodeExpansion:       true,
 				testsuites.CapVolumeLimits:        true,
 				testsuites.CapSingleNodeVolume:    true,
-				//testsuites.CapTopology:            true,
+				testsuites.CapRWX:                 true,
+				testsuites.CapTopology:            false,
 			},
 		},
 	}
@@ -82,7 +84,8 @@ func (n *driver) PrepareTest(f *framework.Framework) (*testsuites.PerTestConfig,
 
 func (n *driver) GetDynamicProvisionStorageClass(config *testsuites.PerTestConfig, fsType string) *v12.StorageClass {
 	parameters := map[string]string{
-		"pool": "testPool",
+		"pool_name": "kube",
+		"rep_count": "1",
 	}
 	//if fsType != "" {
 	//	parameters["fsType"] = fsType
@@ -102,6 +105,6 @@ func (n *driver) GetSnapshotClass(config *testsuites.PerTestConfig) *unstructure
 	return testsuites.GetSnapshotClass(driverName, parameters, ns, "neonsan")
 }
 
-func (n *driver) GetClaimSize() string{
+func (n *driver) GetClaimSize() string {
 	return "5Gi"
 }
