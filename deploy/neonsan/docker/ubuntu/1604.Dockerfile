@@ -14,36 +14,19 @@
 # | limitations under the License.
 # +-------------------------------------------------------------------------
 
-.PHONY: all disk
+FROM golang:1.14.4-alpine as builder
+WORKDIR /qingstor-csi
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -mod=vendor  -ldflags "-s -w" -o  _output/neonsan-csi-driver ./cmd/neonsan
 
-IMAGE=csiplugin/csi-neonsan
-TAG=canary
-UBUNTU_VERSION=1604
-IMAGE_UBUNTU=csiplugin/csi-neonsan-ubuntu${UBUNTU_VERSION}
-TAG_UBUNTU=canary
-IMAGE_CENTOS=csiplugin/csi-neonsan-centos
-TAG_CENTOS=canary
-ROOT_PATH=$(pwd)
-PACKAGE_LIST=./cmd/... ./pkg/...
-
-container:
-	docker build -t ${IMAGE}:${TAG} -f deploy/neonsan/docker/Dockerfile  .
-
-container-ubuntu:
-	docker build -t ${IMAGE_UBUNTU}:${TAG_UBUNTU} -f deploy/neonsan/docker/ubuntu/${UBUNTU_VERSION}.Dockerfile  .
-
-container-centos:
-	docker build -t ${IMAGE_CENTOS}:${TAG_CENTOS} -f deploy/neonsan/docker/centos/Dockerfile  .
-
-mod:
-	go build ./...
-	go mod download
-	go mod tidy
-	go mod vendor
-
-test:
-	go test -cover -mod=vendor -gcflags=-l -count=1 ./pkg/...
-
-clean:
-	go clean -r -x ./...
-	rm -rf ./_output
+FROM ubuntu:16.04
+LABEL maintainers="Yunify"
+LABEL description="NeonSAN CSI plugin"
+# libcurl3 and libicu55 for qbd
+RUN apt-get update -y && \
+    apt-get install -y libcurl3 libicu55 && \
+    apt-get install -y e2fsprogs xfsprogs mount ca-certificates udev
+COPY --from=builder /qingstor-csi/_output/neonsan-csi-driver /neonsan-csi-driver
+RUN chmod +x /neonsan-csi-driver && \
+    mkdir -p /var/log/neonsan-csi-driver
+ENTRYPOINT ["/neonsan-csi-driver"]
