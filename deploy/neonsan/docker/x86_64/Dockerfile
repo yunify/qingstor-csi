@@ -18,15 +18,18 @@ FROM golang:1.14.4-alpine as builder
 WORKDIR /qingstor-csi
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -mod=vendor  -ldflags "-s -w" -o  _output/neonsan-csi-driver ./cmd/neonsan
+COPY deploy/neonsan/qbd/x86_64/pitrix-dep-qbd-util-*.deb  _output/
 
-FROM ubuntu:18.04
+FROM ubuntu:16.04
 LABEL maintainers="Yunify"
 LABEL description="NeonSAN CSI plugin"
-# libcurl4 and libicu60 for qbd
+# libcurl3 and libicu55 for qbd
 RUN apt-get update -y && \
-    apt-get install -y libcurl4 libicu60 && \
+    apt-get install -y libcurl3 libicu55 && \
     apt-get install -y e2fsprogs xfsprogs mount ca-certificates udev
 COPY --from=builder /qingstor-csi/_output/neonsan-csi-driver /neonsan-csi-driver
+COPY --from=builder /qingstor-csi/_output/pitrix-dep-qbd-util-*.deb /root/
+RUN dpkg -i /root/pitrix-dep-qbd-util-*.deb && rm -rf  /root/pitrix-dep-qbd-util-*.deb
 RUN chmod +x /neonsan-csi-driver && \
     mkdir -p /var/log/neonsan-csi-driver
 ENTRYPOINT ["/neonsan-csi-driver"]
