@@ -17,7 +17,7 @@
 .PHONY: all disk
 
 IMAGE=csiplugin/csi-neonsan
-TAG=v1.2.2
+TAG=v2.3.0
 ROOT_PATH=$(pwd)
 ARCH=$(shell arch)
 PACKAGE_LIST=./cmd/... ./pkg/...
