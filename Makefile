@@ -17,24 +17,14 @@
 .PHONY: all disk
 
 IMAGE=csiplugin/csi-neonsan
-TAG=canary
-UBUNTU_VERSION=1604
-IMAGE_UBUNTU=csiplugin/csi-neonsan-ubuntu${UBUNTU_VERSION}
-TAG_UBUNTU=canary
-IMAGE_CENTOS=csiplugin/csi-neonsan-centos
-TAG_CENTOS=canary
+TAG=v2.3.0
 ROOT_PATH=$(pwd)
+ARCH=$(shell arch)
 PACKAGE_LIST=./cmd/... ./pkg/...
 
 container:
-	docker build -t ${IMAGE}:${TAG} -f deploy/neonsan/docker/Dockerfile  .
-
-container-ubuntu:
-	docker build -t ${IMAGE_UBUNTU}:${TAG_UBUNTU} -f deploy/neonsan/docker/ubuntu/${UBUNTU_VERSION}.Dockerfile  .
-
-container-centos:
-	docker build -t ${IMAGE_CENTOS}:${TAG_CENTOS} -f deploy/neonsan/docker/centos/Dockerfile  .
-
+	docker build -t ${IMAGE}:${TAG} -f deploy/neonsan/docker/${ARCH}/Dockerfile  .
+    
 mod:
 	go build ./...
 	go mod download
