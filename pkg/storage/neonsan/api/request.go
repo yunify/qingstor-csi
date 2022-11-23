@@ -82,6 +82,7 @@ type ResizeVolumeRequest struct {
 	PoolName string `json:"pool_name"`
 	Name     string `json:"name"`
 	Size     int64  `json:"size"`
+	IsForce  bool   `json:"is_force"`
 }
 
 type ResizeVolumeResponse struct {

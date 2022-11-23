@@ -13,12 +13,13 @@
 # | See the License for the specific language governing permissions and
 # | limitations under the License.
 # +-------------------------------------------------------------------------
-
 FROM golang:1.14.4-alpine as builder
+ARG qbd_version
+ENV QBD_VERSION=${qbd_version}
 WORKDIR /qingstor-csi
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -mod=vendor  -ldflags "-s -w" -o  _output/neonsan-csi-driver ./cmd/neonsan
-COPY deploy/neonsan/qbd/x86_64/pitrix-dep-qbd-util-*.deb  _output/
+COPY deploy/neonsan/qbd/x86_64/${QBD_VERSION}/pitrix-dep-qbd-util-*.deb  _output/
 
 FROM ubuntu:16.04
 LABEL maintainers="Yunify"

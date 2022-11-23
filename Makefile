@@ -15,15 +15,16 @@
 # +-------------------------------------------------------------------------
 
 .PHONY: all disk
-
-IMAGE=csiplugin/csi-neonsan
-TAG=v2.3.0
-ROOT_PATH=$(pwd)
 ARCH=$(shell arch)
+QBD_VERSION="2.2.0"
+PLATFORM := $(if $(shell echo ${ARCH}|grep x86_64),"amd64","arm64")
+IMAGE=csiplugin/csi-neonsan-qbd${QBD_VERSION}-${PLATFORM}
+TAG=v1.2.3
+ROOT_PATH=$(pwd)
 PACKAGE_LIST=./cmd/... ./pkg/...
 
 container:
-	docker build -t ${IMAGE}:${TAG} -f deploy/neonsan/docker/${ARCH}/Dockerfile  .
+	docker build -t ${IMAGE}:${TAG} --build-arg qbd_version=${QBD_VERSION} -f deploy/neonsan/docker/${ARCH}/Dockerfile  .
     
 mod:
 	go build ./...

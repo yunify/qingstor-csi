@@ -20,16 +20,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/pelletier/go-toml"
-	"github.com/samuel/go-zookeeper/zk"
 	"io/ioutil"
-	"k8s.io/klog"
 	"net/http"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/pelletier/go-toml"
+	"github.com/samuel/go-zookeeper/zk"
+	"k8s.io/klog"
 )
 
 const (
@@ -115,6 +116,7 @@ func ResizeVolume(confFile, poolName, volumeName string, size int64) error {
 		PoolName: poolName,
 		Name:     volumeName,
 		Size:     size,
+		IsForce:  true,
 	}
 	response := &ResizeVolumeResponse{}
 	return httpGet(confFile, request, response)
@@ -245,6 +247,8 @@ func buildParameters(request interface{}) string {
 			parameter[t.Field(k).Tag.Get("json")] = strconv.Itoa(int(val))
 		case string:
 			parameter[t.Field(k).Tag.Get("json")] = val
+		case bool:
+			parameter[t.Field(k).Tag.Get("json")] = strconv.FormatBool(val)
 		case map[string]string:
 			for k1, v1 := range val {
 				parameter[k1] = v1
