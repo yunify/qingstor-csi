@@ -110,6 +110,18 @@ func DeleteVolume(confFile, poolName, volumeName string) error {
 	return httpGet(confFile, request, response)
 }
 
+func RenameVolume(confFile, poolName, volumeName, newName string) error {
+	request := RenameVolumeRequest{
+		Op:       "rename_volume",
+		PoolName: poolName,
+		Name:     volumeName,
+		NewName:  newName,
+		IsForce:  false,
+	}
+	response := &RenameVolumeResponse{}
+	return httpGet(confFile, request, response)
+}
+
 func ResizeVolume(confFile, poolName, volumeName string, size int64) error {
 	request := ResizeVolumeRequest{
 		Op:       "resize_volume",

@@ -18,14 +18,15 @@ package neonsan
 
 import (
 	"errors"
+	"strconv"
+	"time"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/yunify/qingstor-csi/pkg/common"
 	"github.com/yunify/qingstor-csi/pkg/storage/neonsan/api"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
-	"strconv"
-	"time"
 )
 
 var (
@@ -89,6 +90,9 @@ func (v *neonsan) FindVolume(volumeID string) (*csi.Volume, error) {
 
 func (v *neonsan) DeleteVolume(volumeID string) (err error) {
 	poolName, volumeName := SplitVolumeName(volumeID)
+	if v.volumeArchive {
+		return api.RenameVolume(v.confFile, poolName, volumeName, volumeName+"_archive_"+time.Now().Format("20060102150405")+"_.img")
+	}
 	return api.DeleteVolume(v.confFile, poolName, volumeName)
 }
 

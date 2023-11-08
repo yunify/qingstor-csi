@@ -91,6 +91,20 @@ type ResizeVolumeResponse struct {
 	Size int `json:"size"`
 }
 
+type RenameVolumeRequest struct {
+	Op       string `json:"op"`
+	PoolName string `json:"pool_name"`
+	Name     string `json:"name"`
+	NewName  string `json:"new_name"`
+	IsForce  bool   `json:"is_force"`
+}
+
+type RenameVolumeResponse struct {
+	ResponseHeader
+	VolumeId   uint64 `json:"id"`
+	VolumeName string `json:"name"`
+}
+
 type ListVolumeRequest struct {
 	Op       string `json:"op"`
 	PoolName string `json:"pool_name"`
