@@ -18,12 +18,13 @@ package main
 
 import (
 	"flag"
-	"github.com/yunify/qingstor-csi/pkg/service"
-	"github.com/yunify/qingstor-csi/pkg/storage/neonsan"
-	"k8s.io/klog"
 	"math/rand"
 	"os"
 	"time"
+
+	"github.com/yunify/qingstor-csi/pkg/service"
+	"github.com/yunify/qingstor-csi/pkg/storage/neonsan"
+	"k8s.io/klog"
 )
 
 //noinspection ALL
@@ -34,6 +35,7 @@ const (
 	defaultProtocol           = "tcp"
 	defaultPoolName           = "kube"
 	defaultInstanceIdFilePath = "/etc/qingcloud/instance-id"
+	defaultVolumeArchive      = false
 )
 
 //noinspection ALL
@@ -45,6 +47,7 @@ var (
 	protocol         = flag.String("protocol", defaultProtocol, "protocol of qbd")
 	maxVolume        = flag.Int64("maxvolume", 100, "Maximum number of volumes that controller can publish to the node.")
 	retryIntervalMax = flag.Duration("retry-interval-max", 2*time.Minute, "Maximum retry interval(s) of failed deletion.")
+	volumeArchive    = flag.Bool("volumearchive", defaultVolumeArchive, "Archive volume when delete volume.")
 )
 
 func main() {
@@ -67,7 +70,7 @@ func handle() {
 		}
 	}
 	// Get neonsan config
-	storageProvider := neonsan.New(*configPath, *protocol)
+	storageProvider := neonsan.New(*configPath, *protocol, *volumeArchive)
 
 	klog.Infof("Version: %s", version)
 

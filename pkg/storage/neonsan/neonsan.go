@@ -21,13 +21,15 @@ import (
 )
 
 type neonsan struct {
-	confFile string
-	protocol string
+	confFile      string
+	protocol      string
+	volumeArchive bool
 }
 
-func New(confFile, protocol string) storage.Provider {
+func New(confFile, protocol string, volumeArchive bool) storage.Provider {
 	return &neonsan{
-		confFile: confFile,
-		protocol: protocol,
+		confFile:      confFile,
+		protocol:      protocol,
+		volumeArchive: volumeArchive,
 	}
 }
