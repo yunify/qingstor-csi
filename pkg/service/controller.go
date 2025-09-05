@@ -40,6 +40,12 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 		return nil, status.Errorf(codes.OutOfRange, "unsupported capacity range, error: %s", err.Error())
 	}
 	klog.Infof("Get required creating volume size %d(%dGi)", requiredSizeByte, requiredSizeByte>>30)
+	// Check if requiredSizeByte is an integer multiple of 1GiB
+	const oneGiB = 1 << 30
+	if requiredSizeByte%oneGiB != 0 {
+		requiredSizeByte = ((requiredSizeByte / oneGiB) + 1) * oneGiB
+		klog.Infof("Rounding up volume size to %d bytes (%d GiB)", requiredSizeByte, requiredSizeByte>>30)
+	}
 	// check if volume exist for idempotent
 	existVolume, err := s.storageProvider.FindVolumeByName(volumeName, req.GetParameters())
 	if err != nil {
@@ -169,6 +175,12 @@ func (s *service) ControllerExpandVolume(ctx context.Context, req *csi.Controlle
 	requiredSizeBytes, err := GetRequiredVolumeSizeByte(req.GetCapacityRange())
 	if err != nil {
 		return nil, status.Errorf(codes.OutOfRange, err.Error())
+	}
+	// Check if requiredSizeByte is an integer multiple of 1GiB
+	const oneGiB = 1 << 30
+	if requiredSizeBytes%oneGiB != 0 {
+		requiredSizeBytes = ((requiredSizeBytes / oneGiB) + 1) * oneGiB
+		klog.Infof("Rounding up volume size to %d bytes (%d GiB)", requiredSizeBytes, requiredSizeBytes>>30)
 	}
 	// resize volume
 	err = s.storageProvider.ResizeVolume(volumeID, requiredSizeBytes)
