@@ -49,17 +49,17 @@ func (v *neonsan) CreateVolume(volumeName string, requestSize int64, parameters 
 	return JoinVolumeName(poolName, volumeName), nil
 }
 
-func (v *neonsan) CreateVolumeFromSnapshot(volumeName, snapshotID string, parameters map[string]string) (string, error) {
+func (v *neonsan) CreateVolumeFromSnapshot(volumeName, snapshotID string, requestSize int64, parameters map[string]string) (string, error) {
 	targetPoolName := GetPoolName(parameters)
 	sourcePoolName, sourceVolumeName, snapshotName := SplitSnapshotName(snapshotID)
-	err := v.cloneVolume(sourcePoolName, sourceVolumeName, snapshotName, targetPoolName, volumeName, parameters["link_clone"] != "false")
+	err := v.cloneVolume(sourcePoolName, sourceVolumeName, snapshotName, targetPoolName, volumeName, requestSize, parameters["link_clone"] != "false")
 	if err != nil {
 		return "", err
 	}
 	return JoinVolumeName(targetPoolName, volumeName), nil
 }
 
-func (v *neonsan) CreateVolumeByClone(volumeName, sourceVolumeID string, parameters map[string]string) (string, error) {
+func (v *neonsan) CreateVolumeByClone(volumeName, sourceVolumeID string, requestSize int64, parameters map[string]string) (string, error) {
 	targetPoolName := GetPoolName(parameters)
 	sourcePoolName, sourceVolumeName := SplitVolumeName(sourceVolumeID)
 
@@ -73,7 +73,7 @@ func (v *neonsan) CreateVolumeByClone(volumeName, sourceVolumeID string, paramet
 		}
 	}
 
-	err := v.cloneVolume(sourcePoolName, sourceVolumeName, snapshotName, targetPoolName, volumeName, linkClone)
+	err := v.cloneVolume(sourcePoolName, sourceVolumeName, snapshotName, targetPoolName, volumeName, requestSize, linkClone)
 	if err != nil {
 		return "", err
 	}
@@ -152,31 +152,35 @@ func (v *neonsan) DeleteSnapshot(snapshotID string) error {
 	return api.DeleteSnapshot(v.confFile, poolName, volumeName, snapshotName)
 }
 
-func (v *neonsan) cloneVolume(sourcePoolName, sourceVolumeName, snapshotName, targetPoolName, targetVolumeName string, linkClone bool) error {
+func (v *neonsan) cloneVolume(sourcePoolName, sourceVolumeName, snapshotName, targetPoolName, targetVolumeName string, requestSize int64, linkClone bool) error {
 	if linkClone {
-		return v.linkCloneVolume(sourcePoolName, sourceVolumeName, snapshotName, targetPoolName, targetVolumeName)
+		return v.linkCloneVolume(sourcePoolName, sourceVolumeName, snapshotName, targetPoolName, targetVolumeName, requestSize)
 	}
-	return v.fullCloneVolume(sourcePoolName, sourceVolumeName, snapshotName, targetPoolName, targetVolumeName)
+	return v.fullCloneVolume(sourcePoolName, sourceVolumeName, snapshotName, targetPoolName, targetVolumeName, requestSize)
 }
 
-func (v *neonsan) linkCloneVolume(sourcePoolName, sourceVolumeName, snapshotName, targetPoolName, targetVolumeName string) error {
+func (v *neonsan) linkCloneVolume(sourcePoolName, sourceVolumeName, snapshotName, targetPoolName, targetVolumeName string, requestSize int64) error {
 	if snapshotName == "" {
 		return errors.New("link clone require a snapshot")
 	}
-	err := api.CloneVolume(v.confFile, sourcePoolName, sourceVolumeName, snapshotName, targetVolumeName, targetPoolName, true)
+	err := api.CloneVolume(v.confFile, sourcePoolName, sourceVolumeName, snapshotName, targetVolumeName, targetPoolName, true, requestSize)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (v *neonsan) fullCloneVolume(sourcePoolName, sourceVolumeName, snapshotName, targetPoolName, targetVolumeName string) error {
+func (v *neonsan) fullCloneVolume(sourcePoolName, sourceVolumeName, snapshotName, targetPoolName, targetVolumeName string, requestSize int64) error {
 	volumeForClone, err := api.GetVolumeForClone(v.confFile, sourcePoolName, sourceVolumeName)
 	if err != nil {
 		return err
 	}
 	if volumeForClone == nil {
 		return errors.New("source volume not exist")
+	}
+	effectiveSize := requestSize
+	if int64(volumeForClone.Size) > effectiveSize {
+		effectiveSize = int64(volumeForClone.Size)
 	}
 	parameters := map[string]string{
 		"rep_count":  strconv.Itoa(volumeForClone.ReplicationCount),
@@ -186,11 +190,11 @@ func (v *neonsan) fullCloneVolume(sourcePoolName, sourceVolumeName, snapshotName
 		"encrypte":   volumeForClone.Encrypte,
 		"key_name":   volumeForClone.KeyName,
 	}
-	err = api.CreateVolume(v.confFile, targetVolumeName, int64(volumeForClone.Size), parameters)
+	err = api.CreateVolume(v.confFile, targetVolumeName, effectiveSize, parameters)
 	if err != nil {
 		return err
 	}
-	err = api.CloneVolume(v.confFile, sourcePoolName, sourceVolumeName, snapshotName, targetVolumeName, targetPoolName, false)
+	err = api.CloneVolume(v.confFile, sourcePoolName, sourceVolumeName, snapshotName, targetVolumeName, targetPoolName, false, effectiveSize)
 	if err != nil {
 		return err
 	}

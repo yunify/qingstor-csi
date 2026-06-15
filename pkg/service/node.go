@@ -51,8 +51,13 @@ func (s *service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeR
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	// already mount
 	if !notMnt {
+		// Already mounted -- still need to resize filesystem in case the block
+		// device was expanded (e.g. linked clone from snapshot with larger size,
+		// or a previous resize attempt failed).
+		if err := s.resizeFilesystem(devicePath, targetPath, volumeID); err != nil {
+			return nil, err
+		}
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
 
@@ -60,7 +65,21 @@ func (s *service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeR
 	if err := s.mounter.FormatAndMount(devicePath, targetPath, fsType, []string{}); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	// Resize filesystem in case the block device was expanded (e.g. cloned volume with larger requested size)
+	if err := s.resizeFilesystem(devicePath, targetPath, volumeID); err != nil {
+		return nil, err
+	}
 	return &csi.NodeStageVolumeResponse{}, nil
+}
+
+// resizeFilesystem resizes the filesystem on the given device to fill the block device.
+// This is idempotent: calling it on an already-resized filesystem is a no-op.
+func (s *service) resizeFilesystem(devicePath, targetPath, volumeID string) error {
+	resizeFs := resizefs.NewResizeFs(s.mounter)
+	if _, err := resizeFs.Resize(devicePath, targetPath); err != nil {
+		return status.Errorf(codes.Internal, "resize filesystem failed for volume %s: %v", volumeID, err)
+	}
+	return nil
 }
 
 // This operation MUST be idempotent

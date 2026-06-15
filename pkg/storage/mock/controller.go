@@ -35,7 +35,7 @@ func (p *mockStorageProvider) CreateVolume(volumeName string, requestSize int64,
 	return volumeName, nil
 }
 
-func (p *mockStorageProvider) CreateVolumeFromSnapshot(volumeName, snapshotID string, parameters map[string]string) (volumeID string, err error) {
+func (p *mockStorageProvider) CreateVolumeFromSnapshot(volumeName, snapshotID string, requestSize int64, parameters map[string]string) (volumeID string, err error) {
 	snapshot, _ := p.FindSnapshot(snapshotID)
 	if snapshot == nil {
 		return "", errors.New("snapshot not exist")
@@ -44,15 +44,23 @@ func (p *mockStorageProvider) CreateVolumeFromSnapshot(volumeName, snapshotID st
 	if sourceVolume == nil {
 		return "", errors.New("source volume not exist")
 	}
-	return p.CreateVolume(volumeName, sourceVolume.CapacityBytes, nil)
+	effectiveSize := requestSize
+	if sourceVolume.CapacityBytes > effectiveSize {
+		effectiveSize = sourceVolume.CapacityBytes
+	}
+	return p.CreateVolume(volumeName, effectiveSize, nil)
 }
 
-func (p *mockStorageProvider) CreateVolumeByClone(volumeName, sourceVolumeID string, parameters map[string]string) (volumeID string, err error) {
+func (p *mockStorageProvider) CreateVolumeByClone(volumeName, sourceVolumeID string, requestSize int64, parameters map[string]string) (volumeID string, err error) {
 	srcVol, _ := p.FindVolume(sourceVolumeID)
 	if srcVol == nil {
 		return "", errors.New("source volume not exist")
 	}
-	return p.CreateVolume(volumeName, srcVol.CapacityBytes, nil)
+	effectiveSize := requestSize
+	if srcVol.CapacityBytes > effectiveSize {
+		effectiveSize = srcVol.CapacityBytes
+	}
+	return p.CreateVolume(volumeName, effectiveSize, nil)
 }
 
 func (p *mockStorageProvider) FindVolumeByName(volumeName string, parameters map[string]string) (*csi.Volume, error) {

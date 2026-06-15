@@ -22,8 +22,8 @@ import (
 
 type ControllerOperator interface {
 	CreateVolume(volumeName string, requestSize int64, parameters map[string]string) (volumeID string, err error)
-	CreateVolumeFromSnapshot(volumeName, snapshotID string, parameters map[string]string) (volumeID string, err error)
-	CreateVolumeByClone(volumeName, sourceVolumeID string, parameters map[string]string) (volumeID string, err error)
+	CreateVolumeFromSnapshot(volumeName, snapshotID string, requestSize int64, parameters map[string]string) (volumeID string, err error)
+	CreateVolumeByClone(volumeName, sourceVolumeID string, requestSize int64, parameters map[string]string) (volumeID string, err error)
 	FindVolumeByName(volumeName string, parameters map[string]string)(*csi.Volume, error)
 
 	FindVolume(volumeID string) (*csi.Volume, error)

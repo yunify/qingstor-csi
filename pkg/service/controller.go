@@ -82,7 +82,7 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 			if snapshot == nil {
 				return nil, status.Errorf(codes.NotFound, "Requested source snapshot %s not found", snapshotID)
 			}
-			createVolumeID, createError = s.storageProvider.CreateVolumeFromSnapshot(volumeName, snapshotID, req.GetParameters())
+			createVolumeID, createError = s.storageProvider.CreateVolumeFromSnapshot(volumeName, snapshotID, requiredSizeByte, req.GetParameters())
 		case *csi.VolumeContentSource_Volume:
 			// create from clone
 			sourceVolumeId := req.GetVolumeContentSource().GetVolume().GetVolumeId()
@@ -94,7 +94,7 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 			if sourceVolume == nil {
 				return nil, status.Errorf(codes.NotFound, "cannot find content source volume id [%s]", sourceVolumeId)
 			}
-			createVolumeID, createError = s.storageProvider.CreateVolumeByClone(volumeName, sourceVolumeId, req.GetParameters())
+			createVolumeID, createError = s.storageProvider.CreateVolumeByClone(volumeName, sourceVolumeId, requiredSizeByte, req.GetParameters())
 		}
 	}
 	if createError != nil {

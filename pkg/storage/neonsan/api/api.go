@@ -148,7 +148,7 @@ func GetVolumeForClone(confFile, poolName, volumeName string) (*VolumeForClone, 
 	return &response.VolumeInfo, nil
 }
 
-func CloneVolume(confFile, sourcePoolName, sourceVolumeName, snapshotName, targetVolumeName, targetPoolName string, linkClone bool) error {
+func CloneVolume(confFile, sourcePoolName, sourceVolumeName, snapshotName, targetVolumeName, targetPoolName string, linkClone bool, size int64) error {
 	request := CloneVolumeRequest{
 		Op:           "clone_volume",
 		SourcePool:   sourcePoolName,
@@ -156,6 +156,7 @@ func CloneVolume(confFile, sourcePoolName, sourceVolumeName, snapshotName, targe
 		SnapshotName: snapshotName,
 		TargetPool:   targetPoolName,
 		TargetVol:    targetVolumeName,
+		Size:         size,
 		LinkClone:    linkClone,
 	}
 	response := &CloneVolumeResponse{}
