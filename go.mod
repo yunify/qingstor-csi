@@ -16,14 +16,14 @@ require (
 	github.com/prometheus/client_golang v1.1.0 // indirect
 	github.com/samuel/go-zookeeper v0.0.0-20190923202752-2cc03de413da
 	github.com/smartystreets/goconvey v1.6.4
-	golang.org/x/net v0.0.0-20191112182307-2180aed22343
+	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
 	google.golang.org/appengine v1.6.1 // indirect
 	google.golang.org/grpc v1.26.0
 	k8s.io/api v0.18.6
 	k8s.io/apimachinery v0.18.6
 	k8s.io/client-go v0.18.6
 	k8s.io/klog v1.0.0
-	k8s.io/kubernetes v1.18.6
+	k8s.io/kubernetes v1.18.19
 	k8s.io/utils v0.0.0-20200324210504-a9aa75ae1b89
 )
 
