@@ -14,6 +14,12 @@
 # | limitations under the License.
 # +-------------------------------------------------------------------------
 
+# WARNING: this example shares one Block volume (ReadWriteMany) between two
+# Deployments. NeonSAN accepts the device being opened by several nodes and the
+# CSI driver adds no lock and no fencing, so concurrent writers silently corrupt
+# the volume. Only use it with an application which coordinates the access
+# itself, never to share a filesystem. Use ReadWriteOnce for other workloads.
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:

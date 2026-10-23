@@ -28,6 +28,7 @@ import (
 	"github.com/yunify/qingstor-csi/pkg/storage/neonsan/api"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
+	"k8s.io/klog"
 )
 
 var (
@@ -37,6 +38,10 @@ var (
 		Steps:    20,
 		Cap:      time.Minute * 10,
 	}
+)
+
+const (
+	cloneStatusSynced = "SYNCED"
 )
 
 func (v *neonsan) CreateVolume(volumeName string, requestSize int64, parameters map[string]string) (string, error) {
@@ -52,7 +57,9 @@ func (v *neonsan) CreateVolume(volumeName string, requestSize int64, parameters 
 func (v *neonsan) CreateVolumeFromSnapshot(volumeName, snapshotID string, requestSize int64, parameters map[string]string) (string, error) {
 	targetPoolName := GetPoolName(parameters)
 	sourcePoolName, sourceVolumeName, snapshotName := SplitSnapshotName(snapshotID)
-	err := v.cloneVolume(sourcePoolName, sourceVolumeName, snapshotName, targetPoolName, volumeName, requestSize, parameters["link_clone"] != "false")
+	// Link clone keeps a data dependency on the source snapshot/volume, only do
+	// it when the storage class asks for it explicitly. Default is a full clone.
+	err := v.cloneVolume(sourcePoolName, sourceVolumeName, snapshotName, targetPoolName, volumeName, requestSize, parameters["link_clone"] == "true")
 	if err != nil {
 		return "", err
 	}
@@ -134,7 +141,7 @@ func (v *neonsan) FindSnapshot(snapshotID string) (*csi.Snapshot, error) {
 	csiSnapshot := &csi.Snapshot{
 		SizeBytes:      snapshot.SnapshotSize,
 		SnapshotId:     JoinSnapshotName(poolName, volumeName, snapshot.SnapshotName),
-		SourceVolumeId: volumeName,
+		SourceVolumeId: JoinVolumeName(poolName, volumeName),
 		CreationTime:   creationTime,
 		ReadyToUse:     snapshot.Status == "OK",
 	}
@@ -194,7 +201,22 @@ func (v *neonsan) fullCloneVolume(sourcePoolName, sourceVolumeName, snapshotName
 	if err != nil {
 		return err
 	}
-	err = api.CloneVolume(v.confFile, sourcePoolName, sourceVolumeName, snapshotName, targetVolumeName, targetPoolName, false, effectiveSize)
+
+	if err = v.syncFullClone(sourcePoolName, sourceVolumeName, snapshotName, targetPoolName, targetVolumeName, effectiveSize); err != nil {
+		// Leave no half created volume behind, otherwise a retry of the same PVC
+		// fails forever or binds to a partially cloned volume.
+		if delErr := api.DeleteVolume(v.confFile, targetPoolName, targetVolumeName); delErr != nil {
+			klog.Errorf("rollback full clone: delete target volume %s/%s failed: %v", targetPoolName, targetVolumeName, delErr)
+		}
+		return err
+	}
+	return nil
+}
+
+// syncFullClone copies the source data into the already created target volume
+// and waits until the copy is done and the clone relation is detached.
+func (v *neonsan) syncFullClone(sourcePoolName, sourceVolumeName, snapshotName, targetPoolName, targetVolumeName string, size int64) error {
+	err := api.CloneVolume(v.confFile, sourcePoolName, sourceVolumeName, snapshotName, targetVolumeName, targetPoolName, false, size)
 	if err != nil {
 		return err
 	}
@@ -204,7 +226,7 @@ func (v *neonsan) fullCloneVolume(sourcePoolName, sourceVolumeName, snapshotName
 		if listCloneErr != nil {
 			return listCloneErr
 		}
-		if cloneInfo.Status != "SYNCED" {
+		if cloneInfo.Status != cloneStatusSynced {
 			return errors.New("clone not synced")
 		}
 		return nil

@@ -40,9 +40,16 @@ type NodeOperator interface {
 	NodeAttachVolume(volumeID string) error
 	NodeDetachVolume(volumeID string) error
 	NodeGetDevice(volumeID string) (device string, err error)
+	// NodeCheckVolumeExclusive returns an error when the volume is opened by a
+	// client on another node, so that a ReadWriteOnce volume can never be
+	// attached by two nodes at the same time.
+	NodeCheckVolumeExclusive(volumeID string) error
 }
 
 type Provider interface {
 	ControllerOperator
 	NodeOperator
+	// HealthCheck reports whether the driver backend (qbd and at least one
+	// center) is usable. It is called by Probe.
+	HealthCheck() error
 }

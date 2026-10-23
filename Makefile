@@ -19,7 +19,7 @@ ARCH=$(shell arch)
 QBD_VERSION="2.4.3"
 PLATFORM := $(if $(shell echo ${ARCH}|grep x86_64),"amd64","arm64")
 IMAGE=csiplugin/csi-neonsan-qbd${QBD_VERSION}-${PLATFORM}
-TAG=v1.2.5
+TAG=v1.2.6
 ROOT_PATH=$(pwd)
 PACKAGE_LIST=./cmd/... ./pkg/...
 
