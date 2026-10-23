@@ -16,7 +16,13 @@ limitations under the License.
 
 package neonsan
 
-import "github.com/yunify/qingstor-csi/pkg/storage/neonsan/qbd"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/yunify/qingstor-csi/pkg/storage/neonsan/api"
+	"github.com/yunify/qingstor-csi/pkg/storage/neonsan/qbd"
+)
 
 func (v *neonsan) NodeAttachVolume(volumeID string) error {
 	poolName, volumeName := SplitVolumeName(volumeID)
@@ -35,4 +41,35 @@ func (v *neonsan) NodeIsVolumeAttached(volumeID string) (bool, error) {
 func (v *neonsan) NodeGetDevice(volumeID string) (string, error) {
 	poolName, volumeName := SplitVolumeName(volumeID)
 	return qbd.GetDevice(v.confFile, poolName, volumeName)
+}
+
+// NodeCheckVolumeExclusive ensures the volume is not opened by any client.
+// NeonSAN itself allows one volume to be opened by several clients, so without
+// this check a ReadWriteOnce volume could be attached by two nodes at the same
+// time and both sides would write to the same data. An already attached volume
+// (including the one attached by this node) is treated as busy: qbd refuses to
+// open it twice anyway, so the caller returns the error to the CO.
+func (v *neonsan) NodeCheckVolumeExclusive(volumeID string) error {
+	poolName, volumeName := SplitVolumeName(volumeID)
+	if poolName == "" || volumeName == "" {
+		return fmt.Errorf("invalid volume id [%s]", volumeID)
+	}
+	connections, err := api.ListVolumeConns(v.confFile, poolName, volumeName)
+	if err != nil {
+		return fmt.Errorf("list connections of volume %s failed: %v", volumeID, err)
+	}
+	if len(connections) == 0 {
+		return nil
+	}
+	clients := make([]string, 0, len(connections))
+	seen := make(map[string]bool, len(connections))
+	for _, connection := range connections {
+		if connection.RemoteAddr == "" || seen[connection.RemoteAddr] {
+			continue
+		}
+		seen[connection.RemoteAddr] = true
+		clients = append(clients, connection.RemoteAddr)
+	}
+	return fmt.Errorf("volume %s is already opened by %s, refuse to attach it again",
+		volumeID, strings.Join(clients, ","))
 }

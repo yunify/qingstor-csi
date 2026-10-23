@@ -103,10 +103,18 @@ Error from server (NotFound): persistentvolumeclaims "pvc-example" not found
 ```
 
 ## Volume Expansion 
-This plugin only supports offline volume expansion. The procedure of offline volume expansion is shown as follows. 
-1. Ensure volume in unmounted status
-2. Edit the capacity of PVC
-3. Mount volume on workload
+This plugin supports online volume expansion, the workload does not need to be
+stopped:
+1. Edit the capacity of the PVC
+2. The driver expands the NeonSAN volume, then refreshes the device size and
+   resizes the filesystem on the node where the volume is staged
+3. For `Block` volumes only the device size changes (`NodeExpansionRequired` is
+   false), the application has to re-read the device size itself
+
+> Note: an application which keeps the old `df` output cached (or keeps an open
+> file handle on a `Block` device) has to re-read the size, but no Pod restart
+> and no unmount is required.
+
 Please reference [volume example](/deploy/neonsan/example/volume).
 
 ### Prerequisite
@@ -115,20 +123,11 @@ Please reference [volume example](/deploy/neonsan/example/volume).
 - Set `allowVolumeExpansion` as `true` in StorageClass
 - Create a Pod mounting a volume
 
-### Unmount Volume 
-```console
-$ kubectl scale deploy nginx --replicas=0
-```
-
 ### Expand Volume
 - Change Volume capacity 
 ```console
 $ kubectl patch pvc pvc-test -p '{"spec":{"resources":{"requests":{"storage": "40Gi"}}}}'
 persistentvolumeclaim/pvc-test patched
-```
-- Mount Volume 
-```console
-$ kubectl scale deploy nginx --replicas=1
 ```
 - Check PVC Capacity 
 ```console
@@ -249,6 +248,15 @@ volumesnapshot.snapshot.storage.k8s.io "snap-1" deleted
 ## RWM Block Volume
 Volume [Access Mode](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes) `ReadWriteMany` is only available
 [VolumeMode](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#volume-mode) `Block` on NeonSAN-CSI. 
+
+> **Warning:** `ReadWriteMany` + `Block` exports one raw device to several nodes.
+> The driver does not add any lock or fencing on top of it and NeonSAN accepts the
+> same volume being opened by several clients, so concurrent writes from different
+> nodes (or a partitioned node which keeps writing) corrupt the data silently.
+> Use this mode only when the application coordinates the access itself (cluster
+> filesystem, its own fencing, single writer election) and never as a way to share
+> a filesystem between Pods. Use `ReadWriteOnce` for everything else.
+
 Following are examples for `Block RWM` PVC. Please reference [volume examples](/deploy/neonsan/example/volume).
 
 ### Create PVC

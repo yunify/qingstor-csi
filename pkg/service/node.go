@@ -35,6 +35,18 @@ func (s *service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeR
 	volumeID, targetPath := req.GetVolumeId(), req.GetStagingTargetPath()
 	fsType := req.VolumeCapability.GetMount().GetFsType()
 
+	// A ReadWriteOnce volume must be attached by one node only. NeonSAN accepts
+	// the same volume being opened by several clients, so an already opened
+	// volume is refused here instead of being attached a second time.
+	exclusive := req.GetVolumeCapability().GetAccessMode().GetMode() != csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER
+	if exclusive {
+		if err := s.storageProvider.NodeCheckVolumeExclusive(volumeID); err != nil {
+			klog.Errorf("Refuse to stage volume %s on node %s: %v", volumeID, s.option.NodeId, err)
+			return nil, status.Errorf(codes.FailedPrecondition,
+				"volume %s is already in use: %v", volumeID, err)
+		}
+	}
+
 	// idempotent attach volume, qbd -m neonsan volume
 	devicePath, err := s.nodeAttachVolume(volumeID)
 	if err != nil {
