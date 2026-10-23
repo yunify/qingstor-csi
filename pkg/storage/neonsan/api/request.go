@@ -117,6 +117,32 @@ type ListVolumeResponse struct {
 	Volumes []Volume `json:"volumes"`
 }
 
+type ListVolumeConnsRequest struct {
+	Op       string `json:"op"`
+	PoolName string `json:"pool_name"`
+	Name     string `json:"name"`
+}
+
+// VolumeConnInfo is a single client connection opened against a volume
+type VolumeConnInfo struct {
+	RemoteAddr string `json:"remote_addr"`
+	Transport  string `json:"transport"`
+	SnapSeq    string `json:"snap_seq"`
+}
+
+type ListVolumeConnsResponse struct {
+	ResponseHeader
+	VolumeName  string           `json:"volume_name"`
+	Connections []VolumeConnInfo `json:"connections"`
+}
+
+// GetActiveCenterResponse is the reply of op=get_active_center, IP is the
+// qfc ip of the current leader center
+type GetActiveCenterResponse struct {
+	ResponseHeader
+	IP string `json:"ip"`
+}
+
 type GetVolumeForCloneRequest struct {
 	Op       string `json:"op"`
 	Name     string `json:"name"`

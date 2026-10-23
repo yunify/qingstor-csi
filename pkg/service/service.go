@@ -17,6 +17,9 @@ limitations under the License.
 package service
 
 import (
+	"sync"
+	"time"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/yunify/qingstor-csi/pkg/common"
 	"github.com/yunify/qingstor-csi/pkg/storage"
@@ -24,7 +27,6 @@ import (
 	"k8s.io/utils/exec"
 	"k8s.io/utils/mount"
 )
-
 
 type Service interface {
 	csi.ControllerServer
@@ -38,6 +40,11 @@ type service struct {
 	storageProvider storage.Provider
 	mounter         *mount.SafeFormatAndMount
 	locks           *common.ResourceLocks
+
+	probeMu       sync.Mutex
+	probeReady    bool
+	probeChecked  time.Time
+	probeFailures int
 }
 
 func New(option *Option, cloud storage.Provider) Service {

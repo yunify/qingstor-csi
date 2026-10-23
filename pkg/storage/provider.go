@@ -17,8 +17,25 @@ limitations under the License.
 package storage
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
 )
+
+// VolumeInUseError reports that a volume is opened by a client of another node
+// and must not be attached here. The CSI service maps it to
+// codes.FailedPrecondition, every other NodeCheckVolumeExclusive error is an
+// infrastructure failure and is mapped to codes.Internal.
+type VolumeInUseError struct {
+	VolumeID string
+	Clients  []string
+}
+
+func (e *VolumeInUseError) Error() string {
+	return fmt.Sprintf("volume %s is already opened by %s, refuse to attach it again",
+		e.VolumeID, strings.Join(e.Clients, ","))
+}
 
 type ControllerOperator interface {
 	CreateVolume(volumeName string, requestSize int64, parameters map[string]string) (volumeID string, err error)
@@ -40,9 +57,16 @@ type NodeOperator interface {
 	NodeAttachVolume(volumeID string) error
 	NodeDetachVolume(volumeID string) error
 	NodeGetDevice(volumeID string) (device string, err error)
+	// NodeCheckVolumeExclusive returns an error when the volume is opened by a
+	// client on another node, so that a ReadWriteOnce volume can never be
+	// attached by two nodes at the same time.
+	NodeCheckVolumeExclusive(volumeID string) error
 }
 
 type Provider interface {
 	ControllerOperator
 	NodeOperator
+	// HealthCheck reports whether the driver backend (qbd and at least one
+	// center) is usable. It is called by Probe.
+	HealthCheck() error
 }

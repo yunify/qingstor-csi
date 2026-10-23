@@ -14,6 +14,10 @@
 # | limitations under the License.
 # +-------------------------------------------------------------------------
 
+# WARNING: ReadWriteMany + Block exports one raw device to several nodes without
+# any lock or fencing from the CSI driver, concurrent writers corrupt it.
+# Prefer ReadWriteOnce unless the application coordinates the access itself.
+
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

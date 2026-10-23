@@ -17,15 +17,56 @@ limitations under the License.
 package service
 
 import (
+	"time"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"golang.org/x/net/context"
 	"k8s.io/klog"
 )
 
+const (
+	// probeCacheTTL keeps Probe cheap: kubelet and the sidecars call it
+	// periodically, each call would otherwise hit zookeeper and the center.
+	probeCacheTTL = 10 * time.Second
+	// probeFailureThreshold avoids flipping the driver to not ready on a single
+	// transient failure of the center or of the local qbd daemon.
+	probeFailureThreshold = 2
+)
+
 // Plugin MUST implement this RPC call
 func (s *service) Probe(ctx context.Context, req *csi.ProbeRequest) (*csi.ProbeResponse, error) {
-	klog.V(5).Infof("Probe")
-	return &csi.ProbeResponse{}, nil
+	ready := s.isReady()
+	klog.V(5).Infof("Probe ready:%t", ready)
+	return &csi.ProbeResponse{Ready: &wrappers.BoolValue{Value: ready}}, nil
+}
+
+// isReady checks qbd and at least one center, with a short result cache.
+func (s *service) isReady() bool {
+	s.probeMu.Lock()
+	defer s.probeMu.Unlock()
+	if !s.probeChecked.IsZero() && time.Since(s.probeChecked) < probeCacheTTL {
+		return s.probeReady
+	}
+	s.probeChecked = time.Now()
+	err := s.storageProvider.HealthCheck()
+	if err != nil {
+		s.probeFailures++
+		klog.V(4).Infof("Probe health check failed (%d/%d): %v", s.probeFailures, probeFailureThreshold, err)
+		if s.probeFailures >= probeFailureThreshold {
+			if s.probeReady {
+				klog.Errorf("Driver is not ready: %v", err)
+			}
+			s.probeReady = false
+		}
+		return s.probeReady
+	}
+	s.probeFailures = 0
+	if !s.probeReady {
+		klog.Infof("Driver is ready again")
+	}
+	s.probeReady = true
+	return true
 }
 
 // Get plugin capabilities: CONTROLLER, ACCESSIBILITY, EXPANSION
