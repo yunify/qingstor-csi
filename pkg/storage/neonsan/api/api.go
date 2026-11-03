@@ -35,6 +35,8 @@ import (
 
 const (
 	RetCodeOK = 0
+
+	defaultApiHostTimeout = time.Second * 10
 )
 
 type Volume struct {
@@ -108,6 +110,63 @@ func DeleteVolume(confFile, poolName, volumeName string) error {
 	}
 	response := &DeleteVolumeResponse{}
 	return httpGet(confFile, request, response)
+}
+
+// ListVolumeConns lists the clients which have the volume opened. The
+// returned remote addresses belong to the hosts running the qbd daemons.
+func ListVolumeConns(confFile, poolName, volumeName string) ([]VolumeConnInfo, error) {
+	if len(poolName) == 0 || len(volumeName) == 0 {
+		return nil, nil
+	}
+	request := ListVolumeConnsRequest{
+		Op:       "list_volume_conns",
+		PoolName: poolName,
+		Name:     volumeName,
+	}
+	response := &ListVolumeConnsResponse{}
+	err := httpGet(confFile, request, response)
+	if err != nil {
+		return nil, err
+	}
+	return response.Connections, nil
+}
+
+// GetActiveCenter returns the qfc ip of the current leader center. It is used
+// as the center liveness check of the CSI Probe call.
+func GetActiveCenter(confFile string, timeout time.Duration) (string, error) {
+	apiHost, err := getApiHostWithTimeout(confFile, timeout)
+	if err != nil {
+		return "", err
+	}
+	client := &http.Client{Timeout: timeout}
+	url := "http://" + apiHost + ":2600/control?op=get_active_center"
+	ret, err := client.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		if ret != nil && ret.Body != nil {
+			_ = ret.Body.Close()
+		}
+	}()
+	if ret.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("NeonsanAPI http code:%d", ret.StatusCode)
+	}
+	body, err := ioutil.ReadAll(ret.Body)
+	if err != nil {
+		return "", err
+	}
+	response := &GetActiveCenterResponse{}
+	if err = json.Unmarshal(body, response); err != nil {
+		return "", err
+	}
+	if response.RetCode != RetCodeOK {
+		return "", fmt.Errorf("get active center failed: %s", response.Reason)
+	}
+	if response.IP == "" {
+		return "", errors.New("get active center failed: empty ip")
+	}
+	return response.IP, nil
 }
 
 func RenameVolume(confFile, poolName, volumeName, newName string) error {
@@ -315,6 +374,12 @@ func httpGet(confFile string, request interface{}, response Response) error {
 }
 
 func getApiHost(confFile string) (string, error) {
+	return getApiHostWithTimeout(confFile, defaultApiHostTimeout)
+}
+
+// getApiHostWithTimeout resolves the center address from zookeeper, bounding
+// the whole discovery (connect + lookup) by timeout.
+func getApiHostWithTimeout(confFile string, timeout time.Duration) (string, error) {
 	config, err := toml.LoadFile(confFile)
 	if err != nil {
 		return "", err
@@ -324,11 +389,18 @@ func getApiHost(confFile string) (string, error) {
 		return "", errors.New("no zookeeper.ip in config file")
 	}
 	zkIp := zkIp_.(string)
-	c, _, err := zk.Connect(strings.Split(zkIp, ","), time.Second, zk.WithLogInfo(false))
+	sessionTimeout := timeout
+	if sessionTimeout < time.Second {
+		sessionTimeout = time.Second
+	}
+	c, events, err := zk.Connect(strings.Split(zkIp, ","), sessionTimeout, zk.WithLogInfo(false))
 	if err != nil {
 		return "", err
 	}
 	defer c.Close()
+	if err = waitForZKConnection(events, timeout); err != nil {
+		return "", err
+	}
 
 	clusterName_ := config.Get("zookeeper.cluster_name")
 	if clusterName_ == nil {
@@ -355,4 +427,27 @@ func getApiHost(confFile string) (string, error) {
 		return "", err
 	}
 	return string(ip), nil
+}
+
+// waitForZKConnection waits until the zookeeper client has established a
+// session.
+func waitForZKConnection(events <-chan zk.Event, timeout time.Duration) error {
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	for {
+		select {
+		case event, ok := <-events:
+			if !ok {
+				return errors.New("zookeeper connection closed")
+			}
+			switch event.State {
+			case zk.StateHasSession:
+				return nil
+			case zk.StateAuthFailed:
+				return errors.New("zookeeper auth failed")
+			}
+		case <-timer.C:
+			return errors.New("connect zookeeper timeout")
+		}
+	}
 }

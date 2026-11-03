@@ -17,8 +17,14 @@ limitations under the License.
 package neonsan
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/yunify/qingstor-csi/pkg/storage"
+	"github.com/yunify/qingstor-csi/pkg/storage/neonsan/api"
 )
+
+const healthCheckTimeout = time.Second * 3
 
 type neonsan struct {
 	confFile      string
@@ -32,4 +38,14 @@ func New(confFile, protocol string, volumeArchive bool) storage.Provider {
 		protocol:      protocol,
 		volumeArchive: volumeArchive,
 	}
+}
+
+// HealthCheck reports the driver as ready when at least one center is
+// reachable. qbd is not part of the check: the controller plugin does not use
+// it and a node side qbd failure surfaces on the volume operations itself.
+func (v *neonsan) HealthCheck() error {
+	if _, err := api.GetActiveCenter(v.confFile, healthCheckTimeout); err != nil {
+		return fmt.Errorf("no reachable neonsan center: %v", err)
+	}
+	return nil
 }

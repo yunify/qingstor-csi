@@ -57,3 +57,17 @@ func (p *mockStorageProvider) NodeGetDevice(volumeID string) (string, error) {
 	}
 	return "", errors.New("volume not found")
 }
+
+// NodeCheckVolumeExclusive always reports the volume as exclusively usable,
+// the mock has no notion of other nodes.
+func (p *mockStorageProvider) NodeCheckVolumeExclusive(volumeID string) error {
+	if _, ok := p.volumes[volumeID]; !ok {
+		return errors.New("volume not found")
+	}
+	return nil
+}
+
+// HealthCheck always reports the mock backend as healthy.
+func (p *mockStorageProvider) HealthCheck() error {
+	return nil
+}

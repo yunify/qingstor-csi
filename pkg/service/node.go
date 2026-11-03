@@ -17,7 +17,10 @@ limitations under the License.
 package service
 
 import (
+	"errors"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/yunify/qingstor-csi/pkg/storage"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -34,6 +37,30 @@ import (
 func (s *service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	volumeID, targetPath := req.GetVolumeId(), req.GetStagingTargetPath()
 	fsType := req.VolumeCapability.GetMount().GetFsType()
+
+	// A ReadWriteOnce volume must be attached by one node only. NeonSAN accepts
+	// the same volume being opened by several clients, so a volume opened by
+	// another node is refused here instead of being attached a second time.
+	// The volume this node has already attached is reused by nodeAttachVolume
+	// below, so that a retried NodeStageVolume (kubelet retry, driver restart)
+	// stays idempotent.
+	exclusive := req.GetVolumeCapability().GetAccessMode().GetMode() != csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER
+	if exclusive {
+		// The error of NodeGetDevice is ignored on purpose: an unusable qbd is
+		// reported by the attach below, and the mock provider reports any
+		// unattached volume here.
+		if devicePath, _ := s.storageProvider.NodeGetDevice(volumeID); len(devicePath) == 0 {
+			if err := s.storageProvider.NodeCheckVolumeExclusive(volumeID); err != nil {
+				var inUse *storage.VolumeInUseError
+				if errors.As(err, &inUse) {
+					klog.Errorf("Refuse to stage volume %s on node %s: %v", volumeID, s.option.NodeId, err)
+					return nil, status.Error(codes.FailedPrecondition, err.Error())
+				}
+				klog.Errorf("Failed to check the connections of volume %s on node %s: %v", volumeID, s.option.NodeId, err)
+				return nil, status.Error(codes.Internal, err.Error())
+			}
+		}
+	}
 
 	// idempotent attach volume, qbd -m neonsan volume
 	devicePath, err := s.nodeAttachVolume(volumeID)
