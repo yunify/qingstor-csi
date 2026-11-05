@@ -44,12 +44,15 @@ func (s *service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeR
 	// The volume this node has already attached is reused by nodeAttachVolume
 	// below, so that a retried NodeStageVolume (kubelet retry, driver restart)
 	// stays idempotent.
+	var devicePath string
 	exclusive := req.GetVolumeCapability().GetAccessMode().GetMode() != csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER
 	if exclusive {
 		// The error of NodeGetDevice is ignored on purpose: an unusable qbd is
 		// reported by the attach below, and the mock provider reports any
-		// unattached volume here.
-		if devicePath, _ := s.storageProvider.NodeGetDevice(volumeID); len(devicePath) == 0 {
+		// unattached volume here. The device is kept so the attach below does
+		// not have to list all attached volumes of this node again.
+		devicePath, _ = s.storageProvider.NodeGetDevice(volumeID)
+		if len(devicePath) == 0 {
 			if err := s.storageProvider.NodeCheckVolumeExclusive(volumeID); err != nil {
 				var inUse *storage.VolumeInUseError
 				if errors.As(err, &inUse) {
@@ -63,7 +66,7 @@ func (s *service) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeR
 	}
 
 	// idempotent attach volume, qbd -m neonsan volume
-	devicePath, err := s.nodeAttachVolume(volumeID)
+	devicePath, err := s.nodeAttachVolume(volumeID, devicePath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -294,21 +297,23 @@ func (s *service) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolume
 
 // nodeAttachVolume
 // idempotent attach volume
-func (s *service) nodeAttachVolume(volumeID string) (string, error) {
-	// for idempotent, if device not empty, volume has already attached
-	devicePath, err := s.storageProvider.NodeGetDevice(volumeID)
-	if err != nil {
-		return "", err
-	}
+func (s *service) nodeAttachVolume(volumeID, knownDevice string) (string, error) {
+	devicePath := knownDevice
 	if len(devicePath) == 0 {
-		// Attach if need
-		err = s.storageProvider.NodeAttachVolume(volumeID)
+		// for idempotent, if device not empty, volume has already attached.
+		// The device is looked up again right before attaching so a volume
+		// attached by someone else in the meantime is still reused.
+		var err error
+		devicePath, err = s.storageProvider.NodeGetDevice(volumeID)
 		if err != nil {
 			return "", err
 		}
-		return s.storageProvider.NodeGetDevice(volumeID)
 	}
-	return devicePath, err
+	if len(devicePath) != 0 {
+		return devicePath, nil
+	}
+	// Attach if need, the provider returns the device it already resolved.
+	return s.storageProvider.NodeAttachVolume(volumeID, "")
 }
 
 // nodeDetachVolume

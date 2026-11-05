@@ -54,7 +54,7 @@ func TestHttpGet(t *testing.T) {
 	guardGetApiUrlOK := monkey.Patch(getApiHost, func(string) (string, error) { return "neonsan-api.com", nil })
 	defer guardGetApiUrlOK.Unpatch()
 
-	guardHttpGetFail := monkey.Patch(http.Get, func(string) (*http.Response, error) { return nil, errMock })
+	guardHttpGetFail := monkey.Patch(getURL, func(*http.Client, string) (*http.Response, error) { return nil, errMock })
 	defer guardHttpGetFail.Unpatch()
 	err = httpGet(configFile, request, response)
 	convey.Convey("if http.Get error, fail", t, func() {
@@ -62,7 +62,7 @@ func TestHttpGet(t *testing.T) {
 	})
 	guardHttpGetFail.Unpatch()
 
-	guardHttpGet404 := monkey.Patch(http.Get, func(string) (*http.Response, error) {
+	guardHttpGet404 := monkey.Patch(getURL, func(*http.Client, string) (*http.Response, error) {
 		return &http.Response{StatusCode: 404}, nil
 	})
 	defer guardHttpGet404.Unpatch()
@@ -83,7 +83,7 @@ func TestHttpGet(t *testing.T) {
 	s, _ := json.Marshal(mockResponse)
 
 	httpBody := s
-	guardHttpGetOK := monkey.Patch(http.Get, func(string) (*http.Response, error) {
+	guardHttpGetOK := monkey.Patch(getURL, func(*http.Client, string) (*http.Response, error) {
 		return &http.Response{
 			StatusCode: 200,
 			Body:       ioutil.NopCloser(bytes.NewReader(httpBody)),
@@ -104,7 +104,7 @@ func TestHttpGet(t *testing.T) {
 	mockResponse.RetCode = 100
 	mockResponse.Reason = "error 100"
 	httpBody, _ = json.Marshal(mockResponse)
-	guardHttpGetRetCodeError := monkey.Patch(http.Get, func(string) (*http.Response, error) {
+	guardHttpGetRetCodeError := monkey.Patch(getURL, func(*http.Client, string) (*http.Response, error) {
 		return &http.Response{
 			Status:     "",
 			StatusCode: 200,
@@ -139,7 +139,7 @@ func TestListVolume(t *testing.T) {
 	}
 	httpBody, _ := json.Marshal(mockResponse)
 
-	guardHttpGetOK := monkey.Patch(http.Get, func(string) (*http.Response, error) {
+	guardHttpGetOK := monkey.Patch(getURL, func(*http.Client, string) (*http.Response, error) {
 		return &http.Response{
 			Status:     "",
 			StatusCode: 200,
@@ -184,7 +184,7 @@ func TestCreateVolume(t *testing.T) {
 	}
 	httpBody, _ := json.Marshal(mockResponse)
 
-	guardHttpGetOK := monkey.Patch(http.Get, func(string) (*http.Response, error) {
+	guardHttpGetOK := monkey.Patch(getURL, func(*http.Client, string) (*http.Response, error) {
 		return &http.Response{
 			Status:     "",
 			StatusCode: 200,
@@ -220,7 +220,7 @@ func TestDeleteVolume(t *testing.T) {
 	}
 	httpBody, _ := json.Marshal(mockResponse)
 
-	guardHttpGetOK := monkey.Patch(http.Get, func(string) (*http.Response, error) {
+	guardHttpGetOK := monkey.Patch(getURL, func(*http.Client, string) (*http.Response, error) {
 		return &http.Response{
 			Status:     "",
 			StatusCode: 200,

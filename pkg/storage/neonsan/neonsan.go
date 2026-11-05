@@ -24,7 +24,7 @@ import (
 	"github.com/yunify/qingstor-csi/pkg/storage/neonsan/api"
 )
 
-const healthCheckTimeout = time.Second * 3
+const healthCheckTimeout = time.Second * 10
 
 type neonsan struct {
 	confFile      string

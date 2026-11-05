@@ -24,21 +24,23 @@ import (
 
 //var deviceNo = 50
 
-func (p *mockStorageProvider) NodeAttachVolume(volumeID string) error {
-	_, ok := p.attachedVolumes[volumeID]
-	if ok {
-		return errors.New("volume already attached")
+func (p *mockStorageProvider) NodeAttachVolume(volumeID, knownDevice string) (string, error) {
+	if len(knownDevice) != 0 {
+		return knownDevice, nil
+	}
+	if _, ok := p.attachedVolumes[volumeID]; ok {
+		return "", errors.New("volume already attached")
 	}
 	vol, err := p.FindVolume(volumeID)
 	if err != nil {
-		return err
+		return "", err
 	}
-	//deviceNo ++
+	device := common.GenerateHashInEightBytes(time.Now().UTC().String())
 	p.attachedVolumes[volumeID] = &attachVolume{
 		vol:    vol,
-		device: common.GenerateHashInEightBytes(time.Now().UTC().String()),
+		device: device,
 	}
-	return nil
+	return device, nil
 }
 
 func (p *mockStorageProvider) NodeDetachVolume(volumeID string) error {

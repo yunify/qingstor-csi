@@ -17,8 +17,11 @@ limitations under the License.
 package service
 
 import (
+	"errors"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/yunify/qingstor-csi/pkg/common"
+	"github.com/yunify/qingstor-csi/pkg/storage"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -52,6 +55,22 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 		return nil, status.Errorf(codes.Internal, "find volume by name error: %s, %s", volumeName, err.Error())
 	}
 	if existVolume != nil {
+		// A volume that is still being cloned must not be reported as success,
+		// otherwise the PVC binds to a partially copied volume. Aborting lets
+		// the provisioner retry; the clone keeps running as a center side job.
+		// A link clone is usable right after creation and keeps its clone
+		// record until the background sync finishes, so it is left alone.
+		if contentSource := req.GetVolumeContentSource(); contentSource != nil && req.GetParameters()["link_clone"] != "true" {
+			if cloneErr := s.storageProvider.CloneReady(existVolume.VolumeId, contentSource); cloneErr != nil {
+				var pending *storage.ClonePendingError
+				if errors.As(cloneErr, &pending) {
+					klog.Infof("Volume %s is still being cloned: %v", volumeName, cloneErr)
+					return nil, status.Error(codes.Aborted, cloneErr.Error())
+				}
+				klog.Errorf("Volume %s already exists but its clone is not usable: %v", volumeName, cloneErr)
+				return nil, status.Errorf(codes.Internal, "volume %s clone is not usable: %v", volumeName, cloneErr)
+			}
+		}
 		if common.IsValidCapacityBytes(existVolume.CapacityBytes, req.GetCapacityRange()) {
 			return &csi.CreateVolumeResponse{
 				Volume: &csi.Volume{
@@ -99,6 +118,12 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 	}
 	if createError != nil {
 		klog.Errorf("Failed to create volume %s, contentSource %s, error: %v", volumeName, req.GetVolumeContentSource(), createError)
+		var pending *storage.ClonePendingError
+		if errors.As(createError, &pending) {
+			// The center side copy keeps running, the next CreateVolume call
+			// resumes it instead of starting the whole copy again.
+			return nil, status.Error(codes.Aborted, createError.Error())
+		}
 		return nil, status.Error(codes.Internal, createError.Error())
 	}
 	csiVolume := &csi.Volume{

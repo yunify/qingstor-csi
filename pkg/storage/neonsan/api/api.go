@@ -36,8 +36,31 @@ import (
 const (
 	RetCodeOK = 0
 
+	// Ret codes the driver has to interpret, they are defined by the center
+	// (qfcenter src/qfc/consts.go).
+	RetCodeVolumeNotExists = -102
+	RetCodeCloneNotFound   = -111
+	RetCodeCloneOngoing    = -112
+	RetCodeVolumeHasClone  = -114
+
 	defaultApiHostTimeout = time.Second * 10
 )
+
+// APIError keeps the ret_code of a center answer next to its reason. Callers
+// need it to tell an idempotent no-op, for example a clone relation which is
+// already detached (-111), from a real failure.
+type APIError struct {
+	RetCode int
+	Reason  string
+}
+
+func (e *APIError) Error() string { return e.Reason }
+
+// IsRetCode reports whether err is an APIError carrying retCode.
+func IsRetCode(err error, retCode int) bool {
+	var apiErr *APIError
+	return errors.As(err, &apiErr) && apiErr.RetCode == retCode
+}
 
 type Volume struct {
 	Id                  int       `json:"id"`
@@ -116,7 +139,7 @@ func DeleteVolume(confFile, poolName, volumeName string) error {
 // returned remote addresses belong to the hosts running the qbd daemons.
 func ListVolumeConns(confFile, poolName, volumeName string) ([]VolumeConnInfo, error) {
 	if len(poolName) == 0 || len(volumeName) == 0 {
-		return nil, nil
+		return nil, fmt.Errorf("invalid pool or volume name: %q/%q", poolName, volumeName)
 	}
 	request := ListVolumeConnsRequest{
 		Op:       "list_volume_conns",
@@ -134,37 +157,25 @@ func ListVolumeConns(confFile, poolName, volumeName string) ([]VolumeConnInfo, e
 // GetActiveCenter returns the qfc ip of the current leader center. It is used
 // as the center liveness check of the CSI Probe call.
 func GetActiveCenter(confFile string, timeout time.Duration) (string, error) {
+	deadline := time.Now().Add(timeout)
 	apiHost, err := getApiHostWithTimeout(confFile, timeout)
 	if err != nil {
 		return "", err
 	}
-	client := &http.Client{Timeout: timeout}
+	// Discovery and the request share one budget, otherwise a probe could spend
+	// timeout on zookeeper and another timeout on the center.
+	remaining := time.Until(deadline)
+	if remaining <= 0 {
+		return "", fmt.Errorf("get active center from %s timeout before request", apiHost)
+	}
+	client := &http.Client{Timeout: remaining}
 	url := "http://" + apiHost + ":2600/control?op=get_active_center"
-	ret, err := client.Get(url)
-	if err != nil {
-		return "", err
-	}
-	defer func() {
-		if ret != nil && ret.Body != nil {
-			_ = ret.Body.Close()
-		}
-	}()
-	if ret.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("NeonsanAPI http code:%d", ret.StatusCode)
-	}
-	body, err := ioutil.ReadAll(ret.Body)
-	if err != nil {
-		return "", err
-	}
 	response := &GetActiveCenterResponse{}
-	if err = json.Unmarshal(body, response); err != nil {
-		return "", err
-	}
-	if response.RetCode != RetCodeOK {
-		return "", fmt.Errorf("get active center failed: %s", response.Reason)
+	if err = doRequest(client, url, response, false); err != nil {
+		return "", fmt.Errorf("get active center from %s failed: %v", apiHost, err)
 	}
 	if response.IP == "" {
-		return "", errors.New("get active center failed: empty ip")
+		return "", fmt.Errorf("get active center from %s failed: empty ip", apiHost)
 	}
 	return response.IP, nil
 }
@@ -250,9 +261,24 @@ func ListClone220(confFile, sourcePoolName, sourceVolumeName, targetPoolName, ta
 		return nil, err
 	}
 	if len(response.CloneVolumes) == 0 {
-		return nil, errors.New("no clone ")
+		return nil, nil
 	}
 	return &response.CloneVolumes[0], nil
+}
+
+// ListCloneByTarget lists the clone relations in which the volume is the
+// target. The source is not known when a volume is deleted, and the center
+// filters on target_vol alone when source_vol is empty.
+func ListCloneByTarget(confFile, targetPoolName, targetVolumeName string) ([]CloneInfo, error) {
+	request := ListCloneRequest220{
+		Op:        "list_clone",
+		TargetVol: targetPoolName + "/" + targetVolumeName,
+	}
+	response := &ListCloneResponse{}
+	if err := httpGet(confFile, request, response); err != nil {
+		return nil, err
+	}
+	return response.CloneVolumes, nil
 }
 
 func DetachCloneRelationship(confFile, sourcePoolName, sourceVolumeName, targetPoolName, targetVolumeName string) error {
@@ -262,7 +288,20 @@ func DetachCloneRelationship(confFile, sourcePoolName, sourceVolumeName, targetP
 		TargetVol: targetPoolName + "/" + targetVolumeName,
 	}
 	response := &DetachCloneRelationshipResponse{}
-	return httpGet(confFile, request, response)
+	return httpGetWithClient(confFile, request, response, cloneDetachClient)
+}
+
+// DetachCloneRelationshipByTarget detaches every clone relation of the target
+// volume, without knowing the source. It is used when the target volume is
+// deleted: the center refuses to delete a volume whose clone relation is still
+// attached (-114). Detach is metadata only, so it uses the short timeout.
+func DetachCloneRelationshipByTarget(confFile, targetPoolName, targetVolumeName string) error {
+	request := DetachCloneRelationshipRequest{
+		Op:        "detach_clone_relationship",
+		TargetVol: targetPoolName + "/" + targetVolumeName,
+	}
+	response := &DetachCloneRelationshipResponse{}
+	return httpGetWithClient(confFile, request, response, cloneDetachClient)
 }
 
 func CreateSnapshot(confFile, poolName, volumeName, snapshotName string) error {
@@ -336,15 +375,34 @@ func buildParameters(request interface{}) string {
 	return sb.String()
 }
 
-func httpGet(confFile string, request interface{}, response Response) error {
-	apiHost, err := getApiHost(confFile)
-	if err != nil {
-		return err
+// httpClient is shared by the volume/snapshot APIs. It must not be
+// http.DefaultClient: writing its Timeout from several goroutines is a data
+// race, and the health check needs a different (shorter) budget than the
+// volume operations.
+var httpClient = &http.Client{Timeout: time.Second * 30}
+
+// cloneDetachClient bounds one detach call. Detach is a metadata operation and
+// it runs inside CreateVolume, which has to finish before the provisioner
+// timeout (90s in the deployed csi-provisioner).
+var cloneDetachClient = &http.Client{Timeout: time.Second * 15}
+
+// getURL is only a thin wrapper around client.Get, it exists so the unit
+// tests can replace the HTTP layer.
+func getURL(client *http.Client, url string) (*http.Response, error) {
+	return client.Get(url)
+}
+
+// doRequest performs one center API request: send, read the body, decode it
+// into response and check ret_code. A 400 answer is allowed to pass through so
+// that the body reason is returned to the caller, the center reports parameter
+// errors that way.
+func doRequest(client *http.Client, url string, response Response, logInfo bool) error {
+	logRequest := klog.V(5).Infof
+	if logInfo {
+		logRequest = klog.Infof
 	}
-	url := "http://" + apiHost + ":2600/qfa?" + buildParameters(request)
-	klog.Infof("NeonsanApi request:%s", url)
-	http.DefaultClient.Timeout = time.Second * 30
-	ret, err := http.Get(url)
+	logRequest("NeonsanApi request:%s", url)
+	ret, err := getURL(client, url)
 	if err != nil {
 		return err
 	}
@@ -354,23 +412,35 @@ func httpGet(confFile string, request interface{}, response Response) error {
 		}
 	}()
 	// http 400 is param error, let it show ret.Body in error
-	if ret.StatusCode != 200 && ret.StatusCode != 400 {
+	if ret.StatusCode != http.StatusOK && ret.StatusCode != http.StatusBadRequest {
 		return fmt.Errorf("NeonsanAPI http code:%d", ret.StatusCode)
 	}
 	body, err := ioutil.ReadAll(ret.Body)
 	if err != nil {
 		return err
 	}
-	klog.Infof("NeonsanApi response:%s, request:%s", body, url)
-	err = json.Unmarshal(body, response)
-	if err != nil {
+	logRequest("NeonsanApi response:%s, request:%s", body, url)
+	if err = json.Unmarshal(body, response); err != nil {
 		return err
 	}
 	rspHeader := response.Header()
 	if rspHeader != nil && rspHeader.RetCode != RetCodeOK {
-		return errors.New(rspHeader.Reason)
+		return &APIError{RetCode: rspHeader.RetCode, Reason: rspHeader.Reason}
 	}
 	return nil
+}
+
+func httpGet(confFile string, request interface{}, response Response) error {
+	return httpGetWithClient(confFile, request, response, httpClient)
+}
+
+func httpGetWithClient(confFile string, request interface{}, response Response, client *http.Client) error {
+	apiHost, err := getApiHost(confFile)
+	if err != nil {
+		return err
+	}
+	url := "http://" + apiHost + ":2600/qfa?" + buildParameters(request)
+	return doRequest(client, url, response, true)
 }
 
 func getApiHost(confFile string) (string, error) {

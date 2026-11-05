@@ -117,3 +117,7 @@ func (p *mockStorageProvider) FindSnapshot(snapshotID string) (*csi.Snapshot, er
 func (p *mockStorageProvider) FindSnapshotByName(volumeID, snapshotName string) (*csi.Snapshot, error) {
 	return p.FindSnapshot(snapshotName)
 }
+
+func (p *mockStorageProvider) CloneReady(volumeID string, contentSource *csi.VolumeContentSource) error {
+	return nil
+}

@@ -189,6 +189,7 @@ type CloneInfo struct {
 	CreateTime time.Time `json:"create_time" format:"ISO 8601"`
 	Status     string    `json:"status"`
 	StatusTime time.Time `json:"status_time" format:"ISO 8601"`
+	Percent    int       `json:"percent"`
 }
 
 type ListCloneResponse struct {
