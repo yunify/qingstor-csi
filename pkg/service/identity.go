@@ -28,10 +28,12 @@ import (
 const (
 	// probeCacheTTL keeps Probe cheap: kubelet and the sidecars call it
 	// periodically, each call would otherwise hit zookeeper and the center.
-	probeCacheTTL = 10 * time.Second
+	probeCacheTTL = 15 * time.Second
 	// probeFailureThreshold avoids flipping the driver to not ready on a single
-	// transient failure of the center or of the local qbd daemon.
-	probeFailureThreshold = 2
+	// transient failure of the center or of the local qbd daemon. Center leader
+	// election and zookeeper hiccups last up to tens of seconds, so a driver
+	// that reports not ready too eagerly is worse than a slower detection.
+	probeFailureThreshold = 3
 )
 
 // Plugin MUST implement this RPC call
@@ -44,12 +46,28 @@ func (s *service) Probe(ctx context.Context, req *csi.ProbeRequest) (*csi.ProbeR
 // isReady checks qbd and at least one center, with a short result cache.
 func (s *service) isReady() bool {
 	s.probeMu.Lock()
-	defer s.probeMu.Unlock()
 	if !s.probeChecked.IsZero() && time.Since(s.probeChecked) < probeCacheTTL {
-		return s.probeReady
+		ready := s.probeReady
+		s.probeMu.Unlock()
+		return ready
 	}
-	s.probeChecked = time.Now()
+	if s.probeChecking {
+		// Another Probe is already talking to zookeeper and the center. Report
+		// the last known state instead of queueing behind it: the health check
+		// can take several seconds now.
+		ready := s.probeReady
+		s.probeMu.Unlock()
+		return ready
+	}
+	s.probeChecking = true
+	s.probeMu.Unlock()
+
 	err := s.storageProvider.HealthCheck()
+
+	s.probeMu.Lock()
+	defer s.probeMu.Unlock()
+	s.probeChecking = false
+	s.probeChecked = time.Now()
 	if err != nil {
 		s.probeFailures++
 		klog.V(4).Infof("Probe health check failed (%d/%d): %v", s.probeFailures, probeFailureThreshold, err)

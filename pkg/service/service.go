@@ -45,6 +45,7 @@ type service struct {
 	probeReady    bool
 	probeChecked  time.Time
 	probeFailures int
+	probeChecking bool
 }
 
 func New(option *Option, cloud storage.Provider) Service {
@@ -57,5 +58,8 @@ func New(option *Option, cloud storage.Provider) Service {
 		storageProvider: cloud,
 		mounter:         mounter,
 		locks:           common.NewResourceLocks(),
+		// Assume ready until the first health check says otherwise, so a
+		// concurrent Probe during startup does not report a dead driver.
+		probeReady: true,
 	}
 }
