@@ -177,8 +177,17 @@ func (s *service) validateRequest(request interface{}) error {
 	return nil
 }
 
+// getVolumeID returns the key the per-resource lock is taken on. CreateVolume
+// is locked by the requested name: csi-provisioner gives up on its own timeout
+// and retries while the driver is still working (the provider interface has no
+// context, so the call is not cancelled). Without this key two CreateVolume
+// calls for the same PVC run at the same time, and each of them may see the
+// temporary volume of the other as a leftover. The second call gets Aborted and
+// is retried later instead.
 func (s *service) getVolumeID(request interface{}) string {
 	switch req := request.(type) {
+	case *csi.CreateVolumeRequest:
+		return req.GetName()
 	case *csi.ControllerExpandVolumeRequest:
 		return req.VolumeId
 	case *csi.CreateSnapshotRequest:

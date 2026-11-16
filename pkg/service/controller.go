@@ -17,8 +17,11 @@ limitations under the License.
 package service
 
 import (
+	"errors"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/yunify/qingstor-csi/pkg/common"
+	"github.com/yunify/qingstor-csi/pkg/storage"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -52,18 +55,41 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 		return nil, status.Errorf(codes.Internal, "find volume by name error: %s, %s", volumeName, err.Error())
 	}
 	if existVolume != nil {
-		if common.IsValidCapacityBytes(existVolume.CapacityBytes, req.GetCapacityRange()) {
-			return &csi.CreateVolumeResponse{
-				Volume: &csi.Volume{
-					VolumeId:      existVolume.VolumeId,
-					CapacityBytes: existVolume.CapacityBytes,
-					VolumeContext: req.GetParameters(),
-					ContentSource: req.GetVolumeContentSource(),
-				}}, nil
-		} else {
+		// The size is checked first: a volume of a different size can only end
+		// in AlreadyExists, so the clone must not be touched for a request that
+		// cannot succeed (CloneReady may detach a relation or wait for a copy).
+		if !common.IsValidCapacityBytes(existVolume.CapacityBytes, req.GetCapacityRange()) {
 			klog.Errorf("volume %s/%s already exist but is incompatible", volumeName, existVolume.VolumeId)
 			return nil, status.Errorf(codes.AlreadyExists, "volume %s already exist but is incompatible", volumeName)
 		}
+		// A volume that is still being cloned must not be reported as success,
+		// otherwise the PVC binds to a partially copied volume. Aborting lets
+		// the provisioner retry; the clone keeps running as a center side job.
+		// A link clone is usable right after creation and keeps its clone
+		// record until the background sync finishes, so it is left alone.
+		if contentSource := req.GetVolumeContentSource(); contentSource != nil && req.GetParameters()["link_clone"] != "true" {
+			if cloneErr := s.storageProvider.CloneReady(existVolume.VolumeId, contentSource); cloneErr != nil {
+				var pending *storage.ClonePendingError
+				if errors.As(cloneErr, &pending) {
+					klog.Infof("Volume %s is still being cloned: %v", volumeName, cloneErr)
+					return nil, status.Error(codes.Aborted, cloneErr.Error())
+				}
+				var resume *storage.CloneResumeError
+				if errors.As(cloneErr, &resume) {
+					klog.Infof("Volume %s is copied but its clone relation is still attached: %v", volumeName, cloneErr)
+					return nil, status.Error(codes.Aborted, cloneErr.Error())
+				}
+				klog.Errorf("Volume %s already exists but its clone is not usable: %v", volumeName, cloneErr)
+				return nil, status.Errorf(codes.Internal, "volume %s clone is not usable: %v", volumeName, cloneErr)
+			}
+		}
+		return &csi.CreateVolumeResponse{
+			Volume: &csi.Volume{
+				VolumeId:      existVolume.VolumeId,
+				CapacityBytes: existVolume.CapacityBytes,
+				VolumeContext: req.GetParameters(),
+				ContentSource: req.GetVolumeContentSource(),
+			}}, nil
 	}
 	var createError error
 	var createVolumeID string
@@ -80,6 +106,7 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 				return nil, status.Errorf(codes.Internal, "list snapshot error:%v", err)
 			}
 			if snapshot == nil {
+				s.removeCloneLeftover(volumeName, req.GetParameters())
 				return nil, status.Errorf(codes.NotFound, "Requested source snapshot %s not found", snapshotID)
 			}
 			createVolumeID, createError = s.storageProvider.CreateVolumeFromSnapshot(volumeName, snapshotID, requiredSizeByte, req.GetParameters())
@@ -92,12 +119,27 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 				return nil, status.Error(codes.Internal, err.Error())
 			}
 			if sourceVolume == nil {
+				s.removeCloneLeftover(volumeName, req.GetParameters())
 				return nil, status.Errorf(codes.NotFound, "cannot find content source volume id [%s]", sourceVolumeId)
 			}
 			createVolumeID, createError = s.storageProvider.CreateVolumeByClone(volumeName, sourceVolumeId, requiredSizeByte, req.GetParameters())
 		}
 	}
 	if createError != nil {
+		var pending *storage.ClonePendingError
+		if errors.As(createError, &pending) {
+			// The center side copy keeps running, the next CreateVolume call
+			// resumes it instead of starting the whole copy again.
+			klog.Infof("Volume %s is still being cloned, the provisioner retries later: %v", volumeName, createError)
+			return nil, status.Error(codes.Aborted, createError.Error())
+		}
+		var resume *storage.CloneResumeError
+		if errors.As(createError, &resume) {
+			// The copy is complete, only detach and rename are left. This is a
+			// retryable state, not a driver failure.
+			klog.Infof("Volume %s is copied but its clone relation is still attached: %v", volumeName, createError)
+			return nil, status.Error(codes.Aborted, createError.Error())
+		}
 		klog.Errorf("Failed to create volume %s, contentSource %s, error: %v", volumeName, req.GetVolumeContentSource(), createError)
 		return nil, status.Error(codes.Internal, createError.Error())
 	}
@@ -108,6 +150,16 @@ func (s *service) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest
 		ContentSource: req.GetVolumeContentSource(),
 	}
 	return &csi.CreateVolumeResponse{Volume: csiVolume}, nil
+}
+
+// removeCloneLeftover deletes the temporary volume of an interrupted clone
+// whose source disappeared. The request itself fails with NotFound, the
+// cleanup only makes sure the half copied volume does not stay in the center
+// forever; a cleanup error must not hide the real reason of the failure.
+func (s *service) removeCloneLeftover(volumeName string, parameters map[string]string) {
+	if err := s.storageProvider.RemoveCloneLeftover(volumeName, parameters); err != nil {
+		klog.Errorf("Failed to remove the clone leftovers of volume %s: %v", volumeName, err)
+	}
 }
 
 // This operation MUST be idempotent

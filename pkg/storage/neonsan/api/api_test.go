@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -54,7 +55,7 @@ func TestHttpGet(t *testing.T) {
 	guardGetApiUrlOK := monkey.Patch(getApiHost, func(string) (string, error) { return "neonsan-api.com", nil })
 	defer guardGetApiUrlOK.Unpatch()
 
-	guardHttpGetFail := monkey.Patch(http.Get, func(string) (*http.Response, error) { return nil, errMock })
+	guardHttpGetFail := monkey.Patch(getURL, func(*http.Client, string) (*http.Response, error) { return nil, errMock })
 	defer guardHttpGetFail.Unpatch()
 	err = httpGet(configFile, request, response)
 	convey.Convey("if http.Get error, fail", t, func() {
@@ -62,7 +63,7 @@ func TestHttpGet(t *testing.T) {
 	})
 	guardHttpGetFail.Unpatch()
 
-	guardHttpGet404 := monkey.Patch(http.Get, func(string) (*http.Response, error) {
+	guardHttpGet404 := monkey.Patch(getURL, func(*http.Client, string) (*http.Response, error) {
 		return &http.Response{StatusCode: 404}, nil
 	})
 	defer guardHttpGet404.Unpatch()
@@ -83,7 +84,7 @@ func TestHttpGet(t *testing.T) {
 	s, _ := json.Marshal(mockResponse)
 
 	httpBody := s
-	guardHttpGetOK := monkey.Patch(http.Get, func(string) (*http.Response, error) {
+	guardHttpGetOK := monkey.Patch(getURL, func(*http.Client, string) (*http.Response, error) {
 		return &http.Response{
 			StatusCode: 200,
 			Body:       ioutil.NopCloser(bytes.NewReader(httpBody)),
@@ -104,7 +105,7 @@ func TestHttpGet(t *testing.T) {
 	mockResponse.RetCode = 100
 	mockResponse.Reason = "error 100"
 	httpBody, _ = json.Marshal(mockResponse)
-	guardHttpGetRetCodeError := monkey.Patch(http.Get, func(string) (*http.Response, error) {
+	guardHttpGetRetCodeError := monkey.Patch(getURL, func(*http.Client, string) (*http.Response, error) {
 		return &http.Response{
 			Status:     "",
 			StatusCode: 200,
@@ -139,7 +140,7 @@ func TestListVolume(t *testing.T) {
 	}
 	httpBody, _ := json.Marshal(mockResponse)
 
-	guardHttpGetOK := monkey.Patch(http.Get, func(string) (*http.Response, error) {
+	guardHttpGetOK := monkey.Patch(getURL, func(*http.Client, string) (*http.Response, error) {
 		return &http.Response{
 			Status:     "",
 			StatusCode: 200,
@@ -184,7 +185,7 @@ func TestCreateVolume(t *testing.T) {
 	}
 	httpBody, _ := json.Marshal(mockResponse)
 
-	guardHttpGetOK := monkey.Patch(http.Get, func(string) (*http.Response, error) {
+	guardHttpGetOK := monkey.Patch(getURL, func(*http.Client, string) (*http.Response, error) {
 		return &http.Response{
 			Status:     "",
 			StatusCode: 200,
@@ -220,7 +221,7 @@ func TestDeleteVolume(t *testing.T) {
 	}
 	httpBody, _ := json.Marshal(mockResponse)
 
-	guardHttpGetOK := monkey.Patch(http.Get, func(string) (*http.Response, error) {
+	guardHttpGetOK := monkey.Patch(getURL, func(*http.Client, string) (*http.Response, error) {
 		return &http.Response{
 			Status:     "",
 			StatusCode: 200,
@@ -241,4 +242,37 @@ func TestDeleteVolume(t *testing.T) {
 		convey.So(err, convey.ShouldNotBeNil)
 	})
 
+}
+
+func TestDetachCloneRelationshipByTargetBuildsRequest(t *testing.T) {
+	guardGetApiUrlOK := monkey.Patch(getApiHost, func(string) (string, error) { return "neonsan-api.com", nil })
+	defer guardGetApiUrlOK.Unpatch()
+
+	mockResponse := &DetachCloneRelationshipResponse{
+		ResponseHeader: ResponseHeader{
+			Op:      "detach_clone_relationship_reply",
+			RetCode: 0,
+		},
+	}
+	httpBody, _ := json.Marshal(mockResponse)
+
+	var gotURL string
+	guardHttpGetOK := monkey.Patch(getURL, func(_ *http.Client, url string) (*http.Response, error) {
+		gotURL = url
+		return &http.Response{
+			StatusCode: 200,
+			Body:       ioutil.NopCloser(bytes.NewReader(httpBody)),
+		}, nil
+	})
+	defer guardHttpGetOK.Unpatch()
+
+	if err := DetachCloneRelationshipByTarget(configFile, "vol", "pvc-x"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if strings.Contains(gotURL, "del_link_vol") {
+		t.Fatalf("a plain detach must not ask the center to delete the target: %s", gotURL)
+	}
+	if !strings.Contains(gotURL, "target_vol=vol%2Fpvc-x") && !strings.Contains(gotURL, "target_vol=vol/pvc-x") {
+		t.Fatalf("expected target_vol in %s", gotURL)
+	}
 }

@@ -117,3 +117,16 @@ func (p *mockStorageProvider) FindSnapshot(snapshotID string) (*csi.Snapshot, er
 func (p *mockStorageProvider) FindSnapshotByName(volumeID, snapshotName string) (*csi.Snapshot, error) {
 	return p.FindSnapshot(snapshotName)
 }
+
+func (p *mockStorageProvider) CloneReady(volumeID string, contentSource *csi.VolumeContentSource) error {
+	return nil
+}
+
+// cloneTempSuffix mirrors the neonsan storage suffix so the service tests see
+// the same leftover volume name.
+const cloneTempSuffix = ".csi-cloning"
+
+func (p *mockStorageProvider) RemoveCloneLeftover(volumeName string, parameters map[string]string) error {
+	delete(p.volumes, volumeName+cloneTempSuffix)
+	return nil
+}

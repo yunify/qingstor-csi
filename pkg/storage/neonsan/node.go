@@ -25,7 +25,10 @@ import (
 	"github.com/yunify/qingstor-csi/pkg/storage/neonsan/qbd"
 )
 
-func (v *neonsan) NodeAttachVolume(volumeID string) error {
+func (v *neonsan) NodeAttachVolume(volumeID, knownDevice string) (string, error) {
+	if len(knownDevice) != 0 {
+		return knownDevice, nil
+	}
 	poolName, volumeName := SplitVolumeName(volumeID)
 	return qbd.AttachVolume(v.confFile, v.protocol, poolName, volumeName)
 }

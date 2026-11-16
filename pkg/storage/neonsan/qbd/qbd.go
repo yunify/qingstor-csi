@@ -53,31 +53,34 @@ type AttachInfo struct {
 //   poolName: string
 //   volName: string
 // Return:
+//   device: device path of the attached volume
 //   not nil: failed to attach volume
-//   nil: succeed to attach volume
-func AttachVolume(confFile, protocol, poolName, volName string) error {
+func AttachVolume(confFile, protocol, poolName, volName string) (string, error) {
 	if volName == "" || poolName == "" {
-		return errorInvalidArgument
+		return "", errorInvalidArgument
 	}
 	args := []string{"-m", fmt.Sprintf("%s://%s/%s", protocol, poolName, volName), "-c", confFile}
 	_, err := common.ExecCommand(CmdQbd, args)
 
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	deviceName, err := GetDevice(confFile, poolName, volName)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if len(deviceName) == 0 {
-		return errors.New("device name is empty in attach volume")
+		return "", errors.New("device name is empty in attach volume")
 	}
 
 	// dd if=/dev/qbd1 of=/dev/null bs=4k count=1 iflag=direct
 	args = []string{"if=" + deviceName, "of=/dev/null", "bs=4k", "count=1", "iflag=direct"}
 	_, err = common.ExecCommand(CmdDd, args)
-	return err
+	if err != nil {
+		return "", err
+	}
+	return deviceName, nil
 }
 
 // DetachVolume detach volume from current node
